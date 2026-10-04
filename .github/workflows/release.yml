@@ -1,0 +1,108 @@
+# Release: push a tag `vX.Y.Z` (see `bun run release X.Y.Z`).
+# Builds a universal macOS app, publishes a GitHub Release, then bumps the
+# cask in julien-blanchon/homebrew-tap. Updates are delivered by
+# `brew upgrade` only (no in-app updater).
+#
+# Secrets:
+#   HOMEBREW_TAP_DEPLOY_KEY       SSH deploy key with write access to homebrew-tap
+#   APPLE_CERTIFICATE             base64 Developer ID Application .p12   } optional: without
+#   APPLE_CERTIFICATE_PASSWORD                                            } them the app is
+#   APPLE_ID, APPLE_PASSWORD      app-specific password, for notarization } ad-hoc signed and
+#   APPLE_TEAM_ID                                                         } the cask strips
+#   KEYCHAIN_PASSWORD             any random string                       } the quarantine flag
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  macos:
+    runs-on: macos-latest
+    env:
+      SIGNED: ${{ secrets.APPLE_CERTIFICATE != '' }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Import Apple certificate
+        if: env.SIGNED == 'true'
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          # Notarization credentials only exist in signed builds (an empty
+          # APPLE_ID would still make the bundler attempt notarization).
+          {
+            echo "APPLE_ID=$APPLE_ID"
+            echo "APPLE_PASSWORD=$APPLE_PASSWORD"
+            echo "APPLE_TEAM_ID=$APPLE_TEAM_ID"
+          } >> "$GITHUB_ENV"
+          echo "$APPLE_CERTIFICATE" | base64 --decode > certificate.p12
+          security create-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+          security set-keychain-settings -t 3600 -u build.keychain
+          security import certificate.p12 -k build.keychain -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" build.keychain
+          rm certificate.p12
+          IDENTITY=$(security find-identity -v -p codesigning build.keychain | grep "Developer ID Application" | awk -F'"' '{print $2}')
+          echo "APPLE_SIGNING_IDENTITY=$IDENTITY" >> "$GITHUB_ENV"
+
+      - name: Ad-hoc signing
+        if: env.SIGNED != 'true'
+        run: echo "APPLE_SIGNING_IDENTITY=-" >> "$GITHUB_ENV"
+
+      - uses: oven-sh/setup-bun@v2
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> target"
+      - run: bun install --frozen-lockfile
+
+      - uses: tauri-apps/tauri-action@v1
+        id: tauri
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: v__VERSION__
+          releaseName: Xivly v__VERSION__
+          releaseBody: |
+            Install or update with Homebrew:
+            ```
+            brew install --cask julien-blanchon/tap/xivly
+            brew upgrade --cask xivly
+            ```
+          releaseDraft: false
+          args: --target universal-apple-darwin
+
+      - name: Bump Homebrew cask
+        env:
+          TAP_KEY: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
+          VERSION: ${{ steps.tauri.outputs.appVersion }}
+          ARTIFACTS: ${{ steps.tauri.outputs.artifactPaths }}
+        run: |
+          DMG=$(echo "$ARTIFACTS" | jq -r '.[] | select(endswith(".dmg"))' | head -1)
+          SHA=$(shasum -a 256 "$DMG" | cut -d' ' -f1)
+          # Asset name with the version templated, e.g. Xivly_#{version}_universal.dmg
+          ASSET=$(basename "$DMG" | sed "s/$VERSION/#{version}/")
+          # Deploy key: write access to the tap repo only.
+          echo "$TAP_KEY" > "$RUNNER_TEMP/tap_key" && chmod 600 "$RUNNER_TEMP/tap_key"
+          export GIT_SSH_COMMAND="ssh -i $RUNNER_TEMP/tap_key -o StrictHostKeyChecking=accept-new"
+          git clone --depth 1 git@github.com:julien-blanchon/homebrew-tap.git tap
+          ./scripts/cask.sh "$VERSION" "$SHA" "$ASSET" "$SIGNED" > tap/Casks/xivly.rb
+          cd tap
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Casks/xivly.rb
+          # Re-runs of the same release are a no-op.
+          git diff --cached --quiet || { git commit -m "xivly $VERSION" && git push; }

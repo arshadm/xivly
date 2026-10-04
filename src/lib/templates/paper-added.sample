@@ -1,0 +1,15 @@
+#!/bin/sh
+# Xivly hook example. Rename to `paper-added` (or `paper-added.sh`) to enable.
+# Events: paper-added, paper-saved, paper-updated, paper-removed
+# Hooks run in the desktop app only, through your login shell.
+#
+# cwd   = the paper folder
+# stdin = paper.json
+# env   = XIVLY_EVENT XIVLY_LIBRARY XIVLY_PAPER_ID XIVLY_PAPER_DIR
+#         XIVLY_PAPER_PDF XIVLY_PAPER_JSON
+#
+# Example: ask Claude Code to write a summary next to the paper.
+# claude -p "Read paper.pdf and write a concise summary to summary.md" \
+#   --allowedTools "Read,Write" >/dev/null
+
+echo "[$XIVLY_EVENT] $XIVLY_PAPER_ID"

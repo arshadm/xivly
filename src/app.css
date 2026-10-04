@@ -1,0 +1,52 @@
+@import "tailwindcss";
+@import "svelte-pdf-mini/styles.css";
+@plugin "@iconify/tailwind4";
+
+/* svelte-pdf-mini ships compiled components: let Tailwind see their classes. */
+@source "../node_modules/svelte-pdf-mini/dist";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  --font-serif: "New York", "Iowan Old Style", Georgia, serif;
+}
+
+html,
+body {
+  height: 100%;
+  overscroll-behavior: none;
+  -webkit-user-select: none;
+  user-select: none;
+  cursor: default;
+}
+
+input,
+textarea,
+[contenteditable],
+[data-pdf-text-layer] {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* Portaled UI (dialogs, menus, popovers, tooltips) inherits from here, not
+   from the app wrapper: give it readable colours in both themes. */
+html {
+  color: var(--color-stone-800);
+  background: var(--color-stone-50);
+  color-scheme: light;
+}
+html.dark {
+  color: var(--color-stone-200);
+  background: var(--color-stone-950);
+  color-scheme: dark;
+}
+
+/* The app shell never scrolls: only its panels and the PDF viewport do. A
+   wheel over chrome (header, panel edges, floating previews) must not move
+   the whole window. */
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+}

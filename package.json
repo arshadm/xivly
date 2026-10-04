@@ -1,0 +1,50 @@
+{
+  "name": "xivly",
+  "version": "0.1.0",
+  "description": "Xivly — papers without distraction",
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "build:web": "XIVLY_WEB=1 BASE_PATH=${BASE_PATH-/xivly} vite build && cp build/404.html build/index.html && touch build/.nojekyll",
+    "preview": "vite preview",
+    "prepare": "svelte-kit sync || echo ''",
+    "postinstall": "node scripts/copy-pdfjs-assets.js",
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+    "tauri": "tauri",
+    "icon": "tauri icon src-tauri/icons/icon.svg",
+    "release": "node scripts/release.js",
+    "seed": "bun scripts/seed-demo.ts",
+    "tauri:demo": "XIVLY_LIBRARY=\"$PWD/demo-library\" tauri dev"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-clipboard-manager": "^2.4.1",
+    "@tauri-apps/plugin-dialog": "^2.8.1",
+    "@tauri-apps/plugin-fs": "^2.6.0",
+    "@tauri-apps/plugin-opener": "^2.7.0",
+    "@tauri-apps/plugin-store": "^2.5.0",
+    "@tauri-apps/plugin-window-state": "^2.5.0",
+    "bits-ui": "^2.19.5",
+    "clsx": "^2.1.1",
+    "svelte-pdf-mini": "^0.2.0",
+    "tailwind-merge": "^3.7.0"
+  },
+  "devDependencies": {
+    "@iconify-json/lucide": "^1.2.139",
+    "@iconify/tailwind4": "^1.2.3",
+    "@sveltejs/adapter-static": "^3.0.10",
+    "@sveltejs/kit": "^2.65.1",
+    "@sveltejs/vite-plugin-svelte": "^7.1.2",
+    "@tailwindcss/vite": "^4.3.3",
+    "@tauri-apps/cli": "^2",
+    "@types/wicg-file-system-access": "^2023.10.7",
+    "svelte": "^5.57.1",
+    "svelte-check": "^4.6.0",
+    "tailwindcss": "^4.3.3",
+    "typescript": "~6.0.3",
+    "vite": "^8.0.16"
+  }
+}
