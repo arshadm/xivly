@@ -7,7 +7,7 @@
 	export interface CycleOption<V> {
 		value: V;
 		label: string;
-		/** Iconify class (`icon-[lucide--…]`). */
+		/** Iconify class, e.g. `icon-[lucide--file]`. */
 		icon?: string;
 	}
 </script>
