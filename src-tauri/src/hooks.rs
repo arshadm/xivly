@@ -227,11 +227,11 @@ fn log(library: &Path, r: &HookResult) {
     }
 }
 
-#[cfg(test)]
+// The test hook is a shell script.
+#[cfg(all(test, unix))]
 mod tests {
     use super::*;
 
-    #[cfg(unix)]
     #[test]
     fn finds_and_runs_hooks() {
         let lib = std::env::temp_dir().join(format!("xivly-hooks-{}", std::process::id()));

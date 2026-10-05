@@ -254,12 +254,15 @@ pub async fn fs_mkdir(state: State<'_, AppState>, path: String) -> Result<()> {
 pub async fn fs_trash(state: State<'_, AppState>, path: String) -> Result<()> {
     let p = resolve_entry(&root(&state)?, &path)?;
     blocking(move || {
-        let mut ctx = trash::TrashContext::default();
         #[cfg(target_os = "macos")]
-        {
+        let ctx = {
             use trash::macos::{DeleteMethod, TrashContextExtMacos};
+            let mut ctx = trash::TrashContext::default();
             ctx.set_delete_method(DeleteMethod::NsFileManager);
-        }
+            ctx
+        };
+        #[cfg(not(target_os = "macos"))]
+        let ctx = trash::TrashContext::default();
         ctx.delete(p)?;
         Ok(())
     })
