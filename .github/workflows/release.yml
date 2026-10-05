@@ -107,7 +107,12 @@ jobs:
               --notes-file "$RUNNER_TEMP/notes.md" --generate-notes
             if [ "$PRERELEASE" = "true" ]; then set -- "$@" --prerelease; fi
             gh release create "$@"
-            ID=$(find_release)
+            # The releases list can lag a moment behind a new draft.
+            for _ in 1 2 3 4 5 6 7 8 9 10; do
+              ID=$(find_release)
+              [ -n "$ID" ] && break
+              sleep 3
+            done
           else
             echo "Reusing release $ID for $TAG."
           fi
