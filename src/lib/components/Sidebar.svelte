@@ -107,12 +107,12 @@
 			{#each library.allTags as tag (tag)}
 				{@const mode = library.tagFilter[tag]}
 				<button
-					class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-colors
-						data-[mode=in]:border-stone-700 data-[mode=in]:bg-stone-700 data-[mode=in]:text-white
-						data-[mode=out]:border-red-300 data-[mode=out]:bg-red-50 data-[mode=out]:text-red-700 data-[mode=out]:line-through
-						dark:data-[mode=in]:border-stone-200 dark:data-[mode=in]:bg-stone-200 dark:data-[mode=in]:text-stone-900
-						dark:data-[mode=out]:border-red-900 dark:data-[mode=out]:bg-red-950/60 dark:data-[mode=out]:text-red-300
-						{mode ? '' : 'border-stone-300 text-stone-600 dark:border-stone-700 dark:text-stone-400'}"
+					class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-colors outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60
+						data-[mode=in]:border-stone-700 data-[mode=in]:bg-stone-700 data-[mode=in]:text-white data-[mode=in]:hover:bg-stone-600
+						data-[mode=out]:border-red-300 data-[mode=out]:bg-red-50 data-[mode=out]:text-red-700 data-[mode=out]:line-through data-[mode=out]:hover:bg-red-100
+						dark:data-[mode=in]:border-stone-200 dark:data-[mode=in]:bg-stone-200 dark:data-[mode=in]:text-stone-900 dark:data-[mode=in]:hover:bg-stone-300
+						dark:data-[mode=out]:border-red-900 dark:data-[mode=out]:bg-red-950/60 dark:data-[mode=out]:text-red-300 dark:data-[mode=out]:hover:bg-red-950
+						{mode ? '' : 'border-stone-300 text-stone-600 hover:border-stone-400 hover:bg-stone-200/70 hover:text-stone-800 dark:border-stone-700 dark:text-stone-400 dark:hover:border-stone-600 dark:hover:bg-stone-800 dark:hover:text-stone-200'}"
 					data-mode={mode}
 					aria-label={mode === 'in' ? `Only #${tag}` : mode === 'out' ? `Hiding #${tag}` : `#${tag}`}
 					onclick={() => library.cycleTag(tag)}
