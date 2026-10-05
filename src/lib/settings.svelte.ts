@@ -4,7 +4,6 @@ import type { InkSmoothing, MinimapVariant, ScrollMode, ZoomMode } from 'svelte-
 import { platform } from './platform';
 
 export type PageFrame = 'rounded' | 'shadow' | 'border' | 'flat' | 'none';
-type FocusStyle = 'glow' | 'brackets' | 'marker' | 'ink' | 'pulse' | 'outline' | 'spotlight';
 
 export type CoverStyle = 'book' | 'stack' | 'flat' | 'page';
 export const coverStyles: { value: CoverStyle; label: string }[] = [
@@ -47,7 +46,6 @@ const defaults = {
 	breadcrumb: true,
 	linkPreviews: true,
 	citationCards: true,
-	focusStyle: 'glow' as FocusStyle,
 
 	// Annotations
 	author: '',

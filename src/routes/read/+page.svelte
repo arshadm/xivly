@@ -60,7 +60,6 @@
 	import ZoomSelect from '$lib/ui/ZoomSelect.svelte';
 	import ZoomSlider from '$lib/ui/ZoomSlider.svelte';
 	import { contextMenuState, isEditable, setFallbackMenu, type MenuItem } from '$lib/ui/context-menu.svelte';
-	import FocusEffect from '$lib/ui/focus/FocusEffect.svelte';
 
 	const id = $derived(page.url.searchParams.get('id') ?? '');
 	const paper = $derived(library.get(id));
@@ -402,7 +401,6 @@
 			firstPageAlone={s.firstPageAlone}
 			smoothZoom={s.smoothZoom}
 			wheelZoom={s.wheelZoom}
-			focusHighlight={s.focusStyle}
 			keyboard="document"
 			{keymap}
 			class="flex h-full flex-col"
@@ -611,7 +609,7 @@
 																	<Annotations.Layer />
 																	{#if s.lineMarkers}<Annotations.LineMarkers markers="all" />{/if}
 																	{#if s.sideNotes}<Annotations.Margin edge={s.tocRail ? 36 : 8} class="[--pdf-margin-width:220px]" />{/if}
-																	<FocusEffect color={accent} />
+																	<Viewer.Focus />
 																</Viewer.Page>
 															{/snippet}
 														</Viewer.Pages>

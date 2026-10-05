@@ -96,8 +96,6 @@
 							{#if settingsDialog.section === 'general'}
 								{#snippet themeCtl()}<ToggleGroup label="Appearance" value={s.theme} onValueChange={set('theme')} items={[{ value: 'system', label: 'System', icon: 'icon-[lucide--monitor]' }, { value: 'light', label: 'Light', icon: 'icon-[lucide--sun]' }, { value: 'dark', label: 'Dark', icon: 'icon-[lucide--moon]' }]} />{/snippet}
 								{@render row('Appearance', `Light or dark interface and pages (${keys.toggleTheme} flips it)`, themeCtl)}
-								{#snippet focusCtl()}<Select label="Link target effect" value={s.focusStyle} onValueChange={set('focusStyle')} items={[{ value: 'glow', label: 'Glow' }, { value: 'brackets', label: 'Brackets' }, { value: 'marker', label: 'Marker' }, { value: 'ink', label: 'Ink' }, { value: 'pulse', label: 'Pulse' }, { value: 'outline', label: 'Outline' }, { value: 'spotlight', label: 'Spotlight' }]} />{/snippet}
-								{@render row('Link target effect', 'How a figure, table or section is highlighted when you follow a link to it', focusCtl)}
 								{@render toggle('linkPreviews', 'Link previews', 'Hover a link to preview its target (figures, sections, equations, URLs)')}
 								{@render toggle('citationCards', 'Citation cards', 'Hover a citation to see the reference, with online metadata')}
 							{:else if settingsDialog.section === 'reading'}
