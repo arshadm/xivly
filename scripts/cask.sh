@@ -9,8 +9,7 @@ cask "xivly" do
   version "$VERSION"
   sha256 "$SHA"
 
-  url "https://github.com/julien-blanchon/xivly/releases/download/v#{version}/$ASSET",
-      verified: "github.com/julien-blanchon/xivly/"
+  url "https://github.com/julien-blanchon/xivly/releases/download/v#{version}/$ASSET"
   name "Xivly"
   desc "Research paper reader, annotator and library, without distraction"
   homepage "https://github.com/julien-blanchon/xivly"
