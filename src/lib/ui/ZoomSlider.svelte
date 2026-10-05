@@ -19,6 +19,7 @@
 
 <Slider.Root
 	type="single"
+	disabled={viewer.zoomLocked}
 	min={0}
 	max={1}
 	step={0.005}
@@ -28,7 +29,7 @@
 		if (Math.abs(p - toPos(viewer.zoom)) > 0.008) viewer.zoomTo(toZoom(p));
 	}}
 	aria-label="Zoom"
-	class={cn('relative flex h-5 w-36 touch-none items-center select-none', className)}
+	class={cn('relative flex h-5 w-36 touch-none items-center select-none data-[disabled]:opacity-40', className)}
 >
 	<span class="relative h-1 w-full grow overflow-hidden rounded-full bg-stone-200 dark:bg-stone-700">
 		<Slider.Range class="absolute h-full bg-stone-500 dark:bg-stone-400" />

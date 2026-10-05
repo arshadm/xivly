@@ -1,8 +1,9 @@
 <!--
 	Center the page across the scroll direction (shown only when it's off-center):
 	horizontally when pages scroll down, vertically when they scroll sideways.
-	Double-click locks it: no scrolling on that axis, and zoom can't go past the
-	page width (or height), so the whole page always stays in view. Click to unlock.
+	Double-click locks it: the page fits the width (or height), with no scrolling on
+	that axis and no zooming (the reader passes `locked` to Viewer.Root zoomLocked).
+	Click to unlock.
 -->
 <script lang="ts">
 	import { fade } from 'svelte/transition';
@@ -38,13 +39,6 @@
 		return () => (locked = false);
 	});
 
-	// Locked: fit the page and never zoom past it.
-	let fit = 0;
-	$effect(() => {
-		if (!locked) return;
-		if (viewer.zoomMode === fitMode) fit = viewer.zoom;
-		else if (fit && viewer.zoom > fit + 1e-3) viewer.zoomMode = fitMode;
-	});
 	$effect(() => {
 		const el = viewer.scrollEl;
 		if (!el || !locked) return;
@@ -61,9 +55,9 @@
 	function click(e: MouseEvent) {
 		clearTimeout(holdTimer);
 		if (e.detail >= 2) {
-			locked = true;
-			fit = 0;
+			// Fit first: once locked (Viewer.Root zoomLocked), the zoom can't change.
 			viewer.zoomMode = fitMode;
+			locked = true;
 		} else if (locked) locked = false;
 		else {
 			holding = true;

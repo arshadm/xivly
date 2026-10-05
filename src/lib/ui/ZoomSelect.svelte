@@ -18,8 +18,8 @@
 	const choose = (v: string) => (v.startsWith('z:') ? viewer.zoomTo(Number(v.slice(2))) : (viewer.zoomMode = v as ZoomMode));
 </script>
 
-<Select.Root type="single" bind:value={() => value, choose} items={[...modes, ...steps]}>
-	<Select.Trigger aria-label="Zoom" class={cn('inline-flex h-8 w-32 items-center justify-between gap-1 rounded-md border border-stone-300 px-2 text-sm tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 dark:border-stone-700', className)}>
+<Select.Root type="single" bind:value={() => value, choose} items={[...modes, ...steps]} disabled={viewer.zoomLocked}>
+	<Select.Trigger aria-label="Zoom" class={cn('inline-flex h-8 w-32 items-center justify-between gap-1 rounded-md border border-stone-300 px-2 text-sm tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 disabled:opacity-40 dark:border-stone-700', className)}>
 		{label}<span class="icon-[lucide--chevrons-up-down] size-3.5 text-stone-400"></span>
 	</Select.Trigger>
 	<Select.Portal>
