@@ -26,10 +26,9 @@
     "@tauri-apps/plugin-fs": "^2.6.0",
     "@tauri-apps/plugin-opener": "^2.7.0",
     "@tauri-apps/plugin-store": "^2.5.0",
-    "@tauri-apps/plugin-window-state": "^2.5.0",
     "bits-ui": "^2.19.5",
     "clsx": "^2.1.1",
-    "svelte-pdf-mini": "^0.2.0",
+    "svelte-pdf-mini": "^0.3.0",
     "tailwind-merge": "^3.7.0"
   },
   "devDependencies": {
@@ -41,6 +40,8 @@
     "@tailwindcss/vite": "^4.3.3",
     "@tauri-apps/cli": "^2",
     "@types/wicg-file-system-access": "^2023.10.7",
+    "fflate": "^0.8.3",
+    "pdfjs-dist": "^6.4.299",
     "svelte": "^5.57.1",
     "svelte-check": "^4.6.0",
     "tailwindcss": "^4.3.3",

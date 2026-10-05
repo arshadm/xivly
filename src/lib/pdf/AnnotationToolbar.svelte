@@ -4,6 +4,8 @@
 	shortcut. Composition: Tip → Toolbar.Button → our part, each through `child`.
 -->
 <script lang="ts">
+	import { iconButton } from '$lib/ui/button';
+	import Separator from '$lib/ui/Separator.svelte';
 	import { Toolbar } from 'bits-ui';
 	import { Annotations, AnnotationsContext, comboLabel, type AnnotationTool, type KeymapAction } from 'svelte-pdf-mini';
 	import Tip from '../ui/Tip.svelte';
@@ -19,11 +21,10 @@
 		class: className
 	}: { tools?: AnnotationTool[]; colors?: boolean; history?: boolean; label?: string; class?: string } = $props();
 	const store = AnnotationsContext.get();
-	const btn =
-		'grid size-7 shrink-0 place-items-center rounded-md text-stone-600 outline-none hover:bg-stone-200/70 focus-visible:ring-2 focus-visible:ring-blue-500/60 disabled:opacity-35 data-[active]:bg-stone-900 data-[active]:text-white dark:text-stone-300 dark:hover:bg-stone-700/60 dark:data-[active]:bg-stone-100 dark:data-[active]:text-stone-900';
+	// The current tool looks inked, not just pressed.
+	const btn = iconButton(7, 'data-[active]:bg-stone-900 data-[active]:text-white dark:data-[active]:bg-stone-100 dark:data-[active]:text-stone-900');
 	const names: Record<string, string> = { select: 'Select', hand: 'Pan', highlight: 'Highlight', underline: 'Underline', strikeout: 'Strike out', squiggly: 'Squiggly', area: 'Box', note: 'Note', ink: 'Pen', rect: 'Box', ellipse: 'Ellipse', line: 'Line', arrow: 'Arrow', freetext: 'Text', eraser: 'Eraser' };
 	const key = (a: string) => (a in store.keymap ? comboLabel(store.keymap, a as KeymapAction) : undefined);
-	const sep = 'mx-1 h-5 w-px shrink-0 bg-stone-300 dark:bg-stone-700';
 </script>
 
 <Toolbar.Root class={cn('flex min-w-0 flex-nowrap items-center gap-0.5', className)} aria-label={label}>
@@ -39,11 +40,11 @@
 		</Tip>
 	{/each}
 	{#if colors}
-		<span class={sep} aria-hidden="true"></span>
-		<!-- Narrow windows: one colour button with a popover (the toolbar row is a @container). -->
+		<Separator class="mx-1" />
+		<!-- Narrow windows: one color button with a popover (the toolbar row is a @container). -->
 		<CompactColor class="@4xl:hidden" />
-		<!-- Colours: one roving group; the selected chip's ring stays inside the gap (gap 6px, ring 1.5 + 1.5px). -->
-		<div class="hidden shrink-0 items-center gap-1.5 px-1 @4xl:flex" role="group" aria-label="Colour">
+		<!-- Colors: one roving group; the selected chip's ring stays inside the gap (gap 6px, ring 1.5 + 1.5px). -->
+		<div class="hidden shrink-0 items-center gap-1.5 px-1 @4xl:flex" role="group" aria-label="Color">
 			{#each store.palette.slice(0, 9) as c, i (c.key)}
 				<Tip label={c.label} shortcut={String(i + 1)}>
 					{#snippet child({ props: tip })}
@@ -62,7 +63,7 @@
 		</div>
 	{/if}
 	{#if history}
-		<span class={sep} aria-hidden="true"></span>
+		<Separator class="mx-1" />
 		<Tip label="Undo" shortcut={key('undo')}>
 			{#snippet child({ props: tip })}
 				<Toolbar.Button {...tip}>

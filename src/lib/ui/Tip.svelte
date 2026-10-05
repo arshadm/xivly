@@ -26,7 +26,7 @@
 			{#snippet child({ wrapperProps, props, open })}
 				{#if open}
 					<div {...wrapperProps}>
-						<div {...props} transition:fly={{ y: side === 'top' ? 4 : -4, duration: 120 }} class="z-50 flex items-center gap-2 rounded-md bg-stone-900 px-2 py-1 text-xs text-white shadow-lg dark:bg-stone-100 dark:text-stone-900">
+						<div {...props} transition:fly={{ y: side === 'top' ? 4 : -4, duration: 120 }} class="z-(--z-tooltip) flex items-center gap-2 rounded-md bg-stone-900 px-2 py-1 text-xs text-white shadow-lg dark:bg-stone-100 dark:text-stone-900">
 							{label}
 							{#if shortcut}<Kbd class="border-stone-600 bg-stone-800 text-stone-300 dark:border-stone-300 dark:bg-white dark:text-stone-600">{shortcut}</Kbd>{/if}
 						</div>

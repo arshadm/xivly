@@ -9,11 +9,10 @@ import type { LibraryFile, Paper, PaperPatch } from './types';
 const enc = new TextEncoder();
 const dec = new TextDecoder();
 
-export const DEFAULT_LIBRARY: LibraryFile = {
+const DEFAULT_LIBRARY: LibraryFile = {
 	version: 1,
-	// Colours are keys of svelte-pdf-mini's `paperColors` matte palette.
+	// Colors are keys of svelte-pdf-mini's `paperColors` matte palette.
 	categories: [
-		{ id: 'to-read', name: 'To read', color: 'sand' },
 		{ id: 'vision', name: 'Vision', color: 'sage' },
 		{ id: 'language', name: 'Language', color: 'sky' },
 		{ id: 'generative', name: 'Generative', color: 'rose' }
@@ -22,6 +21,14 @@ export const DEFAULT_LIBRARY: LibraryFile = {
 };
 
 type Json = Record<string, unknown>;
+
+const str = (v: unknown) => (typeof v === 'string' ? v : undefined);
+const strs = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : undefined);
+
+/** paper.json is edited by people and agents: keep the fields the app relies on well-typed. */
+function normalizePaper(id: string, meta: Json): Paper {
+	return { ...meta, id, title: str(meta.title)?.trim() || id, added: str(meta.added) ?? '', authors: strs(meta.authors), tags: strs(meta.tags), category: str(meta.category) } as Paper;
+}
 
 /** Shallow merge: `null` deletes a key, `undefined` is ignored. */
 export function merge<T extends Json>(target: T, patch: Json): T {
@@ -33,7 +40,8 @@ export function merge<T extends Json>(target: T, patch: Json): T {
 	return out as T;
 }
 
-export function slugify(s: string) {
+/** A folder name for any OS (Windows reserves a few device names). */
+export function slugify(s: string, fallback = 'paper') {
 	const slug = s
 		.normalize('NFKD')
 		.replace(/[̀-ͯ]/g, '')
@@ -42,25 +50,23 @@ export function slugify(s: string) {
 		.replace(/^-+|-+$/g, '')
 		.slice(0, 80)
 		.replace(/-+$/, '');
-	return slug || 'paper';
+	if (/^(con|prn|aux|nul|com\d|lpt\d)$/.test(slug)) return `${slug}-${fallback}`;
+	return slug || fallback;
 }
 
 export class Repo {
-	/** Per-path promise chains: read-merge-write cycles never interleave. */
-	#locks = new Map<string, Promise<unknown>>();
-
 	constructor(
 		readonly fs: LibraryFs,
 		readonly platform: Platform
 	) {}
 
+	/**
+	 * Per-path lock, shared by every window and tab of the app (Web Locks):
+	 * read-merge-write cycles on a file never interleave, even from the library
+	 * and a reader window at once.
+	 */
 	#lock<T>(key: string, fn: () => Promise<T>): Promise<T> {
-		const prev = this.#locks.get(key) ?? Promise.resolve();
-		const next = prev.then(fn, fn);
-		const settled = next.catch(() => {});
-		this.#locks.set(key, settled);
-		settled.then(() => this.#locks.get(key) === settled && this.#locks.delete(key));
-		return next;
+		return navigator.locks.request(`xivly:${key}`, fn);
 	}
 
 	// ── JSON helpers ──────────────────────────────────────────────────────
@@ -126,15 +132,18 @@ export class Repo {
 
 	// ── Papers ────────────────────────────────────────────────────────────
 
+	/** One paper, or null once its folder is gone. */
+	async readPaper(id: string): Promise<Paper | null> {
+		const meta = await this.#readJson<Json>(`papers/${id}/paper.json`).catch(() => ({}));
+		if (!meta && !(await this.fs.exists(`papers/${id}/paper.pdf`))) return null;
+		return normalizePaper(id, meta ?? {});
+	}
+
 	async listPapers(): Promise<Paper[]> {
 		const dirs = (await this.fs.list('papers')).filter((e) => e.dir && !e.name.startsWith('.'));
 		const papers = await Promise.all(
-			dirs.map(async ({ name: id }) => {
-				// A broken paper.json shouldn't hide the paper (edits to it will fail loudly).
-				const meta = await this.#readJson<Json>(`papers/${id}/paper.json`).catch(() => ({}));
-				if (!meta && !(await this.fs.exists(`papers/${id}/paper.pdf`))) return null;
-				return { title: id, added: '', ...meta, id } as Paper;
-			})
+			// A broken paper.json shouldn't hide the paper (edits to it will fail loudly).
+			dirs.map(({ name: id }) => this.readPaper(id))
 		);
 		return papers.filter((p): p is Paper => !!p);
 	}

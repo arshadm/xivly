@@ -3,25 +3,62 @@ mod error;
 mod hooks;
 mod library;
 
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::collections::HashSet;
+use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use tauri::{Emitter, Manager};
 
 static QUITTING: AtomicBool = AtomicBool::new(false);
-/// Windows that still have to answer a quit request.
-static PENDING: AtomicUsize = AtomicUsize::new(0);
+/// During a quit request: the windows that still have to answer.
+static PENDING: Mutex<Option<HashSet<String>>> = Mutex::new(None);
+
+/// Quit once no window is left to answer.
+fn quit_if_done(app: &tauri::AppHandle, pending: &mut Option<HashSet<String>>) {
+    if pending.as_ref().is_some_and(HashSet::is_empty) {
+        *pending = None;
+        QUITTING.store(true, Ordering::SeqCst);
+        app.exit(0);
+    }
+}
 
 /// A window's answer to `quit-requested`: `true` once its work is saved (or
 /// discarded), `false` if the user cancelled. The app quits when every
-/// window agreed.
+/// window agreed; one cancel cancels the whole quit.
 #[tauri::command]
-fn quit_response(app: tauri::AppHandle, ok: bool) {
+fn quit_response(app: tauri::AppHandle, window: tauri::Window, ok: bool) {
+    let mut pending = PENDING.lock().unwrap_or_else(|e| e.into_inner());
     if !ok {
-        PENDING.store(0, Ordering::SeqCst);
+        *pending = None;
         return;
     }
-    if PENDING.fetch_sub(1, Ordering::SeqCst) == 1 {
-        QUITTING.store(true, Ordering::SeqCst);
+    if let Some(set) = pending.as_mut() {
+        set.remove(window.label());
+    }
+    quit_if_done(&app, &mut pending);
+}
+
+/// Ask every window to save (or confirm) before quitting; `false` when there
+/// is nothing to ask (no window) and the app may exit right away.
+fn begin_quit(app: &tauri::AppHandle) -> bool {
+    let windows: HashSet<String> = app.webview_windows().into_keys().collect();
+    if QUITTING.load(Ordering::SeqCst) || windows.is_empty() {
+        return false;
+    }
+    let mut pending = PENDING.lock().unwrap_or_else(|e| e.into_inner());
+    // A quit already in progress keeps waiting for its windows.
+    if pending.is_none() {
+        *pending = Some(windows);
+        let _ = app.emit("quit-requested", ());
+    }
+    true
+}
+
+/// Ctrl+Q on Windows and Linux (macOS has ⌘Q in the app menu): the same
+/// quit as the menu's.
+#[tauri::command]
+fn request_quit(app: tauri::AppHandle) {
+    if !begin_quit(&app) {
         app.exit(0);
     }
 }
@@ -42,32 +79,36 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             quit_response,
+            request_quit,
             library::get_library_path,
-            library::set_library_path,
+            library::pick_library,
             library::fs_read,
             library::fs_write,
             library::fs_list,
             library::fs_exists,
             library::fs_mkdir,
-            library::fs_rename,
             library::fs_trash,
             library::fs_abs,
             library::run_hook,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
-        .run(|app, event| {
+        .run(|app, event| match event {
             // ⌘Q: every window gets to save (or ask) first and answers with
             // `quit_response`. Closing a single window is handled in JS.
-            if let tauri::RunEvent::ExitRequested { api, .. } = event {
-                let windows = app.webview_windows().len();
-                if !QUITTING.load(Ordering::SeqCst) && windows > 0 {
+            tauri::RunEvent::ExitRequested { api, .. } => {
+                if begin_quit(app) {
                     api.prevent_exit();
-                    // A quit already in progress keeps its count.
-                    if PENDING.compare_exchange(0, windows, Ordering::SeqCst, Ordering::SeqCst).is_ok() {
-                        let _ = app.emit("quit-requested", ());
-                    }
                 }
             }
+            // A window closed mid-quit has nothing left to answer.
+            tauri::RunEvent::WindowEvent { label, event: tauri::WindowEvent::Destroyed, .. } => {
+                let mut pending = PENDING.lock().unwrap_or_else(|e| e.into_inner());
+                if let Some(set) = pending.as_mut() {
+                    set.remove(&label);
+                }
+                quit_if_done(app, &mut pending);
+            }
+            _ => {}
         });
 }

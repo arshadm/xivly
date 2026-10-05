@@ -1,0 +1,3164 @@
+[
+	{
+		"arxiv": "1706.03762",
+		"category": "Classics",
+		"tags": [
+			"transformers",
+			"attention"
+		],
+		"read": true,
+		"annotations": [
+			{
+				"kind": "note",
+				"page": 1,
+				"near": {
+					"quote": "The dominant sequence transduction models"
+				},
+				"color": "yellow",
+				"text": "**Welcome to Xivly.** Every note, highlight and box here is saved inside the PDF.\n\nColors in these examples: **yellow** key idea · **blue** definition · **green** result · **pink** question · **purple** other paper · **orange** to try.\n\nSelect text, then **H** to highlight · **B** box · **P** pen · **N** note · **?** every shortcut."
+			},
+			{
+				"kind": "highlight",
+				"page": 1,
+				"quote": "based solely on attention mechanisms, dispensing with recurrence and convolutions",
+				"color": "yellow"
+			},
+			{
+				"kind": "ink",
+				"page": 1,
+				"around": {
+					"quote": "achieves 28.4 BLEU"
+				},
+				"shape": "circle",
+				"color": "green"
+			},
+			{
+				"kind": "ink",
+				"page": 2,
+				"around": {
+					"quote": "sequential nature precludes parallelization within training examples"
+				},
+				"shape": "bracket",
+				"color": "yellow"
+			},
+			{
+				"kind": "box",
+				"page": 3,
+				"target": {
+					"figure": "Figure 1"
+				},
+				"color": "blue",
+				"label": "Architecture"
+			},
+			{
+				"kind": "box",
+				"page": 4,
+				"target": {
+					"equation": "(1)"
+				},
+				"color": "yellow",
+				"label": "Core eq.",
+				"note": "the whole paper in one line"
+			},
+			{
+				"kind": "highlight",
+				"page": 5,
+				"quote": "Multi-head attention allows the model to jointly attend to information from different representation",
+				"color": "blue"
+			},
+			{
+				"kind": "note",
+				"page": 5,
+				"near": {
+					"quote": "We need to prevent leftward"
+				},
+				"text": "Causal mask: the same trick every decoder-only LLM still uses."
+			},
+			{
+				"kind": "highlight",
+				"page": 7,
+				"quote": "self-attention could be restricted to considering only a neighborhood of size r",
+				"color": "purple",
+				"note": "→ MiniMax Sparse Attention takes this much further"
+			},
+			{
+				"kind": "ink",
+				"page": 7,
+				"around": {
+					"quote": "increasing the learning rate linearly for the first warmup_steps training steps"
+				},
+				"shape": "underline",
+				"color": "orange"
+			},
+			{
+				"kind": "highlight",
+				"page": 6,
+				"quote": "because it may allow the model to extrapolate to sequence lengths longer than",
+				"color": "pink",
+				"note": "did anyone actually check this?"
+			},
+			{
+				"kind": "highlight",
+				"page": 8,
+				"quote": "outperforms the best previously reported models (including ensembles) by more than 2.0",
+				"color": "green"
+			},
+			{
+				"kind": "highlight",
+				"page": 8,
+				"quote": "we used a single model obtained by averaging the last 5 checkpoints,",
+				"color": "orange",
+				"note": "free ensembling, try it"
+			},
+			{
+				"kind": "highlight",
+				"page": 9,
+				"quote": "suggests that determining compatibility is not easy and that a more sophisticated compatibility",
+				"color": "pink"
+			},
+			{
+				"kind": "highlight",
+				"page": 2,
+				"quote": "relying entirely on an attention mechanism to draw global dependencies",
+				"color": "yellow"
+			},
+			{
+				"kind": "highlight",
+				"page": 3,
+				"quote": "the output embeddings are offset by one position,",
+				"color": "blue",
+				"note": "shifted right = teacher forcing"
+			},
+			{
+				"kind": "box",
+				"page": 6,
+				"target": {
+					"table": "Table 1"
+				},
+				"color": "blue",
+				"label": "Complexity",
+				"note": "the $O(n^2 d)$ row everyone tries to kill"
+			},
+			{
+				"kind": "highlight",
+				"page": 9,
+				"quote": "quality also drops off with too many heads.",
+				"color": "green"
+			},
+			{
+				"kind": "highlight",
+				"page": 10,
+				"quote": "yielding better results than all previously reported models",
+				"color": "green",
+				"note": "parsing too, with barely any tuning"
+			},
+			{
+				"kind": "note",
+				"page": 10,
+				"near": {
+					"quote": "to investigate local, restricted attention mechanisms"
+				},
+				"text": "images and video: where SANA and Looped DiT ended up"
+			},
+			{
+				"kind": "highlight",
+				"page": 4,
+				"quote": "To counteract this effect, we scale the dot products by",
+				"color": "pink",
+				"note": "why not a learned temperature?"
+			},
+			{
+				"kind": "ink",
+				"page": 1,
+				"around": {
+					"quote": "based solely on attention mechanisms, dispensing with recurrence and convolutions"
+				},
+				"shape": "heart",
+				"color": "red"
+			},
+			{
+				"kind": "text",
+				"page": 6,
+				"near": {
+					"quote": "because it may allow the model to extrapolate to sequence lengths longer than"
+				},
+				"side": "right",
+				"text": "hmm…",
+				"color": "pink"
+			},
+			{
+				"kind": "sticker",
+				"page": 2,
+				"near": {
+					"quote": "relying entirely on an attention mechanism to draw global dependencies"
+				},
+				"emoji": "💡"
+			},
+			{
+				"kind": "ink",
+				"page": 5,
+				"around": {
+					"quote": "Multi-head attention allows the model to jointly attend to information from different representation"
+				},
+				"shape": "bracket",
+				"color": "blue"
+			},
+			{
+				"kind": "ink",
+				"page": 8,
+				"around": {
+					"quote": "outperforms the best previously reported models (including ensembles) by more than 2.0"
+				},
+				"shape": "star",
+				"color": "orange"
+			},
+			{
+				"kind": "ink",
+				"page": 8,
+				"around": {
+					"quote": "we used a single model obtained by averaging the last 5 checkpoints,"
+				},
+				"shape": "check",
+				"color": "green"
+			},
+			{
+				"kind": "sticker",
+				"page": 10,
+				"near": {
+					"quote": "yielding better results than all previously reported models"
+				},
+				"emoji": "🔥"
+			},
+			{
+				"kind": "sticker",
+				"page": 3,
+				"near": {
+					"quote": "the output embeddings are offset by one position,"
+				},
+				"emoji": "📌"
+			},
+			{
+				"kind": "sticker",
+				"page": 4,
+				"near": {
+					"quote": "To counteract this effect, we scale the dot products by"
+				},
+				"emoji": "⚠️"
+			}
+		]
+	},
+	{
+		"arxiv": "2006.11239",
+		"category": "Classics",
+		"tags": [
+			"diffusion",
+			"to-reread",
+			"archived"
+		],
+		"read": true,
+		"annotations": [
+			{
+				"kind": "highlight",
+				"page": 2,
+				"quote": "show that a certain parameterization of diffusion models reveals an equivalence with denoising",
+				"color": "yellow"
+			},
+			{
+				"kind": "highlight",
+				"page": 2,
+				"quote": "our models do not have competitive log likelihoods",
+				"color": "pink",
+				"note": "great samples, poor NLL: is the VLB the wrong target?"
+			},
+			{
+				"kind": "highlight",
+				"page": 4,
+				"quote": "is a function approximator intended to predict",
+				"color": "blue",
+				"note": "$\\epsilon$-prediction ≈ score matching"
+			},
+			{
+				"kind": "box",
+				"page": 5,
+				"target": {
+					"equation": "(14)"
+				},
+				"color": "yellow",
+				"label": "L_simple",
+				"note": "just MSE on the noise; drops the VLB weights"
+			},
+			{
+				"kind": "highlight",
+				"page": 5,
+				"quote": "so it is beneficial to down-weight them so that the network",
+				"color": "orange",
+				"note": "try other t-weightings on our data"
+			},
+			{
+				"kind": "highlight",
+				"page": 5,
+				"quote": "With our FID score of 3.17",
+				"color": "green"
+			},
+			{
+				"kind": "highlight",
+				"page": 3,
+				"quote": "so LT is a constant during training and can be ignored.",
+				"color": "blue"
+			},
+			{
+				"kind": "highlight",
+				"page": 6,
+				"quote": "leads to unstable training and poorer sample quality",
+				"color": "pink"
+			},
+			{
+				"kind": "highlight",
+				"page": 6,
+				"quote": "More than half of the lossless codelength describes imperceptible distortions.",
+				"color": "green"
+			},
+			{
+				"kind": "highlight",
+				"page": 8,
+				"quote": "as a kind of autoregressive model with",
+				"color": "yellow",
+				"note": "diffusion = AR over a generalized bit order"
+			},
+			{
+				"kind": "highlight",
+				"page": 1,
+				"quote": "a novel connection between diffusion probabilistic",
+				"color": "yellow"
+			},
+			{
+				"kind": "box",
+				"page": 5,
+				"target": {
+					"table": "Table 2"
+				},
+				"color": "green",
+				"label": "Param. ablation",
+				"note": "eps-prediction + simple loss wins"
+			},
+			{
+				"kind": "highlight",
+				"page": 7,
+				"quote": "appear first and details appear last.",
+				"color": "yellow",
+				"note": "coarse-to-fine for free"
+			},
+			{
+				"kind": "note",
+				"page": 7,
+				"near": {
+					"quote": "Perhaps these are hints of conceptual compression"
+				},
+				"text": "most bits go to imperceptible detail: latent diffusion motivation"
+			},
+			{
+				"kind": "highlight",
+				"page": 9,
+				"quote": "we look forward to investigating their utility in other data modalities",
+				"color": "purple",
+				"note": "text: Large Language Continuous Diffusion Models"
+			},
+			{
+				"kind": "highlight",
+				"page": 5,
+				"quote": "using the Transformer sinusoidal position embedding",
+				"color": "purple",
+				"note": "→ Attention Is All You Need"
+			},
+			{
+				"kind": "ink",
+				"page": 5,
+				"around": {
+					"quote": "With our FID score of 3.17"
+				},
+				"shape": "star",
+				"color": "orange"
+			},
+			{
+				"kind": "text",
+				"page": 2,
+				"near": {
+					"quote": "show that a certain parameterization of diffusion models reveals an equivalence with denoising"
+				},
+				"side": "right",
+				"text": "key!",
+				"color": "yellow"
+			},
+			{
+				"kind": "ink",
+				"page": 6,
+				"around": {
+					"quote": "More than half of the lossless codelength describes imperceptible distortions."
+				},
+				"shape": "exclaim",
+				"color": "green"
+			},
+			{
+				"kind": "sticker",
+				"page": 2,
+				"near": {
+					"quote": "our models do not have competitive log likelihoods"
+				},
+				"emoji": "🔥"
+			},
+			{
+				"kind": "ink",
+				"page": 5,
+				"around": {
+					"quote": "so it is beneficial to down-weight them so that the network"
+				},
+				"shape": "wavy",
+				"color": "orange"
+			},
+			{
+				"kind": "ink",
+				"page": 8,
+				"around": {
+					"quote": "as a kind of autoregressive model with"
+				},
+				"shape": "heart",
+				"color": "red"
+			},
+			{
+				"kind": "ink",
+				"page": 4,
+				"around": {
+					"quote": "is a function approximator intended to predict"
+				},
+				"shape": "bracket",
+				"color": "blue"
+			},
+			{
+				"kind": "sticker",
+				"page": 7,
+				"near": {
+					"quote": "appear first and details appear last."
+				},
+				"emoji": "🧠"
+			},
+			{
+				"kind": "sticker",
+				"page": 3,
+				"near": {
+					"quote": "so LT is a constant during training and can be ignored."
+				},
+				"emoji": "👀"
+			},
+			{
+				"kind": "sticker",
+				"page": 6,
+				"near": {
+					"quote": "leads to unstable training and poorer sample quality"
+				},
+				"emoji": "🤔"
+			}
+		]
+	},
+	{
+		"arxiv": "2106.09685",
+		"category": "Classics",
+		"tags": [
+			"fine-tuning",
+			"efficiency",
+			"archived"
+		],
+		"read": true,
+		"annotations": [
+			{
+				"kind": "highlight",
+				"page": 1,
+				"quote": "trained model weights and injects trainable rank decomposition matrices into each",
+				"color": "yellow"
+			},
+			{
+				"kind": "box",
+				"page": 1,
+				"target": {
+					"figure": "Figure 1"
+				},
+				"color": "blue",
+				"label": "W + BA"
+			},
+			{
+				"kind": "highlight",
+				"page": 2,
+				"quote": "We follow the conventions set out by (Vaswani et al., 2017;",
+				"color": "purple",
+				"note": "→ Attention Is All You Need"
+			},
+			{
+				"kind": "highlight",
+				"page": 4,
+				"quote": "We use a random Gaussian initialization for A and",
+				"color": "blue",
+				"note": "B = 0, so training starts exactly at the pretrained model"
+			},
+			{
+				"kind": "highlight",
+				"page": 5,
+				"quote": "we reduce the VRAM consumption during training from 1.2TB to",
+				"color": "green"
+			},
+			{
+				"kind": "ink",
+				"page": 10,
+				"around": {
+					"quote": "LoRA already performs competitively with a very small r"
+				},
+				"shape": "underline",
+				"color": "green"
+			},
+			{
+				"kind": "highlight",
+				"page": 5,
+				"quote": "it is not straightforward to batch inputs to different tasks",
+				"color": "pink",
+				"note": "multi-LoRA serving fixes this now?"
+			},
+			{
+				"kind": "highlight",
+				"page": 10,
+				"quote": "while adapting both Wq and Wv yields the best result.",
+				"color": "orange"
+			},
+			{
+				"kind": "highlight",
+				"page": 11,
+				"quote": "providing an explanation of why r = 1 performs quite well in our",
+				"color": "green"
+			},
+			{
+				"kind": "highlight",
+				"page": 12,
+				"quote": "the low-rank adaptation matrix potentially amplifies the important features for",
+				"color": "yellow"
+			},
+			{
+				"kind": "highlight",
+				"page": 3,
+				"quote": "adapter layers have to be processed sequentially.",
+				"color": "yellow",
+				"note": "the real argument: latency at batch size 1"
+			},
+			{
+				"kind": "highlight",
+				"page": 6,
+				"quote": "LoRA adds trainable pairs of rank decomposition matrices in parallel",
+				"color": "blue"
+			},
+			{
+				"kind": "highlight",
+				"page": 7,
+				"quote": "LoRA outperforms several baselines with comparable",
+				"color": "green"
+			},
+			{
+				"kind": "box",
+				"page": 8,
+				"target": {
+					"table": "Table 4"
+				},
+				"color": "green",
+				"label": "GPT-3 175B",
+				"note": "4.7M params beat full FT"
+			},
+			{
+				"kind": "highlight",
+				"page": 9,
+				"quote": "our learned weights can be merged with the main weights during",
+				"color": "yellow"
+			},
+			{
+				"kind": "note",
+				"page": 9,
+				"near": {
+					"quote": "combining LoRA with other tensor product-based methods"
+				},
+				"text": "LoRA + Kronecker factors: has anyone tried this?"
+			},
+			{
+				"kind": "highlight",
+				"page": 4,
+				"quote": "and do not tune it.",
+				"color": "pink",
+				"note": "α/r still fine at r=64?"
+			},
+			{
+				"kind": "ink",
+				"page": 10,
+				"around": {
+					"quote": "while adapting both Wq and Wv yields the best result."
+				},
+				"shape": "check",
+				"color": "green"
+			},
+			{
+				"kind": "text",
+				"page": 5,
+				"near": {
+					"quote": "we reduce the VRAM consumption during training from 1.2TB to"
+				},
+				"side": "right",
+				"text": "wow",
+				"color": "green"
+			},
+			{
+				"kind": "ink",
+				"page": 1,
+				"around": {
+					"quote": "trained model weights and injects trainable rank decomposition matrices into each"
+				},
+				"shape": "heart",
+				"color": "red"
+			},
+			{
+				"kind": "sticker",
+				"page": 5,
+				"near": {
+					"quote": "it is not straightforward to batch inputs to different tasks"
+				},
+				"emoji": "🤔"
+			},
+			{
+				"kind": "ink",
+				"page": 12,
+				"around": {
+					"quote": "the low-rank adaptation matrix potentially amplifies the important features for"
+				},
+				"shape": "bracket",
+				"color": "yellow"
+			},
+			{
+				"kind": "ink",
+				"page": 11,
+				"around": {
+					"quote": "providing an explanation of why r = 1 performs quite well in our"
+				},
+				"shape": "exclaim",
+				"color": "green"
+			},
+			{
+				"kind": "sticker",
+				"page": 7,
+				"near": {
+					"quote": "LoRA outperforms several baselines with comparable"
+				},
+				"emoji": "🎯"
+			},
+			{
+				"kind": "sticker",
+				"page": 9,
+				"near": {
+					"quote": "our learned weights can be merged with the main weights during"
+				},
+				"emoji": "💡"
+			},
+			{
+				"kind": "sticker",
+				"page": 6,
+				"near": {
+					"quote": "LoRA adds trainable pairs of rank decomposition matrices in parallel"
+				},
+				"emoji": "📌"
+			},
+			{
+				"kind": "sticker",
+				"page": 4,
+				"near": {
+					"quote": "and do not tune it."
+				},
+				"emoji": "⚠️"
+			}
+		]
+	},
+	{
+		"arxiv": "2410.10629",
+		"category": "Generative",
+		"tags": [
+			"diffusion",
+			"efficiency",
+			"attention",
+			"text-encoder",
+			"archived"
+		],
+		"read": true,
+		"annotations": [
+			{
+				"kind": "highlight",
+				"page": 1,
+				"quote": "we replace all vanilla attention in DiT with linear attention",
+				"color": "yellow"
+			},
+			{
+				"kind": "box",
+				"page": 5,
+				"target": {
+					"figure": "Figure 5"
+				},
+				"color": "blue",
+				"label": "Linear DiT"
+			},
+			{
+				"kind": "note",
+				"page": 5,
+				"near": {
+					"quote": "DiT without Positional Encoding (NoPE)"
+				},
+				"text": "position leaks via zero-padded 3×3 conv. Does it hold at 4K?"
+			},
+			{
+				"kind": "highlight",
+				"page": 6,
+				"quote": "To address this issue, we add a normalization",
+				"color": "blue"
+			},
+			{
+				"kind": "highlight",
+				"page": 6,
+				"quote": "by initializing a small learnable scale factor (e.g., 0.01)",
+				"color": "orange",
+				"note": "try w/ our text encoder"
+			},
+			{
+				"kind": "highlight",
+				"page": 9,
+				"quote": "Sana-0.6B 1.7 0.9 0.6 39.5× 5.81 28.36 0.64 83.6",
+				"color": "green"
+			},
+			{
+				"kind": "highlight",
+				"page": 3,
+				"quote": "allowing the latent diffusion models to focus solely on denoising.",
+				"color": "yellow"
+			},
+			{
+				"kind": "highlight",
+				"page": 7,
+				"quote": "unlike DDPM (Ho et al., 2020), which rely on noise prediction,",
+				"color": "purple",
+				"note": "→ DDPM: ε vs velocity prediction"
+			},
+			{
+				"kind": "highlight",
+				"page": 7,
+				"quote": "we sample according to the probability based on the clip score.",
+				"color": "orange"
+			},
+			{
+				"kind": "highlight",
+				"page": 8,
+				"quote": "0.37 seconds, while maintaining almost lossless image quality.",
+				"color": "green"
+			},
+			{
+				"kind": "highlight",
+				"page": 10,
+				"quote": "challenges remain in certain complex cases, such as text",
+				"color": "pink"
+			},
+			{
+				"kind": "highlight",
+				"page": 2,
+				"quote": "Can we develop a high-quality and high-resolution image generator",
+				"color": "yellow"
+			},
+			{
+				"kind": "highlight",
+				"page": 2,
+				"quote": "increases the scaling factor to 32.",
+				"color": "blue"
+			},
+			{
+				"kind": "note",
+				"page": 2,
+				"near": {
+					"quote": "we utilize the latest Large Language"
+				},
+				"text": "Gemma as text encoder: needs the norm + small scale trick (p6)"
+			},
+			{
+				"kind": "box",
+				"page": 4,
+				"target": {
+					"table": "Table 1"
+				},
+				"color": "green",
+				"label": "AE recon.",
+				"note": "F32 almost matches SDXL F8 rFID"
+			},
+			{
+				"kind": "highlight",
+				"page": 4,
+				"quote": "fewer channels converge more quickly, but the",
+				"color": "green",
+				"note": "C=32 is the sweet spot"
+			},
+			{
+				"kind": "highlight",
+				"page": 5,
+				"quote": "we replace the traditional softmax attention with ReLU",
+				"color": "purple",
+				"note": "→ cf. Kimi K3 KDA"
+			},
+			{
+				"kind": "ink",
+				"page": 1,
+				"around": {
+					"quote": "we replace all vanilla attention in DiT with linear attention"
+				},
+				"shape": "star",
+				"color": "orange"
+			},
+			{
+				"kind": "ink",
+				"page": 10,
+				"around": {
+					"quote": "challenges remain in certain complex cases, such as text"
+				},
+				"shape": "question",
+				"color": "pink"
+			},
+			{
+				"kind": "text",
+				"page": 3,
+				"near": {
+					"quote": "allowing the latent diffusion models to focus solely on denoising."
+				},
+				"side": "right",
+				"text": "nice",
+				"color": "green"
+			},
+			{
+				"kind": "ink",
+				"page": 6,
+				"around": {
+					"quote": "To address this issue, we add a normalization"
+				},
+				"shape": "wavy",
+				"color": "blue"
+			},
+			{
+				"kind": "sticker",
+				"page": 9,
+				"near": {
+					"quote": "Sana-0.6B 1.7 0.9 0.6 39.5× 5.81 28.36 0.64 83.6"
+				},
+				"emoji": "✨"
+			},
+			{
+				"kind": "sticker",
+				"page": 2,
+				"near": {
+					"quote": "Can we develop a high-quality and high-resolution image generator"
+				},
+				"emoji": "🤯"
+			},
+			{
+				"kind": "sticker",
+				"page": 4,
+				"near": {
+					"quote": "fewer channels converge more quickly, but the"
+				},
+				"emoji": "🚀"
+			},
+			{
+				"kind": "sticker",
+				"page": 2,
+				"near": {
+					"quote": "increases the scaling factor to 32."
+				},
+				"emoji": "👀"
+			}
+		]
+	},
+	{
+		"arxiv": "2410.24185",
+		"category": "Robotics",
+		"tags": [
+			"manipulation",
+			"data-generation"
+		],
+		"read": false,
+		"annotations": [
+			{
+				"kind": "ink",
+				"page": 1,
+				"around": {
+					"quote": "We generate 21K demos"
+				},
+				"shape": "circle",
+				"color": "green"
+			},
+			{
+				"kind": "highlight",
+				"page": 1,
+				"quote": "leverage a small set of human demonstrations",
+				"color": "yellow"
+			},
+			{
+				"kind": "highlight",
+				"page": 1,
+				"quote": "which proposed a similar pipeline for the",
+				"color": "purple",
+				"note": "MimicGen = single-arm version"
+			},
+			{
+				"kind": "highlight",
+				"page": 2,
+				"quote": "producing a visuomotor policy of 90% success rate",
+				"color": "green"
+			},
+			{
+				"kind": "box",
+				"page": 3,
+				"target": {
+					"figure": "Fig. 2"
+				},
+				"color": "blue",
+				"label": "3 subtask types"
+			},
+			{
+				"kind": "highlight",
+				"page": 3,
+				"quote": "an asynchronous execution strategy, where an action queue is",
+				"color": "blue"
+			},
+			{
+				"kind": "note",
+				"page": 4,
+				"near": {
+					"quote": "finger motion by replaying the finger joint actions in the"
+				},
+				"text": "fingers just replayed? breaks for new object shapes"
+			},
+			{
+				"kind": "highlight",
+				"page": 4,
+				"quote": "is only kept if the task is successful,",
+				"color": "blue"
+			},
+			{
+				"kind": "highlight",
+				"page": 5,
+				"quote": "on Drawer Cleanup (0.7% to 76.0% success), Threading",
+				"color": "green"
+			},
+			{
+				"kind": "highlight",
+				"page": 6,
+				"quote": "however, the success rate does not always",
+				"color": "pink",
+				"note": "saturates at 1k demos? task-dependent"
+			},
+			{
+				"kind": "highlight",
+				"page": 6,
+				"quote": "Replay is our default choice for tasks that involve handover.",
+				"color": "orange"
+			},
+			{
+				"kind": "highlight",
+				"page": 2,
+				"quote": "ensuring the generated trajectories are physically valid.",
+				"color": "yellow"
+			},
+			{
+				"kind": "box",
+				"page": 5,
+				"target": {
+					"figure": "Fig. 5"
+				},
+				"color": "green",
+				"label": "Data scaling"
+			},
+			{
+				"kind": "highlight",
+				"page": 7,
+				"quote": "policy trained on DexMimicGen data achieves 90% success,",
+				"color": "green"
+			},
+			{
+				"kind": "note",
+				"page": 7,
+				"near": {
+					"quote": "We generate 40 successful"
+				},
+				"text": "4 human demos to 40 via digital twin; resets still manual"
+			},
+			{
+				"kind": "highlight",
+				"page": 10,
+				"quote": "for finger joint actions, DexMimicGen primarily performs",
+				"color": "pink",
+				"note": "fingers barely diversified, only local interpolation"
+			},
+			{
+				"kind": "ink",
+				"page": 1,
+				"around": {
+					"quote": "leverage a small set of human demonstrations"
+				},
+				"shape": "heart",
+				"color": "red"
+			},
+			{
+				"kind": "sticker",
+				"page": 2,
+				"near": {
+					"quote": "ensuring the generated trajectories are physically valid."
+				},
+				"emoji": "💡"
+			},
+			{
+				"kind": "sticker",
+				"page": 7,
+				"near": {
+					"quote": "policy trained on DexMimicGen data achieves 90% success,"
+				},
+				"emoji": "🔥"
+			}
+		]
+	},
+	{
+		"arxiv": "2606.13392",
+		"category": "Language",
+		"tags": [
+			"attention",
+			"long-context",
+			"efficiency",
+			"llm"
+		],
+		"read": true,
+		"annotations": [
+			{
+				"kind": "highlight",
+				"page": 1,
+				"quote": "MSA performs on par with GQA",
+				"color": "yellow"
+			},
+			{
+				"kind": "highlight",
+				"page": 4,
+				"quote": "The Index Branch adds only two projection matrices to standard GQA",
+				"color": "blue"
+			},
+			{
+				"kind": "note",
+				"page": 5,
+				"near": {
+					"quote": "To isolate the auxiliary objective from the backbone"
+				},
+				"text": "KL only ever trains $W^{idx}$, backbone untouched. Clean."
+			},
+			{
+				"kind": "highlight",
+				"page": 6,
+				"quote": "Since softmax is order-preserving, the relative ordering of scores is preserved",
+				"color": "orange",
+				"note": "skip exp before top-k, steal for our kernel"
+			},
+			{
+				"kind": "highlight",
+				"page": 12,
+				"quote": "speedup is smaller than the theoretical FLOPs reduction",
+				"color": "pink"
+			},
+			{
+				"kind": "box",
+				"page": 11,
+				"target": {
+					"table": "Table 2"
+				},
+				"color": "green",
+				"label": "≈ Full attn"
+			},
+			{
+				"kind": "highlight",
+				"page": 3,
+				"quote": "share the index result within each GQA group.",
+				"color": "blue"
+			},
+			{
+				"kind": "highlight",
+				"page": 7,
+				"quote": "we choose KV-outer iteration with Q gather to maximize arithmetic",
+				"color": "orange"
+			},
+			{
+				"kind": "highlight",
+				"page": 9,
+				"quote": "the two LM-loss curves are nearly indistinguishable,",
+				"color": "green"
+			},
+			{
+				"kind": "highlight",
+				"page": 10,
+				"quote": "making it a practical conversion route when a trained",
+				"color": "yellow",
+				"note": "CPT = retrofit existing checkpoints"
+			},
+			{
+				"kind": "highlight",
+				"page": 13,
+				"quote": "a multi-head ReLU-based lightning indexer scores tokens",
+				"color": "purple",
+				"note": "cf. DeepSeek-V4.1-Flash indexer"
+			},
+			{
+				"kind": "box",
+				"page": 1,
+				"target": {
+					"figure": "Figure 1"
+				},
+				"color": "blue",
+				"label": "Two branches"
+			},
+			{
+				"kind": "highlight",
+				"page": 8,
+				"quote": "allowing us to skip the KL loss forward pass entirely.",
+				"color": "orange"
+			},
+			{
+				"kind": "highlight",
+				"page": 8,
+				"quote": "All models use the same 41-layer MoE backbone,",
+				"color": "blue"
+			},
+			{
+				"kind": "highlight",
+				"page": 14,
+				"quote": "so the recipe should transfer with little modification.",
+				"color": "yellow"
+			},
+			{
+				"kind": "highlight",
+				"page": 14,
+				"quote": "closing the residual long-context retrieval gap,",
+				"color": "pink",
+				"note": "how big is the gap at 1M? see Table 3"
+			},
+			{
+				"kind": "highlight",
+				"page": 28,
+				"quote": "the sliding-window model has higher perplexity than MSA",
+				"color": "green",
+				"note": "content-based beats positional at equal budget"
+			},
+			{
+				"kind": "highlight",
+				"page": 2,
+				"quote": "another line of work attempts to sparsify softmax attention",
+				"color": "purple",
+				"note": "→ cf. DeepSeek-V4.1-Flash"
+			},
+			{
+				"kind": "ink",
+				"page": 9,
+				"around": {
+					"quote": "the two LM-loss curves are nearly indistinguishable,"
+				},
+				"shape": "star",
+				"color": "orange"
+			},
+			{
+				"kind": "text",
+				"page": 1,
+				"near": {
+					"quote": "MSA performs on par with GQA"
+				},
+				"side": "right",
+				"text": "key!",
+				"color": "yellow"
+			},
+			{
+				"kind": "ink",
+				"page": 28,
+				"around": {
+					"quote": "the sliding-window model has higher perplexity than MSA"
+				},
+				"shape": "exclaim",
+				"color": "green"
+			},
+			{
+				"kind": "sticker",
+				"page": 4,
+				"near": {
+					"quote": "The Index Branch adds only two projection matrices to standard GQA"
+				},
+				"emoji": "🔥"
+			},
+			{
+				"kind": "ink",
+				"page": 6,
+				"around": {
+					"quote": "Since softmax is order-preserving, the relative ordering of scores is preserved"
+				},
+				"shape": "wavy",
+				"color": "orange"
+			},
+			{
+				"kind": "ink",
+				"page": 10,
+				"around": {
+					"quote": "making it a practical conversion route when a trained"
+				},
+				"shape": "heart",
+				"color": "red"
+			},
+			{
+				"kind": "ink",
+				"page": 3,
+				"around": {
+					"quote": "share the index result within each GQA group."
+				},
+				"shape": "bracket",
+				"color": "blue"
+			},
+			{
+				"kind": "sticker",
+				"page": 14,
+				"near": {
+					"quote": "so the recipe should transfer with little modification."
+				},
+				"emoji": "🧠"
+			},
+			{
+				"kind": "sticker",
+				"page": 8,
+				"near": {
+					"quote": "All models use the same 41-layer MoE backbone,"
+				},
+				"emoji": "👀"
+			},
+			{
+				"kind": "sticker",
+				"page": 14,
+				"near": {
+					"quote": "closing the residual long-context retrieval gap,"
+				},
+				"emoji": "🤔"
+			}
+		]
+	},
+	{
+		"arxiv": "2607.24653",
+		"category": "Language",
+		"tags": [
+			"llm",
+			"moe",
+			"long-context",
+			"attention"
+		],
+		"read": true,
+		"annotations": [
+			{
+				"kind": "highlight",
+				"page": 1,
+				"quote": "a 2.8T parameter Mixture-of-Experts model with 104 billion activated",
+				"color": "yellow"
+			},
+			{
+				"kind": "ink",
+				"page": 1,
+				"around": {
+					"quote": "approximately 2.5× improvement in overall scaling efficiency"
+				},
+				"shape": "circle",
+				"color": "green"
+			},
+			{
+				"kind": "box",
+				"page": 3,
+				"target": {
+					"figure": "Figure 2"
+				},
+				"color": "blue",
+				"label": "Hybrid arch."
+			},
+			{
+				"kind": "highlight",
+				"page": 4,
+				"quote": "KDA extends the delta-rule recurrence",
+				"color": "blue"
+			},
+			{
+				"kind": "highlight",
+				"page": 4,
+				"quote": "3 KDA layers followed by 1 Gated MLA layer, giving a 3:1 mixing ratio",
+				"color": "pink",
+				"note": "why 3:1? no ablation shown"
+			},
+			{
+				"kind": "note",
+				"page": 11,
+				"near": {
+					"quote": "Training Context Length 128K 1M"
+				},
+				"text": "8× context. KDA keeps 1M affordable; cf. DeepSeek-V4.1-Flash KV tricks"
+			},
+			{
+				"kind": "highlight",
+				"page": 27,
+				"quote": "DeepSWE 67.5 70.0 73.0 59.0 67.0 46.2",
+				"color": "green"
+			},
+			{
+				"kind": "highlight",
+				"page": 5,
+				"quote": "Kimi K3 instead uses a scaled sigmoid to bound the log-decay from below:",
+				"color": "blue"
+			},
+			{
+				"kind": "highlight",
+				"page": 6,
+				"quote": "the Transformer replaced recurrence with attention",
+				"color": "purple",
+				"note": "AttnRes = Attention Is All You Need over depth"
+			},
+			{
+				"kind": "highlight",
+				"page": 7,
+				"quote": "we propose Sigmoid Tanh Unit GLU (SiTU-GLU).",
+				"color": "orange"
+			},
+			{
+				"kind": "highlight",
+				"page": 9,
+				"quote": "MoonViT-V2 matches the SigLIP-initialized baseline across vision evaluations,",
+				"color": "yellow"
+			},
+			{
+				"kind": "highlight",
+				"page": 12,
+				"quote": "to 1M-token contexts without any positional-encoding modification,",
+				"color": "pink",
+				"note": "no 1M RULER numbers here?"
+			},
+			{
+				"kind": "box",
+				"page": 8,
+				"target": {
+					"figure": "Figure 5"
+				},
+				"color": "blue",
+				"label": "Quantile Balancing",
+				"note": "aux-loss-free: bias set at the q-th margin"
+			},
+			{
+				"kind": "highlight",
+				"page": 10,
+				"quote": "we partition their momentum matrices along the head dimension",
+				"color": "orange",
+				"note": "per-head Muon, cheap to try"
+			},
+			{
+				"kind": "highlight",
+				"page": 10,
+				"quote": "cosine decay consistently achieves a lower final loss than WSD.",
+				"color": "green"
+			},
+			{
+				"kind": "highlight",
+				"page": 14,
+				"quote": "rollout and training share the same quantization scheme",
+				"color": "blue"
+			},
+			{
+				"kind": "highlight",
+				"page": 17,
+				"quote": "of softmax attention with a fixed-size recurrent state",
+				"color": "purple",
+				"note": "vs MiniMax Sparse Attention: compress vs sparsify"
+			},
+			{
+				"kind": "note",
+				"page": 31,
+				"near": {
+					"quote": "We regard our evaluation as a lower bound on capability."
+				},
+				"text": "AISI: 0/41 end-to-end exploits. Lower bound indeed."
+			},
+			{
+				"kind": "ink",
+				"page": 7,
+				"around": {
+					"quote": "we propose Sigmoid Tanh Unit GLU (SiTU-GLU)."
+				},
+				"shape": "check",
+				"color": "green"
+			},
+			{
+				"kind": "text",
+				"page": 27,
+				"near": {
+					"quote": "DeepSWE 67.5 70.0 73.0 59.0 67.0 46.2"
+				},
+				"side": "right",
+				"text": "wow",
+				"color": "green"
+			},
+			{
+				"kind": "ink",
+				"page": 1,
+				"around": {
+					"quote": "a 2.8T parameter Mixture-of-Experts model with 104 billion activated"
+				},
+				"shape": "heart",
+				"color": "red"
+			},
+			{
+				"kind": "sticker",
+				"page": 4,
+				"near": {
+					"quote": "3 KDA layers followed by 1 Gated MLA layer, giving a 3:1 mixing ratio"
+				},
+				"emoji": "🤔"
+			},
+			{
+				"kind": "ink",
+				"page": 9,
+				"around": {
+					"quote": "MoonViT-V2 matches the SigLIP-initialized baseline across vision evaluations,"
+				},
+				"shape": "bracket",
+				"color": "yellow"
+			},
+			{
+				"kind": "ink",
+				"page": 10,
+				"around": {
+					"quote": "cosine decay consistently achieves a lower final loss than WSD."
+				},
+				"shape": "exclaim",
+				"color": "green"
+			},
+			{
+				"kind": "sticker",
+				"page": 14,
+				"near": {
+					"quote": "rollout and training share the same quantization scheme"
+				},
+				"emoji": "📌"
+			},
+			{
+				"kind": "sticker",
+				"page": 12,
+				"near": {
+					"quote": "to 1M-token contexts without any positional-encoding modification,"
+				},
+				"emoji": "⚠️"
+			}
+		]
+	},
+	{
+		"arxiv": "2608.09888",
+		"category": "Language",
+		"tags": [
+			"reasoning",
+			"efficiency",
+			"arc-agi"
+		],
+		"read": false,
+		"annotations": [
+			{
+				"kind": "highlight",
+				"page": 1,
+				"quote": "A 150M-parameter configuration reaches 29.5% pass@2 at a computed inference cost of $0.0007",
+				"color": "yellow"
+			},
+			{
+				"kind": "highlight",
+				"page": 3,
+				"quote": "the conceptually simplest standalone realization of linear correction rules",
+				"color": "blue"
+			},
+			{
+				"kind": "box",
+				"page": 3,
+				"target": {
+					"equation": "(3)"
+				},
+				"color": "purple",
+				"label": "≈ Looped DiT",
+				"note": "same shared-weight latent loop as Looped DiT, but over $H_r$"
+			},
+			{
+				"kind": "highlight",
+				"page": 4,
+				"quote": "BDH-CQ is approximately 57x cheaper than GPT 5.6 Luna (Low)",
+				"color": "green"
+			},
+			{
+				"kind": "box",
+				"page": 6,
+				"target": {
+					"table": "Table 1"
+				},
+				"color": "green",
+				"label": "Headline"
+			},
+			{
+				"kind": "highlight",
+				"page": 3,
+				"quote": "BDH layers combining ReLU-low-rank transformations with linear",
+				"color": "purple",
+				"note": "cf. SANA's ReLU linear attention"
+			},
+			{
+				"kind": "highlight",
+				"page": 5,
+				"quote": "a task is counted as correct only when all three test inputs are solved.",
+				"color": "blue"
+			},
+			{
+				"kind": "highlight",
+				"page": 5,
+				"quote": "these counts are a profile rather than a reliable ranking:",
+				"color": "pink"
+			},
+			{
+				"kind": "highlight",
+				"page": 7,
+				"quote": "Propagation remains correct on 48/48 held-out outputs",
+				"color": "green"
+			},
+			{
+				"kind": "highlight",
+				"page": 7,
+				"quote": "The nesting cliff is therefore largely a failure to extrapolate the",
+				"color": "yellow",
+				"note": "extrapolation, not capacity"
+			},
+			{
+				"kind": "highlight",
+				"page": 2,
+				"quote": "no parameters are updated at inference time.",
+				"color": "yellow",
+				"note": "no test-time training, unlike most ARC SOTA"
+			},
+			{
+				"kind": "highlight",
+				"page": 2,
+				"quote": "We use the term demonstration-conditioned operator schema",
+				"color": "blue"
+			},
+			{
+				"kind": "highlight",
+				"page": 9,
+				"quote": "the model never learns to compose it with relocation",
+				"color": "pink",
+				"note": "why does color swap never compose?"
+			},
+			{
+				"kind": "highlight",
+				"page": 10,
+				"quote": "Repeated identical requests were byte-identical at both effort tiers:",
+				"color": "green"
+			},
+			{
+				"kind": "box",
+				"page": 11,
+				"target": {
+					"table": "Table 5"
+				},
+				"color": "green",
+				"label": "Effort scaling",
+				"note": "only three levels, no error bars"
+			},
+			{
+				"kind": "highlight",
+				"page": 11,
+				"quote": "with a continuous recurrent workspace, making intermediate language generation unnecessary.",
+				"color": "purple",
+				"note": "cf. Looped DiT: iterate in latent space"
+			},
+			{
+				"kind": "highlight",
+				"page": 4,
+				"quote": "implementation details remain proprietary.",
+				"color": "pink",
+				"note": "?? so not reproducible"
+			},
+			{
+				"kind": "ink",
+				"page": 1,
+				"around": {
+					"quote": "A 150M-parameter configuration reaches 29.5% pass@2 at a computed inference cost of $0.0007"
+				},
+				"shape": "star",
+				"color": "orange"
+			},
+			{
+				"kind": "ink",
+				"page": 5,
+				"around": {
+					"quote": "these counts are a profile rather than a reliable ranking:"
+				},
+				"shape": "question",
+				"color": "pink"
+			},
+			{
+				"kind": "sticker",
+				"page": 10,
+				"near": {
+					"quote": "Repeated identical requests were byte-identical at both effort tiers:"
+				},
+				"emoji": "🚀"
+			},
+			{
+				"kind": "sticker",
+				"page": 2,
+				"near": {
+					"quote": "no parameters are updated at inference time."
+				},
+				"emoji": "❤️"
+			}
+		]
+	},
+	{
+		"arxiv": "2605.18324",
+		"category": "Generative",
+		"tags": [
+			"diffusion",
+			"efficiency",
+			"to-implement"
+		],
+		"read": true,
+		"annotations": [
+			{
+				"kind": "highlight",
+				"page": 1,
+				"quote": "RAE and REPA exhibit complementary working mechanisms",
+				"color": "yellow"
+			},
+			{
+				"kind": "box",
+				"page": 5,
+				"target": {
+					"equation": "(1)"
+				},
+				"color": "blue",
+				"label": "Sum last K",
+				"note": "no params, no finetuning. Just add layers"
+			},
+			{
+				"kind": "box",
+				"page": 7,
+				"target": {
+					"equation": "(3)"
+				},
+				"color": "yellow",
+				"label": "Free guidance",
+				"note": "REPA head plays the weak model, so no AG"
+			},
+			{
+				"kind": "note",
+				"page": 8,
+				"near": {
+					"quote": "the unguided gFID is best near"
+				},
+				"text": "unguided best at $K{=}1$, guided at $K{=}7$. Why the split?"
+			},
+			{
+				"kind": "ink",
+				"page": 10,
+				"around": {
+					"quote": "EPFID@2 of just 35 epochs"
+				},
+				"shape": "circle",
+				"color": "green"
+			},
+			{
+				"kind": "highlight",
+				"page": 27,
+				"quote": "we only consider simple addition and random projection",
+				"color": "pink",
+				"note": "learned layer weights next?"
+			},
+			{
+				"kind": "highlight",
+				"page": 4,
+				"quote": "achieving state-of-art gFID of 1.06 in just 80 epochs",
+				"color": "green"
+			},
+			{
+				"kind": "highlight",
+				"page": 6,
+				"quote": "RAE leverages global semantics while REPA regularizes spatial structure",
+				"color": "yellow"
+			},
+			{
+				"kind": "highlight",
+				"page": 7,
+				"quote": "our formulation is equivalent to a deep supervised network",
+				"color": "purple",
+				"note": "cf. Looped DiT deep supervision"
+			},
+			{
+				"kind": "highlight",
+				"page": 8,
+				"quote": "MLS consistently wins on Stage-2 performance",
+				"color": "green"
+			},
+			{
+				"kind": "highlight",
+				"page": 12,
+				"quote": "FVD of 105.61, substantially better than DIAMOND (762.73), NWM",
+				"color": "green"
+			},
+			{
+				"kind": "highlight",
+				"page": 3,
+				"quote": "the encoder output as the sum of its last",
+				"color": "blue"
+			},
+			{
+				"kind": "highlight",
+				"page": 9,
+				"quote": "internal guidance with REPA-head achieves the best",
+				"color": "green"
+			},
+			{
+				"kind": "highlight",
+				"page": 9,
+				"quote": "while preserving linear probing performance",
+				"color": "pink",
+				"note": "LP dips slightly at K=7, does it matter?"
+			},
+			{
+				"kind": "box",
+				"page": 11,
+				"target": {
+					"table": "Table 7"
+				},
+				"color": "green",
+				"label": "EPFID@2",
+				"note": "RAE 177 epochs vs RAEv2 35"
+			},
+			{
+				"kind": "highlight",
+				"page": 13,
+				"quote": "Earlier layers retain low-level texture and",
+				"color": "yellow"
+			},
+			{
+				"kind": "note",
+				"page": 13,
+				"near": {
+					"quote": "indicating that the improved recipe transfers to"
+				},
+				"text": "Same recipe, no retuning, and it carries over to world models. Nice."
+			},
+			{
+				"kind": "highlight",
+				"page": 5,
+				"quote": "making it harder to learn the diffusion model",
+				"color": "purple",
+				"note": "→ cf. SANA DC-AE"
+			},
+			{
+				"kind": "ink",
+				"page": 1,
+				"around": {
+					"quote": "RAE and REPA exhibit complementary working mechanisms"
+				},
+				"shape": "heart",
+				"color": "red"
+			},
+			{
+				"kind": "text",
+				"page": 27,
+				"near": {
+					"quote": "we only consider simple addition and random projection"
+				},
+				"side": "right",
+				"text": "hmm…",
+				"color": "pink"
+			},
+			{
+				"kind": "sticker",
+				"page": 6,
+				"near": {
+					"quote": "RAE leverages global semantics while REPA regularizes spatial structure"
+				},
+				"emoji": "💡"
+			},
+			{
+				"kind": "ink",
+				"page": 3,
+				"around": {
+					"quote": "the encoder output as the sum of its last"
+				},
+				"shape": "bracket",
+				"color": "blue"
+			},
+			{
+				"kind": "ink",
+				"page": 4,
+				"around": {
+					"quote": "achieving state-of-art gFID of 1.06 in just 80 epochs"
+				},
+				"shape": "star",
+				"color": "orange"
+			},
+			{
+				"kind": "ink",
+				"page": 7,
+				"around": {
+					"quote": "our formulation is equivalent to a deep supervised network"
+				},
+				"shape": "check",
+				"color": "green"
+			},
+			{
+				"kind": "sticker",
+				"page": 9,
+				"near": {
+					"quote": "internal guidance with REPA-head achieves the best"
+				},
+				"emoji": "🔥"
+			},
+			{
+				"kind": "sticker",
+				"page": 13,
+				"near": {
+					"quote": "Earlier layers retain low-level texture and"
+				},
+				"emoji": "⭐"
+			},
+			{
+				"kind": "sticker",
+				"page": 9,
+				"near": {
+					"quote": "while preserving linear probing performance"
+				},
+				"emoji": "⚠️"
+			}
+		]
+	},
+	{
+		"arxiv": "2605.10938",
+		"category": "Generative",
+		"tags": [
+			"flow-matching",
+			"llm",
+			"text-encoder"
+		],
+		"read": true,
+		"annotations": [
+			{
+				"kind": "highlight",
+				"page": 1,
+				"quote": "ELF predominantly stays within the continuous embedding space",
+				"color": "yellow"
+			},
+			{
+				"kind": "box",
+				"page": 2,
+				"target": {
+					"figure": "Figure 2"
+				},
+				"color": "blue",
+				"label": "Concept"
+			},
+			{
+				"kind": "highlight",
+				"page": 4,
+				"quote": "advances on image generation and instead parameterizes x",
+				"color": "blue"
+			},
+			{
+				"kind": "note",
+				"page": 4,
+				"near": {
+					"quote": "that v-prediction works poorly when weights are shared"
+				},
+				"text": "x-pred is what makes the shared denoiser/decoder work. Would $\\epsilon$-pred fail too?"
+			},
+			{
+				"kind": "ink",
+				"page": 5,
+				"around": {
+					"quote": "we inject small noise at each step while correspondingly shifting"
+				},
+				"shape": "bracket",
+				"color": "orange"
+			},
+			{
+				"kind": "highlight",
+				"page": 6,
+				"quote": "We do not use validation perplexity",
+				"color": "pink",
+				"note": "so no likelihood comparison vs MDLM at all?"
+			},
+			{
+				"kind": "highlight",
+				"page": 8,
+				"quote": "perplexity of 24 using only 32 sampling steps",
+				"color": "green"
+			},
+			{
+				"kind": "highlight",
+				"page": 5,
+				"quote": "In the absence of class labels, we employ self-conditioning",
+				"color": "blue"
+			},
+			{
+				"kind": "highlight",
+				"page": 6,
+				"quote": "To avoid inference-time overhead, we adopt training-time CFG techniques",
+				"color": "orange"
+			},
+			{
+				"kind": "highlight",
+				"page": 7,
+				"quote": "likely due to the difficulty of jointly optimizing the embeddings",
+				"color": "pink",
+				"note": "stop-grad or EMA encoder would fix it?"
+			},
+			{
+				"kind": "highlight",
+				"page": 8,
+				"quote": "While prior DLMs typically use over 500B tokens, ELF uses only 45B",
+				"color": "green"
+			},
+			{
+				"kind": "highlight",
+				"page": 10,
+				"quote": "ELF keeps the denoising trajectory continuous",
+				"color": "purple",
+				"note": "→ scaled to images in Multimodal Flow"
+			},
+			{
+				"kind": "highlight",
+				"page": 3,
+				"quote": "ELF denoises entirely in continuous embedding space without",
+				"color": "blue"
+			},
+			{
+				"kind": "highlight",
+				"page": 3,
+				"quote": "typically follow DDPM-style or score-based formulations with DDPM noise schedules",
+				"color": "purple",
+				"note": "vs DDPM: linear rectified-flow path instead"
+			},
+			{
+				"kind": "box",
+				"page": 9,
+				"target": {
+					"table": "Table 1"
+				},
+				"color": "green",
+				"label": "Cond. gen.",
+				"note": "beats MDLM, Duo, E2D2 on De-En and XSum"
+			},
+			{
+				"kind": "highlight",
+				"page": 9,
+				"quote": "ELF-B achieves the best performance among all compared methods on",
+				"color": "green"
+			},
+			{
+				"kind": "highlight",
+				"page": 9,
+				"quote": "a 64-step ODE sampler with the self-conditioning CFG scale set to 1",
+				"color": "orange",
+				"note": "default sampler config to copy"
+			},
+			{
+				"kind": "note",
+				"page": 9,
+				"near": {
+					"quote": "Some results are taken from the literature and others are reproduced"
+				},
+				"text": "Mix of copied and reproduced baselines in Tab. 1, compare with care."
+			},
+			{
+				"kind": "ink",
+				"page": 8,
+				"around": {
+					"quote": "perplexity of 24 using only 32 sampling steps"
+				},
+				"shape": "star",
+				"color": "orange"
+			},
+			{
+				"kind": "text",
+				"page": 1,
+				"near": {
+					"quote": "ELF predominantly stays within the continuous embedding space"
+				},
+				"side": "right",
+				"text": "key!",
+				"color": "yellow"
+			},
+			{
+				"kind": "ink",
+				"page": 8,
+				"around": {
+					"quote": "While prior DLMs typically use over 500B tokens, ELF uses only 45B"
+				},
+				"shape": "exclaim",
+				"color": "green"
+			},
+			{
+				"kind": "sticker",
+				"page": 9,
+				"near": {
+					"quote": "ELF-B achieves the best performance among all compared methods on"
+				},
+				"emoji": "🔥"
+			},
+			{
+				"kind": "ink",
+				"page": 6,
+				"around": {
+					"quote": "To avoid inference-time overhead, we adopt training-time CFG techniques"
+				},
+				"shape": "wavy",
+				"color": "orange"
+			},
+			{
+				"kind": "ink",
+				"page": 4,
+				"around": {
+					"quote": "advances on image generation and instead parameterizes x"
+				},
+				"shape": "heart",
+				"color": "red"
+			},
+			{
+				"kind": "ink",
+				"page": 5,
+				"around": {
+					"quote": "In the absence of class labels, we employ self-conditioning"
+				},
+				"shape": "bracket",
+				"color": "blue"
+			},
+			{
+				"kind": "sticker",
+				"page": 3,
+				"near": {
+					"quote": "ELF denoises entirely in continuous embedding space without"
+				},
+				"emoji": "👀"
+			},
+			{
+				"kind": "sticker",
+				"page": 7,
+				"near": {
+					"quote": "likely due to the difficulty of jointly optimizing the embeddings"
+				},
+				"emoji": "🤔"
+			}
+		]
+	},
+	{
+		"arxiv": "2609.05415",
+		"category": "Vision",
+		"tags": [
+			"animation",
+			"3d",
+			"flow-matching",
+			"attention"
+		],
+		"read": false,
+		"annotations": [
+			{
+				"kind": "highlight",
+				"page": 1,
+				"quote": "articulated motion for arbitrary skeletons from a rigged 3D asset",
+				"color": "yellow"
+			},
+			{
+				"kind": "highlight",
+				"page": 3,
+				"quote": "The closest prior work, AnyTop",
+				"color": "purple"
+			},
+			{
+				"kind": "highlight",
+				"page": 6,
+				"quote": "have no canonical ordering, so the index used by 1D RoPE",
+				"color": "blue"
+			},
+			{
+				"kind": "box",
+				"page": 6,
+				"target": {
+					"equation": "(12)"
+				},
+				"color": "blue",
+				"label": "Spec-RoPE",
+				"note": "RoPE angles from Laplacian eigenvectors"
+			},
+			{
+				"kind": "box",
+				"page": 9,
+				"target": {
+					"table": "Table 1"
+				},
+				"color": "green",
+				"label": "FID 2.7→0.76"
+			},
+			{
+				"kind": "highlight",
+				"page": 11,
+				"quote": "UniMate is less reliable on rare",
+				"color": "pink",
+				"note": "how rare is rare? no numbers per topology"
+			},
+			{
+				"kind": "highlight",
+				"page": 4,
+				"quote": "rest-pose skeleton by its topology diameter",
+				"color": "blue"
+			},
+			{
+				"kind": "highlight",
+				"page": 7,
+				"quote": "We therefore add a geodesic loss",
+				"color": "blue"
+			},
+			{
+				"kind": "highlight",
+				"page": 8,
+				"quote": "UniML3D comprises 13,006 motion sequences and 2,140,232",
+				"color": "green"
+			},
+			{
+				"kind": "highlight",
+				"page": 8,
+				"quote": "adopt square-root-balanced sampling together with four",
+				"color": "orange",
+				"note": "try for our long-tail rigs"
+			},
+			{
+				"kind": "highlight",
+				"page": 11,
+				"quote": "topological conditioner causes the largest drop in motion quality",
+				"color": "green"
+			},
+			{
+				"kind": "highlight",
+				"page": 2,
+				"quote": "UniMate synthesizes plausible articulated",
+				"color": "yellow"
+			},
+			{
+				"kind": "highlight",
+				"page": 2,
+				"quote": "we introduce Spec-RoPE, a spectral rotary position embedding that",
+				"color": "blue"
+			},
+			{
+				"kind": "highlight",
+				"page": 5,
+				"quote": "We prepend the skeleton tokens to the motion tokens along the",
+				"color": "blue"
+			},
+			{
+				"kind": "highlight",
+				"page": 10,
+				"quote": "All four applications below are zero-shot",
+				"color": "yellow",
+				"note": "in-betweening and editing for free, nice"
+			},
+			{
+				"kind": "box",
+				"page": 11,
+				"target": {
+					"table": "Table 4"
+				},
+				"color": "green",
+				"label": "Ablation",
+				"note": "every topology-aware part pulls its weight"
+			},
+			{
+				"kind": "note",
+				"page": 10,
+				"near": {
+					"quote": "sampling-time pose guidance by keeping the boundary-frame pose"
+				},
+				"text": "Inpainting-style: just clamp the boundary tokens during flow integration."
+			},
+			{
+				"kind": "ink",
+				"page": 8,
+				"around": {
+					"quote": "adopt square-root-balanced sampling together with four"
+				},
+				"shape": "check",
+				"color": "green"
+			},
+			{
+				"kind": "ink",
+				"page": 1,
+				"around": {
+					"quote": "articulated motion for arbitrary skeletons from a rigged 3D asset"
+				},
+				"shape": "heart",
+				"color": "red"
+			},
+			{
+				"kind": "sticker",
+				"page": 11,
+				"near": {
+					"quote": "topological conditioner causes the largest drop in motion quality"
+				},
+				"emoji": "🎯"
+			},
+			{
+				"kind": "sticker",
+				"page": 10,
+				"near": {
+					"quote": "All four applications below are zero-shot"
+				},
+				"emoji": "💡"
+			}
+		]
+	},
+	{
+		"arxiv": "2609.08084",
+		"category": "Vision",
+		"tags": [
+			"depth",
+			"diffusion",
+			"fine-tuning"
+		],
+		"read": true,
+		"annotations": [
+			{
+				"kind": "highlight",
+				"page": 1,
+				"quote": "in less than a week on a single 32GB GPU",
+				"color": "yellow"
+			},
+			{
+				"kind": "ink",
+				"page": 1,
+				"around": {
+					"quote": "16–26% improvement in AbsRel over the previous best"
+				},
+				"shape": "underline",
+				"color": "green"
+			},
+			{
+				"kind": "highlight",
+				"page": 4,
+				"quote": "4-bit quantization to the pretrained DiT weights",
+				"color": "purple",
+				"note": "QLoRA, cf. LoRA"
+			},
+			{
+				"kind": "highlight",
+				"page": 4,
+				"quote": "direct latent regression with no trajectory to integrate",
+				"color": "blue"
+			},
+			{
+				"kind": "highlight",
+				"page": 5,
+				"quote": "the same set of depth values as the ground truth",
+				"color": "orange",
+				"note": "try SinkLoss on our normals head"
+			},
+			{
+				"kind": "box",
+				"page": 6,
+				"target": {
+					"table": "Table 1"
+				},
+				"color": "green",
+				"label": "SOTA, 74K imgs"
+			},
+			{
+				"kind": "highlight",
+				"page": 4,
+				"quote": "we introduce a variant of iREPA feature alignment loss",
+				"color": "purple",
+				"note": "REPA again, cf. RAE v2"
+			},
+			{
+				"kind": "highlight",
+				"page": 5,
+				"quote": "This makes perfect AbsRel effectively",
+				"color": "pink",
+				"note": "so are small AbsRel gaps even meaningful?"
+			},
+			{
+				"kind": "highlight",
+				"page": 7,
+				"quote": "As shown in Tab. 4, log-depth improves both AbsRel and",
+				"color": "green"
+			},
+			{
+				"kind": "highlight",
+				"page": 9,
+				"quote": "remains feasible on a single 32GB GPU",
+				"color": "green"
+			},
+			{
+				"kind": "highlight",
+				"page": 9,
+				"quote": "We address metric depth completion by fitting a new LoRA to a",
+				"color": "orange"
+			},
+			{
+				"kind": "highlight",
+				"page": 2,
+				"quote": "they are inevitably bound to the depth distribution coverage of such",
+				"color": "pink"
+			},
+			{
+				"kind": "highlight",
+				"page": 2,
+				"quote": "towards semantic features extracted from the ground-truth depth",
+				"color": "blue"
+			},
+			{
+				"kind": "box",
+				"page": 3,
+				"target": {
+					"figure": "Fig. 2"
+				},
+				"color": "blue",
+				"label": "Two stages",
+				"note": "Stage 1 QLoRA + iREPA, Stage 2 SinkLoss + VAE decoder"
+			},
+			{
+				"kind": "highlight",
+				"page": 11,
+				"quote": "achieves the lowest RMSE on all four benchmarks",
+				"color": "green"
+			},
+			{
+				"kind": "highlight",
+				"page": 11,
+				"quote": "toward closer depth values in such regions",
+				"color": "pink",
+				"note": "same glass-label bias in our HyperSim mix?"
+			},
+			{
+				"kind": "highlight",
+				"page": 12,
+				"quote": "precludes real-time use",
+				"color": "pink",
+				"note": "distill into a small student for video?"
+			},
+			{
+				"kind": "highlight",
+				"page": 4,
+				"quote": "extracted from the depth map provide better AbsRel",
+				"color": "pink",
+				"note": "?? DINOv3 on depth maps"
+			},
+			{
+				"kind": "ink",
+				"page": 1,
+				"around": {
+					"quote": "in less than a week on a single 32GB GPU"
+				},
+				"shape": "star",
+				"color": "orange"
+			},
+			{
+				"kind": "ink",
+				"page": 5,
+				"around": {
+					"quote": "This makes perfect AbsRel effectively"
+				},
+				"shape": "question",
+				"color": "pink"
+			},
+			{
+				"kind": "text",
+				"page": 4,
+				"near": {
+					"quote": "4-bit quantization to the pretrained DiT weights"
+				},
+				"side": "right",
+				"text": "nice",
+				"color": "green"
+			},
+			{
+				"kind": "ink",
+				"page": 4,
+				"around": {
+					"quote": "direct latent regression with no trajectory to integrate"
+				},
+				"shape": "wavy",
+				"color": "blue"
+			},
+			{
+				"kind": "sticker",
+				"page": 7,
+				"near": {
+					"quote": "As shown in Tab. 4, log-depth improves both AbsRel and"
+				},
+				"emoji": "✨"
+			},
+			{
+				"kind": "sticker",
+				"page": 5,
+				"near": {
+					"quote": "the same set of depth values as the ground truth"
+				},
+				"emoji": "🤯"
+			},
+			{
+				"kind": "sticker",
+				"page": 11,
+				"near": {
+					"quote": "achieves the lowest RMSE on all four benchmarks"
+				},
+				"emoji": "🚀"
+			},
+			{
+				"kind": "sticker",
+				"page": 2,
+				"near": {
+					"quote": "towards semantic features extracted from the ground-truth depth"
+				},
+				"emoji": "👀"
+			},
+			{
+				"kind": "sticker",
+				"page": 4,
+				"near": {
+					"quote": "extracted from the depth map provide better AbsRel"
+				},
+				"emoji": "🤔"
+			}
+		]
+	},
+	{
+		"arxiv": "2609.19969",
+		"category": "Language",
+		"tags": [
+			"llm",
+			"long-context",
+			"efficiency",
+			"moe"
+		],
+		"read": false,
+		"annotations": [
+			{
+				"kind": "highlight",
+				"page": 1,
+				"quote": "reduce its global KV cache footprint (always in HBM) to 890 bytes",
+				"color": "yellow"
+			},
+			{
+				"kind": "highlight",
+				"page": 7,
+				"quote": "organized into a 20-layer causal encoder followed by a 20-layer decoder",
+				"color": "blue"
+			},
+			{
+				"kind": "box",
+				"page": 9,
+				"target": {
+					"equation": "(1)"
+				},
+				"color": "blue",
+				"label": "CED",
+				"note": "decoder KV projected from layer $L/2$, à la YOCO"
+			},
+			{
+				"kind": "highlight",
+				"page": 9,
+				"quote": "effective receptive field of SWA is much smaller than the theoretical",
+				"color": "pink",
+				"note": "still true on long agent traces?"
+			},
+			{
+				"kind": "ink",
+				"page": 10,
+				"around": {
+					"quote": "CSA2 exploits the three dimensions jointly: it shares main KV and indexer K across layers"
+				},
+				"shape": "bracket",
+				"color": "blue"
+			},
+			{
+				"kind": "highlight",
+				"page": 33,
+				"quote": "DeepSWE v1.1 (Resolved) 74.0 73.0 67.5 66.9 62.7 54.4 74.2",
+				"color": "green"
+			},
+			{
+				"kind": "highlight",
+				"page": 6,
+				"quote": "a gap with giant models remains on science-oriented agentic tasks",
+				"color": "pink"
+			},
+			{
+				"kind": "highlight",
+				"page": 8,
+				"quote": "downsampling to reduce the visual token count",
+				"color": "blue"
+			},
+			{
+				"kind": "highlight",
+				"page": 9,
+				"quote": "compression along the layer dimension is effective",
+				"color": "purple",
+				"note": "cf. MiniMax Sparse Attention"
+			},
+			{
+				"kind": "highlight",
+				"page": 15,
+				"quote": "we observe that head-wise Muon outperforms vanilla Muon",
+				"color": "orange",
+				"note": "try head-wise Muon on our 1B run"
+			},
+			{
+				"kind": "highlight",
+				"page": 19,
+				"quote": "V4.1 reduces the persistent KV cache footprint to 1/8 of that of V4",
+				"color": "green"
+			},
+			{
+				"kind": "highlight",
+				"page": 4,
+				"quote": "Full Mode generates global KV and performs indexing",
+				"color": "blue"
+			},
+			{
+				"kind": "highlight",
+				"page": 5,
+				"quote": "SWA Bounded Replay, which approximately reconstructs the required SWA KV",
+				"color": "pink",
+				"note": "approximate replay: any drift on very long sessions?"
+			},
+			{
+				"kind": "highlight",
+				"page": 5,
+				"quote": "increases its Decode FLOPs by only 1/4",
+				"color": "green"
+			},
+			{
+				"kind": "highlight",
+				"page": 13,
+				"quote": "Single-Pass mHC, which shifts the input-mixing",
+				"color": "orange",
+				"note": "one-block lag trick, try in our fused kernels"
+			},
+			{
+				"kind": "highlight",
+				"page": 14,
+				"quote": "for the SWA KV cache due to its sensitivity to quantization",
+				"color": "blue"
+			},
+			{
+				"kind": "box",
+				"page": 11,
+				"target": {
+					"figure": "Figure 5"
+				},
+				"color": "blue",
+				"label": "Hier. indexer"
+			},
+			{
+				"kind": "highlight",
+				"page": 33,
+				"quote": "fully matching the top-performing open-source baseline",
+				"color": "purple",
+				"note": "→ see Kimi K3"
+			},
+			{
+				"kind": "ink",
+				"page": 1,
+				"around": {
+					"quote": "reduce its global KV cache footprint (always in HBM) to 890 bytes"
+				},
+				"shape": "heart",
+				"color": "red"
+			},
+			{
+				"kind": "sticker",
+				"page": 7,
+				"near": {
+					"quote": "organized into a 20-layer causal encoder followed by a 20-layer decoder"
+				},
+				"emoji": "💡"
+			},
+			{
+				"kind": "sticker",
+				"page": 5,
+				"near": {
+					"quote": "increases its Decode FLOPs by only 1/4"
+				},
+				"emoji": "🔥"
+			}
+		]
+	},
+	{
+		"arxiv": "2609.40305",
+		"category": "Generative",
+		"tags": [
+			"diffusion",
+			"transformers",
+			"efficiency",
+			"to-implement"
+		],
+		"read": false,
+		"annotations": [
+			{
+				"kind": "highlight",
+				"page": 1,
+				"quote": "explore an alternative way to scale computation by repeatedly running shared",
+				"color": "yellow"
+			},
+			{
+				"kind": "box",
+				"page": 2,
+				"target": {
+					"figure": "Figure 2"
+				},
+				"color": "blue",
+				"label": "Arch.",
+				"note": "pre-loop A, looped B ×N, post-loop C"
+			},
+			{
+				"kind": "highlight",
+				"page": 3,
+				"quote": "indicating that spatial position becomes progressively less linearly decodable",
+				"color": "green"
+			},
+			{
+				"kind": "highlight",
+				"page": 4,
+				"quote": "Deep Supervision introduces no additional parameters or inference overhead",
+				"color": "blue"
+			},
+			{
+				"kind": "box",
+				"page": 4,
+				"target": {
+					"equation": "(3)"
+				},
+				"color": "orange",
+				"label": "DeepSup",
+				"note": "try w/ our DiT: sum $\\ell_n$ over loops, cheap"
+			},
+			{
+				"kind": "highlight",
+				"page": 5,
+				"quote": "0.26B 87.4 87.0 67.0 53.5 54.6 79.7 71.5",
+				"color": "green"
+			},
+			{
+				"kind": "highlight",
+				"page": 3,
+				"quote": "a 260M-parameter Looped-DiT outperforms non-looped models with roughly 6.5× more parameters",
+				"color": "green"
+			},
+			{
+				"kind": "highlight",
+				"page": 4,
+				"quote": "we introduce Deep Supervision, which applies the flow-matching",
+				"color": "purple",
+				"note": "same idea as REPA-head guidance in RAE v2"
+			},
+			{
+				"kind": "highlight",
+				"page": 5,
+				"quote": "MMDiT blocks in the model into a split",
+				"color": "blue"
+			},
+			{
+				"kind": "highlight",
+				"page": 7,
+				"quote": "that looping is a more effective use of inference compute",
+				"color": "yellow"
+			},
+			{
+				"kind": "highlight",
+				"page": 9,
+				"quote": "enables adaptive looping, where a lightweight gating",
+				"color": "orange"
+			},
+			{
+				"kind": "highlight",
+				"page": 6,
+				"quote": "Looped-DiT B/16 traces the Pareto frontier under",
+				"color": "green"
+			},
+			{
+				"kind": "box",
+				"page": 8,
+				"target": {
+					"quote": "Complementary gains from looping and textual CoT"
+				},
+				"color": "green",
+				"label": "Loop vs CoT",
+				"note": "looping wins on constraints, CoT on implied content"
+			},
+			{
+				"kind": "highlight",
+				"page": 8,
+				"quote": "Combining the two achieves the highest overall score",
+				"color": "yellow"
+			},
+			{
+				"kind": "highlight",
+				"page": 8,
+				"quote": "assigns exponentially smaller weights to earlier loops",
+				"color": "blue"
+			},
+			{
+				"kind": "highlight",
+				"page": 10,
+				"quote": "We hypothesize that unmodulated attention produces",
+				"color": "pink",
+				"note": "only probe correlations here, any causal test?"
+			},
+			{
+				"kind": "highlight",
+				"page": 11,
+				"quote": "larger gains than adding more denoising steps",
+				"color": "yellow"
+			},
+			{
+				"kind": "highlight",
+				"page": 7,
+				"quote": "it achieves 59.1 compared with 58.1 for the deeper baseline",
+				"color": "pink",
+				"note": "only +1 pt at matched FLOPs?"
+			},
+			{
+				"kind": "ink",
+				"page": 3,
+				"around": {
+					"quote": "indicating that spatial position becomes progressively less linearly decodable"
+				},
+				"shape": "star",
+				"color": "orange"
+			},
+			{
+				"kind": "ink",
+				"page": 5,
+				"around": {
+					"quote": "0.26B 87.4 87.0 67.0 53.5 54.6 79.7 71.5"
+				},
+				"shape": "exclaim",
+				"color": "green"
+			},
+			{
+				"kind": "sticker",
+				"page": 6,
+				"near": {
+					"quote": "Looped-DiT B/16 traces the Pareto frontier under"
+				},
+				"emoji": "💯"
+			},
+			{
+				"kind": "sticker",
+				"page": 11,
+				"near": {
+					"quote": "larger gains than adding more denoising steps"
+				},
+				"emoji": "🧠"
+			}
+		]
+	},
+	{
+		"arxiv": "2609.40362",
+		"category": "Generative",
+		"tags": [
+			"multimodal",
+			"flow-matching",
+			"to-implement"
+		],
+		"read": true,
+		"annotations": [
+			{
+				"kind": "highlight",
+				"page": 1,
+				"quote": "organizes text blocks and images as ordered continuous hyperchunks, preserving",
+				"color": "yellow"
+			},
+			{
+				"kind": "highlight",
+				"page": 1,
+				"quote": "pretraining tokens, MF-1 achieves an average score of 82.8 across GenEval and",
+				"color": "green"
+			},
+			{
+				"kind": "highlight",
+				"page": 2,
+				"quote": "Embedded Language Flows (ELF) shows that contextualized text embeddings",
+				"color": "purple",
+				"note": "→ ELF is basically the text half of this"
+			},
+			{
+				"kind": "box",
+				"page": 3,
+				"target": {
+					"figure": "Figure 2"
+				},
+				"color": "blue",
+				"label": "Arch."
+			},
+			{
+				"kind": "note",
+				"page": 5,
+				"near": {
+					"quote": "which enables KV caching"
+				},
+				"text": "KV cache works since finished chunks stay clean, unlike full-sequence diffusion."
+			},
+			{
+				"kind": "highlight",
+				"page": 9,
+				"quote": "whereas sharing FFNs degrades",
+				"color": "orange",
+				"note": "try: shared attn + per-modality FFN in our model"
+			},
+			{
+				"kind": "highlight",
+				"page": 4,
+				"quote": "all preceding chunks are visible and future chunks remain hidden",
+				"color": "blue"
+			},
+			{
+				"kind": "highlight",
+				"page": 7,
+				"quote": "Continuous MF-1 1.6B 150B 86.1 67.2 62.4 72.6 58.3 39.1",
+				"color": "green",
+				"note": "only 150B tokens vs ~1T for Janus"
+			},
+			{
+				"kind": "highlight",
+				"page": 9,
+				"quote": "DINOv2 achieves the highest image-generation scores",
+				"color": "pink",
+				"note": "then why SigLIP2 by default? captioning?"
+			},
+			{
+				"kind": "highlight",
+				"page": 9,
+				"quote": "image captioning performs best at a guidance scale of 3",
+				"color": "green"
+			},
+			{
+				"kind": "highlight",
+				"page": 10,
+				"quote": "Extending it to longer interleaved sequences, video, and other structured modalities",
+				"color": "pink"
+			},
+			{
+				"kind": "highlight",
+				"page": 6,
+				"quote": "we use both modality orders",
+				"color": "blue"
+			},
+			{
+				"kind": "highlight",
+				"page": 6,
+				"quote": "unimodal distributions and bidirectional cross-modal conditionals within a single model",
+				"color": "yellow"
+			},
+			{
+				"kind": "highlight",
+				"page": 6,
+				"quote": "consistently surpasses comparable from-scratch",
+				"color": "green"
+			},
+			{
+				"kind": "note",
+				"page": 6,
+				"near": {
+					"quote": "Only chunk content, ordering, and target modalities vary"
+				},
+				"text": "One loss for every task: the task is just how chunks are ordered."
+			},
+			{
+				"kind": "box",
+				"page": 8,
+				"target": {
+					"table": "Table 4"
+				},
+				"color": "green",
+				"label": "Matched budget",
+				"note": "continuous beats Transfusion- and Chameleon-style at equal data"
+			},
+			{
+				"kind": "highlight",
+				"page": 8,
+				"quote": "All three variants show consistent overall improvement",
+				"color": "pink",
+				"note": "still improving at 180k steps: undertrained?"
+			},
+			{
+				"kind": "highlight",
+				"page": 4,
+				"quote": "We use B = 8 in our main models.",
+				"color": "pink",
+				"note": "why B = 8? ablation?"
+			},
+			{
+				"kind": "ink",
+				"page": 9,
+				"around": {
+					"quote": "whereas sharing FFNs degrades"
+				},
+				"shape": "check",
+				"color": "green"
+			},
+			{
+				"kind": "text",
+				"page": 1,
+				"near": {
+					"quote": "pretraining tokens, MF-1 achieves an average score of 82.8 across GenEval and"
+				},
+				"side": "right",
+				"text": "wow",
+				"color": "green"
+			},
+			{
+				"kind": "ink",
+				"page": 1,
+				"around": {
+					"quote": "organizes text blocks and images as ordered continuous hyperchunks, preserving"
+				},
+				"shape": "heart",
+				"color": "red"
+			},
+			{
+				"kind": "sticker",
+				"page": 9,
+				"near": {
+					"quote": "DINOv2 achieves the highest image-generation scores"
+				},
+				"emoji": "🤔"
+			},
+			{
+				"kind": "ink",
+				"page": 6,
+				"around": {
+					"quote": "unimodal distributions and bidirectional cross-modal conditionals within a single model"
+				},
+				"shape": "bracket",
+				"color": "yellow"
+			},
+			{
+				"kind": "ink",
+				"page": 7,
+				"around": {
+					"quote": "Continuous MF-1 1.6B 150B 86.1 67.2 62.4 72.6 58.3 39.1"
+				},
+				"shape": "exclaim",
+				"color": "green"
+			},
+			{
+				"kind": "sticker",
+				"page": 6,
+				"near": {
+					"quote": "consistently surpasses comparable from-scratch"
+				},
+				"emoji": "🎯"
+			},
+			{
+				"kind": "sticker",
+				"page": 6,
+				"near": {
+					"quote": "we use both modality orders"
+				},
+				"emoji": "📌"
+			},
+			{
+				"kind": "sticker",
+				"page": 4,
+				"near": {
+					"quote": "We use B = 8 in our main models."
+				},
+				"emoji": "⚠️"
+			}
+		]
+	},
+	{
+		"arxiv": "2610.02665",
+		"category": "Language",
+		"tags": [
+			"diffusion",
+			"llm",
+			"reasoning"
+		],
+		"read": false,
+		"annotations": [
+			{
+				"kind": "highlight",
+				"page": 1,
+				"quote": "the first large-scale (3B/8B) continuous dLM built on steerable",
+				"color": "yellow"
+			},
+			{
+				"kind": "box",
+				"page": 3,
+				"target": {
+					"equation": "(2)"
+				},
+				"color": "blue",
+				"label": "NELBO",
+				"note": "prior + recon + SNR-weighted embedding MSE"
+			},
+			{
+				"kind": "highlight",
+				"page": 6,
+				"quote": "our CFG is a pure inference-time trick",
+				"color": "orange",
+				"note": "try packed cond/uncond pass"
+			},
+			{
+				"kind": "box",
+				"page": 8,
+				"target": {
+					"table": "Table 1"
+				},
+				"color": "green",
+				"label": "3B base"
+			},
+			{
+				"kind": "ink",
+				"page": 8,
+				"around": {
+					"quote": "reaches 91.8% versus 87.6% at k = 256"
+				},
+				"shape": "underline",
+				"color": "green"
+			},
+			{
+				"kind": "note",
+				"page": 9,
+				"near": {
+					"quote": "embeddings collapse to ~4 effective dimensions"
+				},
+				"text": "16D collapses to ~4D. Would a 4D table do just as well?"
+			},
+			{
+				"kind": "highlight",
+				"page": 3,
+				"quote": "25% SC increases the non-embedding FLOPs by only about 8%",
+				"color": "blue"
+			},
+			{
+				"kind": "highlight",
+				"page": 4,
+				"quote": "adds a unit-norm 16-dimensional diffusion embedding table",
+				"color": "blue"
+			},
+			{
+				"kind": "highlight",
+				"page": 5,
+				"quote": "we follow NLD by adding AR regularization",
+				"color": "orange",
+				"note": "try AR warm-start + AR reg"
+			},
+			{
+				"kind": "highlight",
+				"page": 9,
+				"quote": "DDIM substantially outperforms DDPM at low NFEs",
+				"color": "green"
+			},
+			{
+				"kind": "highlight",
+				"page": 9,
+				"quote": "we found that higher-order ODE solvers originally",
+				"color": "pink",
+				"note": "why worse than DDIM? stiff trajectories?"
+			},
+			{
+				"kind": "highlight",
+				"page": 2,
+				"quote": "from pre-trained AR weights, and optimizing a regularized continuous",
+				"color": "yellow"
+			},
+			{
+				"kind": "highlight",
+				"page": 2,
+				"quote": "The forward process applies variance-preserving Gaussian noise on",
+				"color": "blue"
+			},
+			{
+				"kind": "highlight",
+				"page": 7,
+				"quote": "using either knob is weaker than using both of",
+				"color": "green"
+			},
+			{
+				"kind": "highlight",
+				"page": 7,
+				"quote": "Sigma-3B uses DDPM sampling",
+				"color": "purple",
+				"note": "plain DDPM ancestral steps, 256 per block"
+			},
+			{
+				"kind": "box",
+				"page": 10,
+				"target": {
+					"table": "Table 3"
+				},
+				"color": "green",
+				"label": "Instruct 3B",
+				"note": "on par with NLD; AIME still weak"
+			},
+			{
+				"kind": "highlight",
+				"page": 10,
+				"quote": "sampling hyperparameters are reasonably robust to SFT and scale",
+				"color": "green"
+			},
+			{
+				"kind": "highlight",
+				"page": 1,
+				"quote": "growing interest in continuous diffusion and flow matching for text generation",
+				"color": "purple",
+				"note": "→ same family as ELF"
+			},
+			{
+				"kind": "ink",
+				"page": 1,
+				"around": {
+					"quote": "the first large-scale (3B/8B) continuous dLM built on steerable"
+				},
+				"shape": "star",
+				"color": "orange"
+			},
+			{
+				"kind": "ink",
+				"page": 9,
+				"around": {
+					"quote": "we found that higher-order ODE solvers originally"
+				},
+				"shape": "question",
+				"color": "pink"
+			},
+			{
+				"kind": "sticker",
+				"page": 10,
+				"near": {
+					"quote": "sampling hyperparameters are reasonably robust to SFT and scale"
+				},
+				"emoji": "🚀"
+			},
+			{
+				"kind": "sticker",
+				"page": 2,
+				"near": {
+					"quote": "from pre-trained AR weights, and optimizing a regularized continuous"
+				},
+				"emoji": "❤️"
+			}
+		]
+	}
+]

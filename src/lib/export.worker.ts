@@ -1,6 +1,9 @@
 // Writes annotations into PDF bytes off the main thread (pdf-lib on a large
 // paper takes long enough to stutter the UI).
-import { exportPdf, type Annotation, type ExportOptions } from 'svelte-pdf-mini/core';
+// Only the PDF codec: the full `svelte-pdf-mini/core` would pull pdf.js (and a
+// second copy of its worker) into this bundle.
+import { exportPdf, type ExportOptions } from 'svelte-pdf-mini/pdf-codec';
+import type { Annotation } from 'svelte-pdf-mini/core';
 
 export interface ExportRequest {
 	id: number;

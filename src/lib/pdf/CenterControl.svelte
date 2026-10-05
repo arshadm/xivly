@@ -1,7 +1,8 @@
 <!--
-	Center the page horizontally (shown only when it's off-centre).
-	Double-click locks it: no horizontal scrolling, and zoom can't go past
-	the page width (the whole width always stays in view). Click to unlock.
+	Center the page across the scroll direction (shown only when it's off-center):
+	horizontally when pages scroll down, vertically when they scroll sideways.
+	Double-click locks it: no scrolling on that axis, and zoom can't go past the
+	page width (or height), so the whole page always stays in view. Click to unlock.
 -->
 <script lang="ts">
 	import { fade } from 'svelte/transition';
@@ -10,15 +11,20 @@
 
 	let { locked = $bindable(false) }: { locked?: boolean } = $props();
 	const viewer = ViewerContext.get();
-	let offCentre = $state(false);
+	let offCenter = $state(false);
 
-	const centre = (el: HTMLElement) => (el.scrollWidth - el.clientWidth) / 2;
+	/** The cross axis: what "centered" means for the current scroll mode. */
+	const vertical = $derived(viewer.scrollMode === 'horizontal');
+	const fitMode = $derived(vertical ? 'page-height' : 'page-width');
+	const center = (el: HTMLElement) => (vertical ? (el.scrollHeight - el.clientHeight) / 2 : (el.scrollWidth - el.clientWidth) / 2);
+	const offset = (el: HTMLElement) => (vertical ? el.scrollTop : el.scrollLeft);
+	const overflows = (el: HTMLElement) => (vertical ? el.scrollHeight > el.clientHeight + 1 : el.scrollWidth > el.clientWidth + 1);
 
-	// Track horizontal position (scroll / zoom / resize).
+	// Track the position across the scroll direction (scroll / zoom / resize).
 	$effect(() => {
 		const el = viewer.scrollEl;
 		if (!el) return;
-		const update = () => (offCentre = el.scrollWidth > el.clientWidth + 1 && Math.abs(el.scrollLeft - centre(el)) > 4);
+		const update = () => (offCenter = overflows(el) && Math.abs(offset(el) - center(el)) > 4);
 		update();
 		el.addEventListener('scroll', update, { passive: true });
 		const ro = new ResizeObserver(update);
@@ -26,45 +32,62 @@
 		return () => (el.removeEventListener('scroll', update), ro.disconnect());
 	});
 
-	// Locked: fit the width and never zoom past it.
+	// Switching scroll mode changes the axis: start unlocked.
+	$effect(() => {
+		void vertical;
+		return () => (locked = false);
+	});
+
+	// Locked: fit the page and never zoom past it.
 	let fit = 0;
 	$effect(() => {
 		if (!locked) return;
-		if (viewer.zoomMode === 'page-width') fit = viewer.zoom;
-		else if (fit && viewer.zoom > fit + 1e-3) viewer.zoomMode = 'page-width';
+		if (viewer.zoomMode === fitMode) fit = viewer.zoom;
+		else if (fit && viewer.zoom > fit + 1e-3) viewer.zoomMode = fitMode;
 	});
 	$effect(() => {
 		const el = viewer.scrollEl;
-		if (!el) return;
-		el.style.overflowX = locked ? 'hidden' : '';
-		return () => void (el.style.overflowX = '');
+		if (!el || !locked) return;
+		const prop = vertical ? 'overflowY' : 'overflowX';
+		el.style[prop] = 'hidden';
+		return () => void (el.style[prop] = '');
 	});
 
-	function lock() {
-		locked = true;
-		viewer.zoomMode = 'page-width';
-	}
-	function click() {
-		if (locked) locked = false;
-		else viewer.scrollEl?.scrollTo({ left: centre(viewer.scrollEl), behavior: 'smooth' });
+	// Centering hides the button (it's no longer off-center): keep it a moment
+	// so the second click of a double-click still lands on it.
+	let holding = $state(false);
+	let holdTimer: ReturnType<typeof setTimeout> | undefined;
+
+	function click(e: MouseEvent) {
+		clearTimeout(holdTimer);
+		if (e.detail >= 2) {
+			locked = true;
+			fit = 0;
+			viewer.zoomMode = fitMode;
+		} else if (locked) locked = false;
+		else {
+			holding = true;
+			holdTimer = setTimeout(() => (holding = false), 700);
+			const el = viewer.scrollEl;
+			el?.scrollTo({ [vertical ? 'top' : 'left']: center(el), behavior: 'smooth' });
+		}
 	}
 </script>
 
-{#if offCentre || locked}
+{#if offCenter || locked || holding}
 	<div class="absolute right-5 bottom-5 z-20" transition:fade={{ duration: 120 }}>
-		<Tip label={locked ? 'Centred & locked: click to unlock' : 'Center the page · double-click to lock'} side="left">
+		<Tip label={locked ? 'Centered & locked: click to unlock' : 'Center the page · double-click to lock'} side="left">
 			{#snippet child({ props })}
 				<button
 					{...props}
 					class="grid size-9 place-items-center rounded-full shadow-lg ring-1 transition {locked
 						? 'bg-stone-900 text-white ring-white/10 dark:bg-stone-100 dark:text-stone-900'
 						: 'bg-white/90 text-stone-700 ring-black/10 backdrop-blur hover:bg-white dark:bg-stone-800/90 dark:text-stone-200 dark:ring-white/10'}"
-					aria-label={locked ? 'Unlock centring' : 'Center the page'}
+					aria-label={locked ? 'Unlock centering' : 'Center the page'}
 					aria-pressed={locked}
 					onclick={click}
-					ondblclick={lock}
 				>
-					<span class="{locked ? 'icon-[lucide--lock]' : 'icon-[lucide--align-center-vertical]'} size-4"></span>
+					<span class="{locked ? 'icon-[lucide--lock]' : vertical ? 'icon-[lucide--align-center-horizontal]' : 'icon-[lucide--align-center-vertical]'} size-4"></span>
 				</button>
 			{/snippet}
 		</Tip>

@@ -71,7 +71,7 @@ export async function extractMetadata(bytes: Uint8Array, hints: ExtractHints = {
 		const { year, date } = guessDate(arxiv, info);
 
 		const patch: PaperPatch = {
-			title: clean(meta.title) || undefined,
+			title: tidyTitle(clean(meta.title)) || undefined,
 			authors: meta.authors.length ? meta.authors : undefined,
 			abstract: clean(meta.abstract) || undefined,
 			doi: meta.doi ?? (arxiv ? `10.48550/arXiv.${arxiv}` : undefined),
@@ -109,7 +109,7 @@ function guessDate(arxiv: string | undefined, info?: Record<string, unknown>) {
 	return { year: undefined, date: undefined };
 }
 
-/** Normalise, dedupe and bucket URLs. */
+/** The first section of a kind. */
 function findSection(sections: Section[], kind: Section['kind']): Section | undefined {
 	for (const s of sections) {
 		if (s.kind === kind) return s;
@@ -123,7 +123,7 @@ const STOPWORDS = new Set(
 );
 
 /** Distinctive title words (`DINOv2: Learning Robust…` → dinov2, robust, …), alphanumeric only. */
-export function titleWords(title: string) {
+function titleWords(title: string) {
 	return title
 		.toLowerCase()
 		.split(/[^a-z0-9-]+/)
@@ -147,7 +147,8 @@ function namesSite(site: string, words: string[]) {
 	return words.includes(site) || words.filter((w) => site.includes(w)).length >= 2;
 }
 
-export function classifyLinks(raw: string[], titleWords: string[] = []): PaperLinks | undefined {
+/** Normalize, dedupe and bucket URLs. */
+function classifyLinks(raw: string[], titleWords: string[] = []): PaperLinks | undefined {
 	const github = new Set<string>();
 	const huggingface = new Set<string>();
 	const other = new Set<string>();
@@ -190,4 +191,21 @@ export function classifyLinks(raw: string[], titleWords: string[] = []): PaperLi
 		other: other.size ? [...other].slice(0, 10) : undefined
 	};
 	return Object.values(links).some(Boolean) ? links : undefined;
+}
+
+const MINOR = new Set(['a', 'an', 'and', 'as', 'at', 'by', 'for', 'from', 'in', 'into', 'of', 'on', 'or', 'over', 'the', 'to', 'via', 'vs', 'with']);
+
+/**
+ * Titles set in capitals ("MULTIMODAL FLOW: UNIFIED…") become title case
+ * ("Multimodal Flow: Unified…"); anything else is left as typed.
+ */
+export function tidyTitle(title: string) {
+	const letters = title.replace(/[^\p{L}]/gu, '');
+	if (letters.length < 8 || letters !== letters.toUpperCase()) return title;
+	let first = true;
+	return title.toLowerCase().replace(/[\p{L}\p{N}][\p{L}\p{N}'’]*/gu, (w) => {
+		const keep = !first && MINOR.has(w);
+		first = false;
+		return keep ? w : w[0].toUpperCase() + w.slice(1);
+	}).replace(/([:?!.]\s+)(\p{Ll})/gu, (_, p, c) => p + c.toUpperCase());
 }

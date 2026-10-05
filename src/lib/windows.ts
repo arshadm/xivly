@@ -1,16 +1,39 @@
 // Windows (desktop) and tabs (web): the library stays open, each paper gets
 // its own reader window.
 import { resolve } from '$app/paths';
+import { toast } from './components/Toasts.svelte';
 import { platform } from './platform';
 
 const readerPath = (id: string) => `${resolve('/read')}?id=${encodeURIComponent(id)}`;
 /** Window labels allow `a-zA-Z0-9-/:_`; paper ids are slugs. */
 const labelFor = (id: string) => `paper-${id.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
 
+/**
+ * Open a paper that is still being added (downloaded, imported). Call it in
+ * the user's gesture: on the web the tab must be opened right away (later
+ * window.open calls are blocked as pop-ups), then pointed at the paper.
+ */
+export function openPaperWhenReady() {
+	const web = platform.kind !== 'desktop';
+	// Without a live gesture (a drop, a second file) the browser would block the tab.
+	const tab = web && navigator.userActivation.isActive ? window.open('', '_blank') : null;
+	return {
+		open(id: string, title?: string) {
+			if (tab) {
+				tab.location.href = readerPath(id);
+				tab.focus();
+			} else void openPaper(id, title);
+		},
+		cancel: () => tab?.close()
+	};
+}
+
 /** Open a paper in its own window / tab, or focus it if already open. */
 export async function openPaper(id: string, title = 'Xivly') {
 	if (platform.kind !== 'desktop') {
-		// A named target reuses the paper's tab when it's already open.
+		// A named target reuses the paper's tab when it's already open. Pop-ups need
+		// a live gesture: after an await, offer an "Open" button (a click) instead.
+		if (!navigator.userActivation.isActive) return toast(`Added “${title}”`, 'info', { label: 'Open', run: () => void openPaper(id, title) });
 		window.open(readerPath(id), `xivly-${id}`)?.focus();
 		return;
 	}
@@ -32,7 +55,8 @@ export async function openPaper(id: string, title = 'Xivly') {
 		minHeight: 480,
 		titleBarStyle: 'overlay',
 		hiddenTitle: true,
-		trafficLightPosition: new LogicalPosition(16, 20),
+		// Centered on the reader's 44pt top row (22pt): the buttons' center lands at y - 3pt (measured).
+		trafficLightPosition: new LogicalPosition(16, 25),
 		dragDropEnabled: false
 	});
 }
@@ -52,9 +76,12 @@ export async function showLibrary() {
 		title: 'Xivly',
 		width: 1280,
 		height: 840,
+		minWidth: 720,
+		minHeight: 480,
 		titleBarStyle: 'overlay',
 		hiddenTitle: true,
-		trafficLightPosition: new LogicalPosition(16, 20),
+		// Centered on the library's 48pt top row (24pt), see above.
+		trafficLightPosition: new LogicalPosition(16, 27),
 		dragDropEnabled: false
 	});
 }
@@ -73,9 +100,8 @@ export async function setWindowTitle(title: string) {
 	await getCurrentWindow().setTitle(title);
 }
 
-/** Native Save / Don't Save / Cancel. */
+/** Native Save / Don't Save / Cancel (desktop: the web asks through beforeunload). */
 export async function askUnsaved(title: string): Promise<'save' | 'discard' | 'cancel'> {
-	if (platform.kind !== 'desktop') return confirm(`Save annotations in “${title}” before closing?`) ? 'save' : 'discard';
 	const { message } = await import('@tauri-apps/plugin-dialog');
 	const r = await message(`Your annotations in “${title}” haven’t been saved yet.`, {
 		title: 'Save changes?',
@@ -99,4 +125,22 @@ export async function saveFile(file: Blob, name: string) {
 	const path = await save({ defaultPath: name, filters: ext ? [{ name: ext.toUpperCase(), extensions: [ext] }] : [] });
 	// The dialog grants fs access to exactly the chosen path.
 	if (path) await writeFile(path, new Uint8Array(await file.arrayBuffer()));
+}
+
+/**
+ * A window restored (by tauri-plugin-window-state) smaller than it may be,
+ * e.g. a size saved from a window that had no minimum, gets its default size
+ * back, centered.
+ */
+export async function fixRestoredSize() {
+	if (platform.kind !== 'desktop') return;
+	const { getCurrentWindow } = await import('@tauri-apps/api/window');
+	const { LogicalSize } = await import('@tauri-apps/api/dpi');
+	const win = getCurrentWindow();
+	const library = win.label === 'main';
+	const [min, def] = library ? [[720, 480], [1280, 840]] : [[640, 480], [1180, 900]];
+	const size = (await win.innerSize()).toLogical(await win.scaleFactor());
+	if (size.width >= min[0] && size.height >= min[1]) return;
+	await win.setSize(new LogicalSize(def[0], def[1]));
+	await win.center();
 }

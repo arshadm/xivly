@@ -86,15 +86,6 @@ fn run_one(
     paper_dir: &Path,
     stdin_json: &[u8],
 ) -> HookResult {
-    let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".into());
-    // Executables run directly (their shebang decides the interpreter);
-    // everything else is run by /bin/sh.
-    let script = if is_executable(hook) {
-        r#"exec "$XIVLY_HOOK""#
-    } else {
-        r#"exec /bin/sh "$XIVLY_HOOK""#
-    };
-
     let hook_name = hook.file_name().unwrap_or_default().to_string_lossy().to_string();
     let base = HookResult {
         event: event.into(),
@@ -105,10 +96,11 @@ fn run_one(
         output: String::new(),
     };
 
-    // Interactive login shell: loads .zprofile *and* .zshrc, so PATH matches
-    // the user's terminal (GUI apps on macOS otherwise get a bare PATH).
-    let child = Command::new(shell)
-        .args(["-i", "-l", "-c", script])
+    let mut command = match command_for(hook) {
+        Ok(c) => c,
+        Err(e) => return HookResult { output: e, ..base },
+    };
+    let child = command
         .current_dir(paper_dir)
         .env("XIVLY_HOOK", hook)
         .env("XIVLY_EVENT", event)
@@ -135,14 +127,19 @@ fn run_one(
         });
     }
     let drain = |pipe: Option<Box<dyn Read + Send>>| {
+        let (tx, rx) = std::sync::mpsc::channel();
         std::thread::spawn(move || {
             let mut buf = Vec::new();
             if let Some(mut p) = pipe {
                 let _ = p.read_to_end(&mut buf);
             }
-            buf
-        })
+            let _ = tx.send(buf);
+        });
+        rx
     };
+    // A background process the hook started may keep the pipes open after it
+    // exits: take what was written so far rather than wait for it.
+    let joined = |rx: std::sync::mpsc::Receiver<Vec<u8>>| rx.recv_timeout(Duration::from_secs(2)).unwrap_or_default();
     let out = drain(child.stdout.take().map(|p| Box::new(p) as Box<dyn Read + Send>));
     let err = drain(child.stderr.take().map(|p| Box::new(p) as Box<dyn Read + Send>));
 
@@ -160,11 +157,50 @@ fn run_one(
         }
     };
 
-    let mut output = String::from_utf8_lossy(&out.join().unwrap_or_default()).into_owned();
-    output.push_str(&String::from_utf8_lossy(&err.join().unwrap_or_default()));
+    let mut output = String::from_utf8_lossy(&joined(out)).into_owned();
+    output.push_str(&String::from_utf8_lossy(&joined(err)));
     match status {
         Some(s) => HookResult { success: s.success(), code: s.code(), output, ..base },
         None => HookResult { output: format!("{output}\n(timed out after {}s)", TIMEOUT.as_secs()), ..base },
+    }
+}
+
+/// How to run a hook on this platform.
+#[cfg(unix)]
+fn command_for(hook: &Path) -> std::result::Result<Command, String> {
+    // Executables run directly (their shebang decides the interpreter);
+    // everything else is run by /bin/sh.
+    let script = if is_executable(hook) { r#"exec "$XIVLY_HOOK""# } else { r#"exec /bin/sh "$XIVLY_HOOK""# };
+    // macOS GUI apps get a bare PATH: an interactive login shell loads
+    // .zprofile *and* .zshrc, so it matches the user's terminal. Linux
+    // desktop sessions already pass the user's PATH.
+    let mut c = if cfg!(target_os = "macos") {
+        let mut c = Command::new(std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".into()));
+        c.args(["-i", "-l"]);
+        c
+    } else {
+        Command::new("/bin/sh")
+    };
+    c.args(["-c", script]);
+    Ok(c)
+}
+
+/// Windows runs PowerShell (`.ps1`) and batch (`.cmd`, `.bat`) hooks.
+#[cfg(windows)]
+fn command_for(hook: &Path) -> std::result::Result<Command, String> {
+    let ext = hook.extension().and_then(|e| e.to_str()).map(str::to_ascii_lowercase);
+    match ext.as_deref() {
+        Some("ps1") => {
+            let mut c = Command::new("powershell");
+            c.args(["-NoProfile", "-ExecutionPolicy", "Bypass", "-File"]).arg(hook);
+            Ok(c)
+        }
+        Some("cmd" | "bat") => {
+            let mut c = Command::new("cmd");
+            c.arg("/C").arg(hook);
+            Ok(c)
+        }
+        _ => Err("On Windows, hooks are .ps1, .cmd or .bat files".into()),
     }
 }
 
@@ -174,10 +210,6 @@ fn is_executable(p: &Path) -> bool {
     p.metadata().map(|m| m.permissions().mode() & 0o111 != 0).unwrap_or(false)
 }
 
-#[cfg(not(unix))]
-fn is_executable(_: &Path) -> bool {
-    false
-}
 
 fn log(library: &Path, r: &HookResult) {
     let dir = library.join(".xivly/logs");
@@ -199,6 +231,7 @@ fn log(library: &Path, r: &HookResult) {
 mod tests {
     use super::*;
 
+    #[cfg(unix)]
     #[test]
     fn finds_and_runs_hooks() {
         let lib = std::env::temp_dir().join(format!("xivly-hooks-{}", std::process::id()));

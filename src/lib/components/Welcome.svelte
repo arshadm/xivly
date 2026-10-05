@@ -1,13 +1,16 @@
 <script lang="ts">
+	import { button } from '$lib/ui/button';
 	import { library } from '$lib/library.svelte';
 	import { platform } from '$lib/platform';
+	import Wordmark from '$lib/ui/Wordmark.svelte';
 
-	const btn = 'rounded-lg bg-stone-900 px-4 py-2 text-sm font-medium text-white hover:bg-stone-700 dark:bg-stone-100 dark:text-stone-900';
+	// The one call to action: the app's primary button, a size up.
+	const btn = button('primary', 'h-9 px-4 text-sm');
 </script>
 
 <div class="grid h-full place-items-center px-6" data-tauri-drag-region>
 	<div class="max-w-md text-center">
-		<h1 class="font-serif text-5xl tracking-tight"><span class="italic">χ</span>ivly</h1>
+		<h1><Wordmark class="text-5xl tracking-tight" /></h1>
 		<p class="mt-2 text-stone-500">Papers, without distraction.</p>
 
 		{#if library.status === 'error'}
@@ -17,7 +20,7 @@
 			<p class="mt-8 text-sm text-stone-600 dark:text-stone-400">Your browser needs permission again to open <strong>{library.name}</strong>.</p>
 			<div class="mt-6 flex justify-center gap-3">
 				<button class={btn} onclick={() => library.reconnect()}>Open {library.name}</button>
-				<button class="text-sm text-stone-500 hover:text-stone-800" onclick={() => library.choose()}>Choose another…</button>
+				<button class="text-sm text-stone-500 hover:text-stone-800 dark:hover:text-stone-200" onclick={() => library.choose()}>Choose another…</button>
 			</div>
 		{:else}
 			<p class="mt-8 text-sm leading-relaxed text-stone-600 dark:text-stone-400">

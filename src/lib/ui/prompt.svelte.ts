@@ -16,15 +16,17 @@ class PromptState {
 	current = $state.raw<Request | null>(null);
 
 	ask(title: string, opts: { value?: string; placeholder?: string; confirmLabel?: string; message?: string } = {}): Promise<string | null> {
-		return new Promise((resolve) => {
-			this.current = { title, confirmLabel: 'OK', value: '', ...opts, resolve: (v) => resolve(typeof v === 'string' ? v : null) };
-		});
+		return new Promise((resolve) => this.#show({ title, confirmLabel: 'OK', value: '', ...opts, resolve: (v) => resolve(typeof v === 'string' ? v : null) }));
 	}
 
 	confirm(title: string, opts: { message?: string; confirmLabel?: string; danger?: boolean } = {}): Promise<boolean> {
-		return new Promise((resolve) => {
-			this.current = { title, confirmLabel: 'OK', ...opts, resolve: (v) => resolve(v === true) };
-		});
+		return new Promise((resolve) => this.#show({ title, confirmLabel: 'OK', ...opts, resolve: (v) => resolve(v === true) }));
+	}
+
+	/** A new prompt cancels the one still open (its caller gets null / false). */
+	#show(request: Request) {
+		this.current?.resolve(null);
+		this.current = request;
 	}
 
 	close(result: string | boolean | null) {

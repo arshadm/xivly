@@ -1,3 +1,5 @@
+/* Layer order (svelte-pdf-mini between Tailwind's base and utilities) is declared in app.html. */
+
 @import "tailwindcss";
 @import "svelte-pdf-mini/styles.css";
 @plugin "@iconify/tailwind4";
@@ -6,6 +8,18 @@
 @source "../node_modules/svelte-pdf-mini/dist";
 
 @custom-variant dark (&:where(.dark, .dark *));
+/* macOS desktop windows: the traffic lights overlay the content (title bar style "overlay"). */
+@custom-variant lights (&:where([data-lights], [data-lights] *));
+
+/* Stacking of floating UI: dialogs < alerts (a confirm over a dialog) < menus and
+   popovers (they open from inside dialogs) < tooltips < toasts. */
+:root {
+	--z-dialog: 50;
+	--z-alert: 60;
+	--z-menu: 70;
+	--z-tooltip: 100;
+	--z-toast: 110;
+}
 
 @theme {
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
@@ -30,7 +44,7 @@ textarea,
 }
 
 /* Portaled UI (dialogs, menus, popovers, tooltips) inherits from here, not
-   from the app wrapper: give it readable colours in both themes. */
+   from the app wrapper: give it readable colors in both themes. */
 html {
   color: var(--color-stone-800);
   background: var(--color-stone-50);
@@ -49,4 +63,9 @@ html,
 body {
   height: 100%;
   overflow: hidden;
+}
+
+/* Minimal annotations: no author name or date on notes. */
+[data-part='meta'] {
+  display: none;
 }

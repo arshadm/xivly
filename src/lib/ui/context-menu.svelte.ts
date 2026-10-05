@@ -4,6 +4,7 @@
 // - text fields get Cut / Copy / Paste / Select all.
 // Rendered by GlobalContextMenu.svelte (a bits-ui DropdownMenu at the cursor).
 import type { Attachment } from 'svelte/attachments';
+import { mod } from '$lib/shortcuts';
 import { clipboard } from './clipboard';
 
 export interface MenuItem {
@@ -15,7 +16,7 @@ export interface MenuItem {
 	checked?: boolean;
 	disabled?: boolean;
 	danger?: boolean;
-	/** CSS colour dot (categories, highlight colours). */
+	/** CSS color dot (categories, highlight colors). */
 	color?: string;
 	/** Submenu. */
 	items?: MenuItem[];
@@ -78,7 +79,6 @@ export function isEditable(t: EventTarget | null): t is HTMLInputElement | HTMLT
 	return t instanceof HTMLElement && (t.isContentEditable || t instanceof HTMLTextAreaElement || (t instanceof HTMLInputElement && !['checkbox', 'radio', 'range', 'button', 'submit'].includes(t.type)));
 }
 
-const mod = /Mac/.test(navigator.platform) ? '⌘' : 'Ctrl+';
 
 /** Window-level handler: text fields, then the fallback, never the native menu. */
 export function onWindowContextMenu(e: MouseEvent) {

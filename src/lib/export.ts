@@ -3,6 +3,8 @@ import type { ExportRequest } from './export.worker';
 
 let worker: Worker | null = null;
 let next = 0;
+/** A save never waits longer than this for the worker. */
+const TIMEOUT = 120_000;
 const pending = new Map<number, { resolve: (b: Uint8Array) => void; reject: (e: Error) => void }>();
 
 function getWorker() {
@@ -14,6 +16,16 @@ function getWorker() {
 		if (data.error || !data.bytes) p?.reject(new Error(data.error ?? 'export failed'));
 		else p?.resolve(data.bytes);
 	};
+	// A worker that fails to load or crashes must not leave saves (and quitting) waiting forever.
+	const fail = (e: Event) => {
+		const error = new Error(`export worker failed: ${(e instanceof ErrorEvent && e.message) || e.type}`);
+		for (const p of pending.values()) p.reject(error);
+		pending.clear();
+		worker?.terminate();
+		worker = null;
+	};
+	worker.onerror = fail;
+	worker.onmessageerror = fail;
 	return worker;
 }
 
@@ -22,7 +34,12 @@ export function exportPdfInWorker(bytes: Uint8Array, annotations: Annotation[], 
 	const id = next++;
 	const req: ExportRequest = { id, bytes, annotations, options };
 	return new Promise<Uint8Array>((resolve, reject) => {
-		pending.set(id, { resolve, reject });
+		const timer = setTimeout(() => {
+			pending.delete(id);
+			reject(new Error('export timed out'));
+		}, TIMEOUT);
+		const done = <T,>(f: (v: T) => void) => (v: T) => (clearTimeout(timer), f(v));
+		pending.set(id, { resolve: done(resolve), reject: done(reject) });
 		getWorker().postMessage(req, [bytes.buffer]);
 	});
 }

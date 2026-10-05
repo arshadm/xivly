@@ -29,6 +29,17 @@ jobs:
           REPO="${{ github.event.repository.name }}"
           case "$REPO" in *.github.io) export BASE_PATH="" ;; *) export BASE_PATH="/$REPO" ;; esac
           bun run build:web
+      # The example library (built at /dev/starter, attached to the `starter`
+      # release) is served next to the app: the desktop app downloads it from here.
+      - name: Example library
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release download starter --repo "${{ github.repository }}" --pattern starter.zip --dir "$RUNNER_TEMP"; then
+            unzip -q "$RUNNER_TEMP/starter.zip" -d build/starter
+          else
+            echo "No starter release yet: the example library is skipped."
+          fi
       - uses: actions/upload-pages-artifact@v4
         with:
           path: build

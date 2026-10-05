@@ -1,10 +1,10 @@
-<!-- The active annotation colour as one button; the palette opens in a popover. -->
+<!-- The active annotation color as one button; the palette opens in a popover. -->
 <script lang="ts">
+	import { iconButton } from '$lib/ui/button';
 	import { Popover } from 'bits-ui';
 	import { scale } from 'svelte/transition';
 	import { Annotations, AnnotationsContext } from 'svelte-pdf-mini';
 	import Tip from '../ui/Tip.svelte';
-	import { cn } from '../ui/cn';
 
 	let { class: className }: { class?: string } = $props();
 	const store = AnnotationsContext.get();
@@ -12,9 +12,9 @@
 </script>
 
 <Popover.Root>
-	<Tip label="Colour">
+	<Tip label="Color">
 		{#snippet child({ props })}
-			<Popover.Trigger {...props} aria-label="Annotation colour" class={cn('grid size-7 shrink-0 place-items-center rounded-md hover:bg-black/5 dark:hover:bg-white/10', className)}>
+			<Popover.Trigger {...props} aria-label="Annotation color" class={iconButton(7, className)}>
 				<span class="size-4 rounded-full shadow-[inset_0_0_0_1px_rgb(0_0_0/0.14)]" style:background={current?.light}></span>
 			</Popover.Trigger>
 		{/snippet}
@@ -24,7 +24,7 @@
 			{#snippet child({ wrapperProps, props, open })}
 				{#if open}
 					<div {...wrapperProps}>
-						<div {...props} transition:scale={{ start: 0.96, duration: 110 }} class="z-50 flex gap-1.5 rounded-xl border border-stone-200 bg-white p-2 shadow-xl dark:border-stone-700 dark:bg-stone-900">
+						<div {...props} transition:scale={{ start: 0.96, duration: 110 }} class="z-(--z-menu) flex gap-1.5 rounded-xl border border-stone-200 bg-white p-2 shadow-xl dark:border-stone-700 dark:bg-stone-900">
 							{#each store.palette.slice(0, 9) as c, i (c.key)}
 								<Tip label={c.label} shortcut={String(i + 1)}>
 									{#snippet child({ props: tip })}

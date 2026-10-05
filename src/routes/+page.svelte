@@ -1,9 +1,10 @@
 <script lang="ts">
+	import { iconButton } from '$lib/ui/button';
 	import { flip } from 'svelte/animate';
 	import { cubicOut } from 'svelte/easing';
 	import { fade, scale } from 'svelte/transition';
 	import { library } from '$lib/library.svelte';
-	import { settings } from '$lib/settings.svelte';
+	import { coverStyles, settings } from '$lib/settings.svelte';
 	import { keys, matches } from '$lib/shortcuts';
 	import PaperCard from '$lib/components/PaperCard.svelte';
 	import { settingsDialog } from '$lib/components/SettingsDialog.svelte';
@@ -11,8 +12,15 @@
 	import Kbd from '$lib/ui/Kbd.svelte';
 	import Tip from '$lib/ui/Tip.svelte';
 	import { setFallbackMenu, type MenuItem } from '$lib/ui/context-menu.svelte';
-	import { prompts } from '$lib/ui/prompt.svelte';
 	import { setWindowTitle } from '$lib/windows';
+	import { readOptions, sortMenu, sortOptions } from '$lib/sort-menu';
+	import { onLibraryPaste, pickFiles } from '$lib/add-paper';
+	import AddPapers, { addPapers } from '$lib/components/AddPapers.svelte';
+	import CategoryDialog, { showCategoryDialog } from '$lib/components/CategoryDialog.svelte';
+	import CycleButton, { type CycleOption } from '$lib/ui/CycleButton.svelte';
+	import type { SortKey } from '$lib/settings.svelte';
+	import { starter } from '$lib/onboarding/starter.svelte';
+	import ToggleGroup from '$lib/ui/ToggleGroup.svelte';
 
 	let search = $state<HTMLInputElement>();
 	let searchFocused = $state(false);
@@ -27,33 +35,20 @@
 	const viewKey = $derived(JSON.stringify(library.view));
 	const minCard = $derived({ small: 140, medium: 170, large: 220 }[settings.values.cardSize]);
 
-	async function newCategory() {
-		const name = await prompts.ask('New category', { placeholder: 'e.g. Robotics', confirmLabel: 'Create' });
-		if (name) library.view = { kind: 'category', id: await library.addCategory(name, 'sage') };
-	}
+	const newCategory = () => showCategoryDialog();
 
 	// Right-click on empty space.
 	const backgroundMenu = (): MenuItem[] => [
-		{ label: 'Add papers…', icon: 'icon-[lucide--file-plus]', shortcut: keys.addPapers, onSelect: () => library.pickAndImport() },
+		{ label: 'Add papers…', icon: 'icon-[lucide--plus]', shortcut: keys.addArxiv, onSelect: () => (addPapers.open = true) },
 		{ label: 'New category…', icon: 'icon-[lucide--folder-plus]', onSelect: newCategory },
-		{
-			label: 'Sort by',
-			icon: 'icon-[lucide--arrow-down-wide-narrow]',
-			separatorBefore: true,
-			items: (
-				[
-					['added', 'Date added'],
-					['opened', 'Last opened'],
-					['year', 'Year'],
-					['title', 'Title']
-				] as const
-			).map(([v, label]) => ({ label, checked: settings.values.sortBy === v, onSelect: () => settings.set('sortBy', v) }))
-		},
+		{ label: 'Sort', icon: 'icon-[lucide--arrow-down-wide-narrow]', separatorBefore: true, items: sortMenu() },
+		{ label: 'Show', icon: 'icon-[lucide--eye]', items: readOptions.map((o) => ({ label: o.label, checked: settings.values.readFilter === o.value, onSelect: () => settings.set('readFilter', o.value) })) },
 		{
 			label: 'Card size',
 			icon: 'icon-[lucide--layout-grid]',
 			items: (['small', 'medium', 'large'] as const).map((v) => ({ label: v[0].toUpperCase() + v.slice(1), checked: settings.values.cardSize === v, onSelect: () => settings.set('cardSize', v) }))
 		},
+		{ label: 'Cover style', icon: 'icon-[lucide--book]', items: coverStyles.map((c) => ({ label: c.label, checked: settings.values.coverStyle === c.value, onSelect: () => settings.set('coverStyle', c.value) })) },
 		{ label: 'Settings…', icon: 'icon-[lucide--settings]', shortcut: keys.settings, separatorBefore: true, onSelect: () => (settingsDialog.open = true) }
 	];
 	$effect(() => setFallbackMenu(backgroundMenu));
@@ -65,17 +60,30 @@
 			search?.select();
 		} else if (matches(e, keys.addPapers)) {
 			e.preventDefault();
-			library.pickAndImport();
+			void pickFiles();
+		} else if (matches(e, keys.addArxiv)) {
+			e.preventDefault();
+			addPapers.open = true;
 		} else if (e.key === 'Escape' && e.target === search) {
 			library.query = '';
 			search?.blur();
 		}
 	}
 
-	const iconBtn = 'grid size-8 place-items-center rounded-md text-stone-600 hover:bg-stone-200/70 dark:text-stone-300 dark:hover:bg-stone-800';
+	const sortByOptions: CycleOption<SortKey>[] = sortOptions.map((o) => ({ value: o.value, label: o.label, icon: o.icon }));
+	const orderOptions = $derived.by((): CycleOption<boolean>[] => {
+		const o = sortOptions.find((x) => x.value === settings.values.sortBy) ?? sortOptions[0];
+		return [
+			{ value: true, label: o.desc, icon: 'icon-[lucide--arrow-down-wide-narrow]' },
+			{ value: false, label: o.asc, icon: 'icon-[lucide--arrow-up-narrow-wide]' }
+		];
+	});
+	const iconBtn = iconButton(8);
 </script>
 
-<svelte:window {onkeydown} />
+<svelte:window {onkeydown} onpaste={onLibraryPaste} />
+
+<CategoryDialog />
 
 <div class="flex h-full">
 	<Sidebar onNewCategory={newCategory} />
@@ -85,10 +93,19 @@
 			<h1 class="font-serif text-xl" data-tauri-drag-region>{title}</h1>
 			<span class="text-sm text-stone-400 tabular-nums" data-tauri-drag-region>{library.filtered.length}</span>
 			<div class="flex-1" data-tauri-drag-region></div>
-			{#if library.importing}
+			{#if starter.running}
+				<span class="flex items-center gap-1.5 text-xs text-stone-500" transition:fade><span class="icon-[lucide--loader-circle] size-3.5 animate-spin"></span>Adding example papers {starter.done}/{starter.total || '…'}</span>
+			{:else if library.importing}
 				<span class="flex items-center gap-1.5 text-xs text-stone-500" transition:fade><span class="icon-[lucide--loader-circle] size-3.5 animate-spin"></span>Adding {library.importing}…</span>
 			{/if}
-			<label class="flex h-8 w-64 items-center gap-2 rounded-lg bg-stone-200/60 pr-1.5 pl-2.5 ring-stone-400/50 focus-within:bg-white focus-within:ring-2 dark:bg-stone-800/60 dark:focus-within:bg-stone-900">
+			{#if library.view.kind !== 'recent'}
+				<div class="flex items-center">
+					<CycleButton title="Sort by" options={sortByOptions} value={settings.values.sortBy} onchange={(v) => settings.set('sortBy', v)} showLabel class="h-8" />
+					<CycleButton title="Order" options={orderOptions} value={settings.values.sortDesc} onchange={(v) => settings.set('sortDesc', v)} showLabel class="h-8" />
+				</div>
+			{/if}
+			<ToggleGroup label="Show papers" value={settings.values.readFilter} onValueChange={(v) => settings.set('readFilter', v)} items={readOptions.map((o) => ({ value: o.value, label: o.value === 'all' ? 'All' : o.label }))} />
+			<label class="flex h-8 w-64 items-center gap-2 rounded-lg bg-stone-200/60 pr-1.5 pl-2.5 ring-blue-500/60 focus-within:bg-white focus-within:ring-2 dark:bg-stone-800/60 dark:focus-within:bg-stone-900">
 				<span class="icon-[lucide--search] size-3.5 shrink-0 text-stone-400"></span>
 				<input
 					bind:this={search}
@@ -100,14 +117,12 @@
 					class="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-stone-400 focus:placeholder:text-transparent"
 				/>
 				{#if library.query}
-					<button class="grid size-5 place-items-center rounded text-stone-400 hover:text-stone-700" aria-label="Clear search" onclick={() => ((library.query = ''), search?.focus())}><span class="icon-[lucide--x] size-3.5"></span></button>
+					<button class="grid size-5 place-items-center rounded-md text-stone-400 hover:text-stone-700" aria-label="Clear search" onclick={() => ((library.query = ''), search?.focus())}><span class="icon-[lucide--x] size-3.5"></span></button>
 				{:else if !searchFocused}
 					<Kbd>{keys.search}</Kbd>
 				{/if}
 			</label>
-			<Tip label="Add papers" shortcut={keys.addPapers}>
-				{#snippet child({ props })}<button {...props} class={iconBtn} aria-label="Add papers" onclick={() => library.pickAndImport()}><span class="icon-[lucide--plus] size-4"></span></button>{/snippet}
-			</Tip>
+			<AddPapers />
 			<Tip label="Settings" shortcut={keys.settings}>
 				{#snippet child({ props })}<button {...props} class={iconBtn} aria-label="Settings" onclick={() => (settingsDialog.open = true)}><span class="icon-[lucide--settings] size-4"></span></button>{/snippet}
 			</Tip>
@@ -117,7 +132,7 @@
 			<p class="mx-6 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{library.error}</p>
 		{/if}
 
-		<div class="min-h-0 flex-1 overflow-y-auto px-6 pt-2 pb-10">
+		<div class="min-h-0 flex-1 overflow-y-auto px-6 pt-4 pb-10">
 			{#if library.filtered.length}
 				<!-- Switching category swaps the whole grid (a short fade); searching
 				     and tag filters within it re-flow with flip (local transitions). -->
@@ -134,7 +149,7 @@
 				<div class="grid h-full place-items-center text-center text-sm text-stone-500" in:fade>
 					<div>
 						<p>{library.papers.length ? 'No papers match.' : 'Your library is empty.'}</p>
-						<p class="mt-2 flex items-center justify-center gap-1">Drop PDFs here, or press <Kbd>{keys.addPapers}</Kbd></p>
+						<p class="mt-2 flex items-center justify-center gap-1">Drop PDFs here, press <Kbd>{keys.addPapers}</Kbd>, or paste an arXiv link</p>
 					</div>
 				</div>
 			{/if}

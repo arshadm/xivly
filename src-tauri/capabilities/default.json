@@ -14,16 +14,18 @@
     "core:window:allow-set-focus",
     "core:window:allow-unminimize",
     "core:window:allow-set-title",
+    "core:window:allow-set-size",
+    "core:window:allow-center",
     "core:webview:allow-create-webview-window",
     "opener:default",
     "opener:allow-reveal-item-in-dir",
-    "dialog:allow-open",
     "dialog:allow-save",
     "dialog:allow-message",
     "store:default",
     "fs:allow-write-file",
     "window-state:default",
     "clipboard-manager:allow-read-text",
-    "clipboard-manager:allow-write-text"
+    "clipboard-manager:allow-write-text",
+    "clipboard-manager:allow-write-html"
   ]
 }

@@ -7,11 +7,6 @@
 	Pass the same name to `viewer.focus(target, { highlight: 'glow' })`; recipes only
 	draw for the names they know and fall back to the default element otherwise.
 -->
-<script lang="ts" module>
-	export const focusRecipes = ['glow', 'brackets', 'marker', 'ink'] as const;
-	export type FocusRecipe = (typeof focusRecipes)[number];
-</script>
-
 <script lang="ts">
 	import { Viewer } from 'svelte-pdf-mini';
 
@@ -64,7 +59,7 @@
 		bottom: -5px;
 		height: 6px;
 		border-radius: 999px;
-		background: #f59e0b;
+		background: var(--color-amber-500);
 		transform-origin: left;
 		animation: fx-draw var(--focus-duration) ease-out forwards;
 	}

@@ -1,12 +1,11 @@
-// The menu for a paper: card right-click in the library, "…" in the reader.
-import { bibtex, paperLinks } from './cite';
+// The menu for a paper: a card's right-click in the library.
+import { paperLinks } from './cite';
 import { toast } from './components/Toasts.svelte';
 import { detailsDialog } from './components/DetailsDialog.svelte';
-import { library } from './library.svelte';
+import { ARCHIVED, library } from './library.svelte';
+import { fileManager, trashName } from './os';
 import { platform } from './platform';
-import { keys } from './shortcuts';
 import type { Paper } from './types';
-import { clipboard } from './ui/clipboard';
 import type { MenuItem } from './ui/context-menu.svelte';
 import { prompts } from './ui/prompt.svelte';
 import { openPaper } from './windows';
@@ -20,25 +19,41 @@ export async function addTag(p: Paper) {
 }
 
 export async function trashPaper(p: Paper) {
-	const ok = await prompts.confirm(`Move “${p.title}” to the Trash?`, {
-		message: platform.kind === 'desktop' ? 'Its folder goes to the macOS Trash.' : 'Its folder goes to .xivly/trash in your library.',
-		confirmLabel: 'Move to Trash',
+	const ok = await prompts.confirm(`Move “${p.title}” to the ${trashName}?`, {
+		message: platform.kind === 'desktop' ? `Its folder goes to the ${trashName}.` : 'Its folder goes to .xivly/trash in your library.',
+		confirmLabel: `Move to ${trashName}`,
 		danger: true
 	});
 	if (ok) await library.remove(p.id).catch(fail);
 	return ok;
 }
 
-export function paperMenu(p: Paper, { inReader = false } = {}): MenuItem[] {
+/** Archiving is the `archived` tag (hidden by default in the library). */
+function toggleArchived(p: Paper): MenuItem {
+	const archived = !!p.tags?.includes(ARCHIVED);
+	const tags = archived ? p.tags!.filter((t) => t !== ARCHIVED) : [...(p.tags ?? []), ARCHIVED];
+	return {
+		label: archived ? 'Unarchive' : 'Archive',
+		icon: archived ? 'icon-[lucide--archive-restore]' : 'icon-[lucide--archive]',
+		separatorBefore: true,
+		onSelect: () => library.update(p.id, { tags: tags.length ? tags : null }).catch(fail)
+	};
+}
+
+export function paperMenu(p: Paper): MenuItem[] {
 	const links = paperLinks(p);
-	const copy = (text: string, what: string) => clipboard.write(text).then(() => toast(`${what} copied`), fail);
 	const items: MenuItem[] = [];
-	if (!inReader) items.push({ label: 'Open', icon: 'icon-[lucide--book-open]', shortcut: '↵', onSelect: () => openPaper(p.id, p.title) });
+	items.push({ label: 'Open', icon: 'icon-[lucide--book-open]', shortcut: '↵', onSelect: () => openPaper(p.id, p.title) });
+	items.push(
+		p.read
+			? { label: 'Mark as unread', icon: 'icon-[lucide--circle-dashed]', onSelect: () => library.toggleRead(p) }
+			: { label: 'Mark as read', icon: 'icon-[lucide--circle-check]', onSelect: () => library.toggleRead(p) }
+	);
 	items.push(
 		{
 			label: 'Category',
 			icon: 'icon-[lucide--folder]',
-			separatorBefore: !inReader,
+			separatorBefore: true,
 			items: [
 				...library.categories.map((c) => ({
 					label: c.name,
@@ -67,22 +82,12 @@ export function paperMenu(p: Paper, { inReader = false } = {}): MenuItem[] {
 	);
 	if (links.length)
 		items.push({ label: 'Links', icon: 'icon-[lucide--link]', items: links.map((l) => ({ label: l.label, icon: l.icon, onSelect: () => platform.openUrl(l.url) })) });
+	items.push({ label: 'Edit details…', icon: 'icon-[lucide--pencil]', separatorBefore: true, onSelect: () => detailsDialog.show(p.id) });
+	if (platform.reveal) items.push({ label: `Show in ${fileManager}`, icon: 'icon-[lucide--folder-search]', onSelect: () => platform.reveal?.(`papers/${p.id}/paper.pdf`) });
 	items.push(
-		{
-			label: 'Copy',
-			icon: 'icon-[lucide--copy]',
-			items: [
-				{ label: 'Title', onSelect: () => copy(p.title, 'Title') },
-				{ label: 'BibTeX', onSelect: () => copy(bibtex(p), 'BibTeX') },
-				...(links[0] ? [{ label: 'Link', onSelect: () => copy(links[0].url, 'Link') }] : [])
-			]
-		},
-		{ label: 'Edit details…', icon: 'icon-[lucide--pencil]', separatorBefore: true, onSelect: () => detailsDialog.show(p.id) }
-	);
-	if (platform.reveal) items.push({ label: 'Show in Finder', icon: 'icon-[lucide--folder-search]', onSelect: () => platform.reveal?.(`papers/${p.id}/paper.pdf`) });
-	items.push(
-		{ label: 'Re-extract metadata', icon: 'icon-[lucide--sparkles]', onSelect: () => library.refreshMetadata(p.id).then(() => toast('Metadata updated'), fail) },
-		{ label: 'Move to Trash', icon: 'icon-[lucide--trash-2]', danger: true, separatorBefore: true, onSelect: () => trashPaper(p) }
+		{ label: 'Refresh metadata', icon: 'icon-[lucide--refresh-cw]', onSelect: () => library.refreshMetadata(p.id).then(() => toast('Metadata updated'), fail) },
+		toggleArchived(p),
+		{ label: `Move to ${trashName}`, icon: 'icon-[lucide--trash-2]', danger: true, onSelect: () => trashPaper(p) }
 	);
 	return items;
 }

@@ -1,5 +1,6 @@
 // Bump the version everywhere, commit and tag: `bun run release 0.2.0`.
 // Pushing the tag (`git push --follow-tags`) triggers .github/workflows/release.yml.
+// See RELEASING.md (svelte-pdf-mini must be on npm first).
 import { execSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 
@@ -17,6 +18,7 @@ edit("src-tauri/Cargo.toml", (s) => s.replace(/^version = ".*"$/m, `version = "$
 
 const run = (cmd) => execSync(cmd, { stdio: "inherit" });
 run("cargo update -p xivly --offline --manifest-path src-tauri/Cargo.toml");
+run(`node scripts/check-version.js v${version}`);
 run("git add package.json src-tauri/tauri.conf.json src-tauri/Cargo.toml src-tauri/Cargo.lock");
 run(`git commit -m "release v${version}"`);
 run(`git tag -a v${version} -m "v${version}"`);

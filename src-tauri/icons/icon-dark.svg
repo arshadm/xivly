@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <filter id="soft" x="-10%" y="-40%" width="120%" height="180%"><feGaussianBlur stdDeviation="2.5"/></filter>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="125%"><feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#5b3a25" flood-opacity=".16"/></filter>
+  </defs>
+  <!-- macOS icon grid: an 824 px rounded square centred on the 1024 canvas. -->
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="#2a2420"/>
+  <g filter="url(#shadow)"><rect x="250" y="190" width="524" height="660" rx="36" fill="#efe9df"/></g>
+  <path d="M626 190 h88 v236 l-44 -37 l-44 37z" fill="#d48f6f"/>
+  <path transform="translate(316.26 440) scale(0.29 -0.29)" fill="#2a2420" d="M97 -230Q53 -230 29.5 -204.5Q6 -179 6 -135Q6 -95 27.0 -53.0Q48 -11 94.5 38.5Q141 88 215 149L135 406Q128 430 118.5 438.5Q109 447 93 447Q78 447 65.0 442.0Q52 437 39 433L20 490Q34 498 56.5 506.0Q79 514 103.5 519.0Q128 524 145 524Q176 524 196.5 515.5Q217 507 231.0 487.0Q245 467 255 432L318 206Q370 254 398.5 285.5Q427 317 437.5 338.5Q448 360 448 380Q448 395 441.0 403.0Q434 411 414 418L376 430Q372 457 379.0 478.0Q386 499 403.5 511.5Q421 524 449 524Q489 524 512.0 498.0Q535 472 535 429Q535 404 525.0 376.5Q515 349 492.0 316.0Q469 283 430.0 243.5Q391 204 334 155L418 -113Q425 -136 434.0 -145.0Q443 -154 458 -154Q470 -154 481.5 -150.0Q493 -146 513 -134L535 -181Q519 -195 497.5 -206.5Q476 -218 451.5 -224.0Q427 -230 401 -230Q373 -230 354.5 -222.0Q336 -214 324.5 -197.0Q313 -180 305 -154L232 97Q190 61 161.0 28.0Q132 -5 117.0 -32.0Q102 -59 102 -79Q102 -92 111.5 -102.0Q121 -112 140 -120L174 -131Q178 -178 157.0 -204.0Q136 -230 97 -230Z"/>
+  <rect x="320" y="508" width="384" height="22" rx="11.0" fill="#cfc6b6"/><path d="M327.4 545 C 431.0 537, 545.0 546, 643.0 542 A 35.0 35.7 0 0 1 647.0 612 C 533.6 618, 412.0 609, 327.4 614 A 29.4 32.34 0 0 1 327.4 545 Z" fill="#f0c24a" opacity="0.7" filter="url(#soft)" transform="rotate(-3 488.0 577.0)" style="mix-blend-mode:multiply"/><rect x="320" y="566" width="330" height="22" rx="11.0" fill="#7c7365"/><rect x="320" y="624" width="384" height="22" rx="11.0" fill="#cfc6b6"/><rect x="320" y="682" width="350" height="22" rx="11.0" fill="#cfc6b6"/><rect x="320" y="740" width="260" height="22" rx="11.0" fill="#cfc6b6"/>
+</svg>

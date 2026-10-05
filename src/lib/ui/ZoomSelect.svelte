@@ -9,6 +9,7 @@
 	const modes: { value: string; label: string }[] = [
 		{ value: 'auto', label: 'Automatic' },
 		{ value: 'page-width', label: 'Page width' },
+		{ value: 'page-height', label: 'Page height' },
 		{ value: 'page-fit', label: 'Page fit' }
 	];
 	const steps = [0.5, 0.75, 1, 1.25, 1.5, 2, 3, 4].map((s) => ({ value: `z:${s}`, label: `${Math.round(s * 100)}%` }));
@@ -26,12 +27,12 @@
 			{#snippet child({ wrapperProps, props, open })}
 				{#if open}
 					<div {...wrapperProps}>
-						<div {...props} transition:scale={{ start: 0.96, duration: 120 }} class="z-50 w-40 rounded-lg border border-stone-200 bg-white p-1 text-sm shadow-xl dark:border-stone-700 dark:bg-stone-900">
+						<div {...props} transition:scale={{ start: 0.97, duration: 100 }} class="z-(--z-menu) w-40 rounded-xl border border-stone-200 bg-white p-1 text-[13px] text-stone-800 shadow-xl dark:text-stone-100 dark:border-stone-700 dark:bg-stone-900">
 							{#each [modes, steps] as group, gi (gi)}
 								{#if gi}<div class="my-1 h-px bg-stone-200 dark:bg-stone-700"></div>{/if}
 								{#each group as item (item.value)}
-									<Select.Item value={item.value} label={item.label} class="flex cursor-pointer items-center justify-between rounded-md px-2 py-1.5 outline-none data-[highlighted]:bg-stone-100 dark:data-[highlighted]:bg-stone-800">
-										{#snippet children({ selected })}{item.label}{#if selected}<span class="icon-[lucide--check] size-4"></span>{/if}{/snippet}
+									<Select.Item value={item.value} label={item.label} class="flex cursor-default items-center justify-between rounded-md px-2 py-1.5 outline-none data-[highlighted]:bg-stone-100 dark:data-[highlighted]:bg-stone-800">
+										{#snippet children({ selected })}{item.label}{#if selected}<span class="icon-[lucide--check] size-3.5"></span>{/if}{/snippet}
 									</Select.Item>
 								{/each}
 							{/each}

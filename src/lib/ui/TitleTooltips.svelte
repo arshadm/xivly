@@ -30,6 +30,13 @@
 		if (!t || t === anchor) return;
 		hide();
 		const raw = t.getAttribute('title')?.trim() ?? '';
+		// Already a <Tip> trigger (label + shortcut): just silence the native one.
+		if (t.hasAttribute('data-tooltip-trigger')) {
+			t.dataset.title = raw;
+			t.removeAttribute('title');
+			anchor = t;
+			return;
+		}
 		const m = /^(.*?)\s*\(([^()]{1,12})\)$/.exec(raw);
 		// Only when it adds something: a tooltip repeating the visible text is noise.
 		const visible = t.innerText?.replace(/\s+/g, ' ').trim().toLowerCase();
@@ -56,7 +63,7 @@
 			{#snippet child({ wrapperProps, props, open: isOpen })}
 				{#if isOpen && anchor}
 					<div {...wrapperProps}>
-						<div {...props} transition:fly={{ y: -4, duration: 120 }} class="pointer-events-none z-[100] flex items-center gap-2 rounded-md bg-stone-900 px-2 py-1 text-xs text-white shadow-lg dark:bg-stone-100 dark:text-stone-900">
+						<div {...props} transition:fly={{ y: -4, duration: 120 }} class="pointer-events-none z-(--z-tooltip) flex items-center gap-2 rounded-md bg-stone-900 px-2 py-1 text-xs text-white shadow-lg dark:bg-stone-100 dark:text-stone-900">
 							{label}
 							{#if key}<Kbd class="border-stone-600 bg-stone-800 text-stone-300 dark:border-stone-300 dark:bg-white dark:text-stone-600">{key}</Kbd>{/if}
 						</div>

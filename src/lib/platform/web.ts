@@ -3,29 +3,15 @@
 // API (Chromium browsers), so iCloud/Dropbox folders and agents still work.
 // Elsewhere (Safari, Firefox) it falls back to the browser's private storage
 // (OPFS): same features, but the files only live in the browser.
+import { idb } from '../idb';
 import type { LibraryFs, Platform } from './types';
 
 type Dir = FileSystemDirectoryHandle;
 
 // ── Persist the directory handle in IndexedDB ───────────────────────────────
-const DB = 'xivly';
-function idb<T>(mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRequest): Promise<T> {
-	return new Promise((resolve, reject) => {
-		const open = indexedDB.open(DB, 1);
-		open.onupgradeneeded = () => open.result.createObjectStore('kv');
-		open.onerror = () => reject(open.error);
-		open.onsuccess = () => {
-			const db = open.result;
-			const tx = db.transaction('kv', mode);
-			const req = fn(tx.objectStore('kv'));
-			// Resolve once the transaction is committed, not just the request.
-			tx.oncomplete = () => (db.close(), resolve(req.result as T));
-			tx.onerror = tx.onabort = () => (db.close(), reject(tx.error ?? req.error));
-		};
-	});
-}
-const saveHandle = (h: Dir) => idb('readwrite', (s) => s.put(h, 'library'));
-const loadHandle = () => idb<Dir | undefined>('readonly', (s) => s.get('library'));
+const kv = idb('kv');
+const saveHandle = (h: Dir) => kv.set('library', h);
+const loadHandle = () => kv.get<Dir>('library');
 
 // ── LibraryFs over a directory handle ───────────────────────────────────────
 const split = (path: string) => path.split('/').filter((p) => p && p !== '.');
@@ -42,6 +28,9 @@ async function entryAt(root: Dir, path: string) {
 	const parent = await dirAt(root, parts);
 	return { parent, name };
 }
+
+/** Not there (vs. a real error such as a revoked permission). */
+const missing = (e: unknown) => e instanceof DOMException && (e.name === 'NotFoundError' || e.name === 'TypeMismatchError');
 
 async function copyDir(from: Dir, to: Dir) {
 	for await (const [name, h] of from.entries()) {
@@ -81,41 +70,49 @@ function dirFs(root: Dir): LibraryFs {
 				const out: { name: string; dir: boolean }[] = [];
 				for await (const [name, h] of d.entries()) out.push({ name, dir: h.kind === 'directory' });
 				return out;
-			} catch {
-				return [];
+			} catch (e) {
+				// A missing folder is empty; anything else (a revoked permission) must not look like it.
+				if (missing(e)) return [];
+				throw e;
 			}
 		},
 		async exists(path) {
-			const { parent, name } = await entryAt(root, path).catch(() => ({ parent: null, name: '' }));
-			if (!parent) return false;
-			for await (const key of parent.keys()) if (key === name) return true;
-			return false;
+			try {
+				const { parent, name } = await entryAt(root, path);
+				await parent.getFileHandle(name).catch((e) => (e instanceof DOMException && e.name === 'TypeMismatchError' ? null : Promise.reject(e)));
+				return true;
+			} catch (e) {
+				if (missing(e)) return false;
+				throw e;
+			}
 		},
 		async mkdir(path) {
 			await dirAt(root, split(path), true);
 		},
-		async rename(from, to) {
-			if (await fs.exists(to)) throw new Error(`${to} already exists`);
-			const src = await entryAt(root, from);
-			const dst = await entryAt(root, to);
-			const handle = await src.parent.getDirectoryHandle(src.name).catch(() => src.parent.getFileHandle(src.name));
-			// `move()` is Chromium-only; fall back to copy + delete.
-			const movable = handle as FileSystemHandle & { move?: (d: Dir, n: string) => Promise<void> };
-			try {
-				if (!movable.move) throw new Error('no move');
-				await movable.move(dst.parent, dst.name);
-			} catch {
-				if (handle.kind === 'directory') await copyDir(handle as Dir, await dst.parent.getDirectoryHandle(dst.name, { create: true }));
-				else await fs.write(to, (await fs.read(from))!);
-				await src.parent.removeEntry(src.name, { recursive: true });
-			}
-		},
 		async trash(path) {
 			const name = split(path).pop()!;
 			await fs.mkdir('.xivly/trash');
-			await fs.rename(path, `.xivly/trash/${Date.now()}-${name}`);
+			await move(path, `.xivly/trash/${Date.now()}-${name}`);
 		}
 	};
+
+	/** Rename a file or folder; fails if `to` exists. */
+	async function move(from: string, to: string) {
+		if (await fs.exists(to)) throw new Error(`${to} already exists`);
+		const src = await entryAt(root, from);
+		const dst = await entryAt(root, to);
+		const handle = await src.parent.getDirectoryHandle(src.name).catch(() => src.parent.getFileHandle(src.name));
+		// `move()` is Chromium-only; fall back to copy + delete.
+		const movable = handle as FileSystemHandle & { move?: (d: Dir, n: string) => Promise<void> };
+		try {
+			if (!movable.move) throw new Error('no move');
+			await movable.move(dst.parent, dst.name);
+		} catch {
+			if (handle.kind === 'directory') await copyDir(handle as Dir, await dst.parent.getDirectoryHandle(dst.name, { create: true }));
+			else await fs.write(to, (await fs.read(from))!);
+			await src.parent.removeEntry(src.name, { recursive: true });
+		}
+	}
 	return fs;
 }
 
@@ -164,6 +161,8 @@ export const webPlatform: Platform = {
 		return { fs: dirFs(h), name: h.name };
 	},
 	async openUrl(url) {
-		window.open(url, '_blank', 'noopener');
+		// Links come from paper.json and Hugging Face: never a `javascript:` URL in our origin.
+		const u = URL.parse(url);
+		if (u && (u.protocol === 'https:' || u.protocol === 'http:')) window.open(u.href, '_blank', 'noopener,noreferrer');
 	}
 };

@@ -1,17 +1,28 @@
-<!-- Settings (⌘,): every option is live; stored per platform and synced across windows. -->
+<!-- Settings (⌘, / Ctrl+,): every option is live; stored per platform and synced across windows. -->
 <script module lang="ts">
 	export const settingsDialog = $state({ open: false, section: 'general' as Section });
 	type Section = 'general' | 'reading' | 'layout' | 'annotations' | 'saving' | 'research' | 'library' | 'hooks' | 'shortcuts';
 </script>
 
 <script lang="ts">
+	import { button, iconButton, mutedIcon } from '$lib/ui/button';
 	import { Dialog } from 'bits-ui';
 	import type { Snippet } from 'svelte';
 	import { fade, scale } from 'svelte/transition';
 	import { library } from '$lib/library.svelte';
 	import { platform } from '$lib/platform';
-	import { settings, type SettingKey, type Settings } from '$lib/settings.svelte';
-	import { shortcuts } from '$lib/shortcuts';
+	import { coverStyles, settings, type SettingKey, type Settings } from '$lib/settings.svelte';
+	import { keys, shortcuts } from '$lib/shortcuts';
+	import { mac, trashName } from '$lib/os';
+	import { sortOptions } from '$lib/sort-menu';
+	import { downloadStarter, hasStarter, removeStarter, starter, STARTER_TAG } from '$lib/onboarding/starter.svelte';
+	import { prompts } from '$lib/ui/prompt.svelte';
+	import { toast } from './Toasts.svelte';
+
+	async function removeExamples() {
+		const n = library.papers.filter((p) => p.tags?.includes(STARTER_TAG)).length;
+		if (await prompts.confirm(`Move the ${n} example papers to the ${trashName}?`, { confirmLabel: `Move to ${trashName}`, danger: true })) await removeStarter().catch((e) => toast(String(e), 'error'));
+	}
 	import Kbd from '$lib/ui/Kbd.svelte';
 	import Select from '$lib/ui/Select.svelte';
 	import Slider from '$lib/ui/Slider.svelte';
@@ -54,13 +65,13 @@
 	<Dialog.Portal>
 		<Dialog.Overlay forceMount>
 			{#snippet child({ props, open })}
-				{#if open}<div {...props} transition:fade={{ duration: 150 }} class="fixed inset-0 z-50 bg-stone-950/30 backdrop-blur-[2px]"></div>{/if}
+				{#if open}<div {...props} transition:fade={{ duration: 150 }} class="fixed inset-0 z-(--z-dialog) bg-stone-950/30 backdrop-blur-[2px]"></div>{/if}
 			{/snippet}
 		</Dialog.Overlay>
 		<Dialog.Content forceMount>
 			{#snippet child({ props, open })}
 				{#if open}
-					<div {...props} transition:scale={{ start: 0.97, duration: 150 }} class="fixed top-1/2 left-1/2 z-50 flex h-[min(640px,88vh)] w-[min(820px,94vw)] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-2xl bg-white text-stone-800 shadow-2xl outline-none dark:bg-stone-900 dark:text-stone-100">
+					<div {...props} transition:scale={{ start: 0.97, duration: 150 }} class="fixed top-1/2 left-1/2 z-(--z-dialog) flex h-[min(640px,88vh)] w-[min(820px,94vw)] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-2xl bg-white text-stone-800 shadow-2xl outline-none dark:bg-stone-900 dark:text-stone-100">
 						<nav class="flex w-52 shrink-0 flex-col gap-0.5 border-r border-stone-200 bg-stone-50 p-3 dark:border-stone-800 dark:bg-stone-950/40">
 							<Dialog.Title class="px-2 pt-1 pb-3 font-serif text-lg">Settings</Dialog.Title>
 							{#each visible as sec (sec.id)}
@@ -72,27 +83,27 @@
 									<span class="{sec.icon} size-4 text-stone-500"></span>{sec.label}
 								</button>
 							{/each}
-							<button class="mt-auto px-2 py-1 text-left text-xs text-stone-500 hover:text-red-600" onclick={() => confirm('Reset every setting to its default?') && settings.reset()}>Reset to defaults</button>
+							<button class="mt-auto px-2 py-1 text-left text-xs text-stone-500 hover:text-red-600 dark:hover:text-red-400" onclick={async () => (await prompts.confirm('Reset every setting to its default?', { confirmLabel: 'Reset', danger: true })) && settings.reset()}>Reset to defaults</button>
 						</nav>
 
 						<div class="flex min-w-0 flex-1 flex-col">
 							<header class="flex h-12 shrink-0 items-center justify-between border-b border-stone-100 pr-3 pl-6 dark:border-stone-800">
 								<h2 class="text-sm font-medium">{visible.find((x) => x.id === settingsDialog.section)?.label}</h2>
-								<Dialog.Close class="grid size-8 place-items-center rounded-md text-stone-500 hover:bg-stone-100 dark:hover:bg-stone-800" aria-label="Close"><span class="icon-[lucide--x] size-4"></span></Dialog.Close>
+								<Dialog.Close class={iconButton(8, mutedIcon)} aria-label="Close"><span class="icon-[lucide--x] size-4"></span></Dialog.Close>
 							</header>
 							<div class="min-h-0 flex-1 overflow-y-auto px-6 py-2">
 
 							{#if settingsDialog.section === 'general'}
 								{#snippet themeCtl()}<ToggleGroup label="Appearance" value={s.theme} onValueChange={set('theme')} items={[{ value: 'system', label: 'System', icon: 'icon-[lucide--monitor]' }, { value: 'light', label: 'Light', icon: 'icon-[lucide--sun]' }, { value: 'dark', label: 'Dark', icon: 'icon-[lucide--moon]' }]} />{/snippet}
-								{@render row('Appearance', 'Light or dark interface and pages (⌘⇧D flips it)', themeCtl)}
+								{@render row('Appearance', `Light or dark interface and pages (${keys.toggleTheme} flips it)`, themeCtl)}
 								{#snippet focusCtl()}<Select label="Link target effect" value={s.focusStyle} onValueChange={set('focusStyle')} items={[{ value: 'glow', label: 'Glow' }, { value: 'brackets', label: 'Brackets' }, { value: 'marker', label: 'Marker' }, { value: 'ink', label: 'Ink' }, { value: 'pulse', label: 'Pulse' }, { value: 'outline', label: 'Outline' }, { value: 'spotlight', label: 'Spotlight' }]} />{/snippet}
 								{@render row('Link target effect', 'How a figure, table or section is highlighted when you follow a link to it', focusCtl)}
 								{@render toggle('linkPreviews', 'Link previews', 'Hover a link to preview its target (figures, sections, equations, URLs)')}
 								{@render toggle('citationCards', 'Citation cards', 'Hover a citation to see the reference, with online metadata')}
 							{:else if settingsDialog.section === 'reading'}
-								{@render toggle('tintPages', 'Tint pages by category', 'Pages take the soft colour of the paper’s category (set it in the library)')}
-								{#snippet strengthCtl()}<span class="flex items-center gap-2"><Slider disabled={!s.tintPages} label="Tint strength" value={s.paperStrength} onValueChange={set('paperStrength')} /><span class="w-9 text-right text-xs text-stone-500 tabular-nums">{Math.round(s.paperStrength * 100)}%</span></span>{/snippet}
-								{@render row('Tint strength', 'How strongly pages take the paper colour', strengthCtl)}
+								{@render toggle('tintPages', 'Tint pages by category', 'Pages take the soft color of the paper’s category (set it in the library)')}
+								{#snippet strengthCtl()}<span class="flex items-center gap-2"><Slider disabled={!s.tintPages && s.pageColor === 'white'} label="Tint strength" value={s.paperStrength} onValueChange={set('paperStrength')} /><span class="w-9 text-right text-xs text-stone-500 tabular-nums">{Math.round(s.paperStrength * 100)}%</span></span>{/snippet}
+								{@render row('Tint strength', 'How strongly pages take the paper color', strengthCtl)}
 								{#snippet frameCtl()}<ToggleGroup label="Page edge" value={s.pageFrame} onValueChange={set('pageFrame')} items={[{ value: 'rounded', label: 'Rounded' }, { value: 'shadow', label: 'Shadow' }, { value: 'border', label: 'Border' }, { value: 'flat', label: 'Flat' }, { value: 'none', label: 'None' }]} />{/snippet}
 								{@render row('Page edge', '', frameCtl)}
 							{:else if settingsDialog.section === 'layout'}
@@ -104,7 +115,8 @@
 								{#snippet scrollCtl()}<ToggleGroup label="Scrolling" value={s.scrollMode} onValueChange={set('scrollMode')} items={[{ value: 'vertical', label: 'Continuous' }, { value: 'page', label: 'Paged' }, { value: 'horizontal', label: 'Horizontal' }]} />{/snippet}
 								{@render row('Scrolling', '', scrollCtl)}
 								{@render toggle('smoothZoom', 'Smooth zoom', 'Animate zoom changes')}
-								{@render toggle('wheelZoom', 'Pinch & ⌘-scroll zoom')}
+								{@render toggle('wheelZoom', `Pinch & ${mac ? '⌘' : 'Ctrl'}-scroll zoom`)}
+								{@render toggle('resumePosition', 'Resume where you left off', 'Otherwise papers open at the top')}
 								{@render toggle('sidePanel', 'Open the side panel', 'Show contents, pages, figures… when a paper opens')}
 								{@render toggle('progressBar', 'Reading progress bar')}
 								{@render toggle('breadcrumb', 'Section breadcrumb', 'Current section next to the title')}
@@ -120,15 +132,18 @@
 								{@render toggle('annotationsVisible', 'Show annotations')}
 								{@render toggle('sideNotes', 'Side notes', 'Notes in the page margin')}
 								{@render toggle('lineMarkers', 'Line markers', 'Marks in the gutter next to annotated lines')}
+								{@render toggle('selectionMenu', 'Menu on text selection', 'Colors, note and copy buttons over selected text')}
 								{@render toggle('editOnCreate', 'Write a note right away', 'Open the note editor when you create an annotation')}
 								{@render toggle('stickyTools', 'Keep the tool', 'Stay on the current tool after creating an annotation')}
+								{#snippet inkCtl()}<Select label="Pen style" value={s.inkSmoothing} onValueChange={set('inkSmoothing')} items={[{ value: 'steady', label: 'Steady (exponential smoothing)' }, { value: 'smooth', label: 'Smooth (keeps sharp corners)' }, { value: 'pen', label: 'Pen (variable width)' }, { value: 'raw', label: 'Raw' }]} />{/snippet}
+								{@render row('Pen style', 'How strokes are smoothed: Steady is calm, Smooth keeps sharp corners', inkCtl)}
 								{@render toggle('boxFill', 'Fill boxes', 'Boxes get a translucent fill (off: outline only)')}
 								{#snippet selCtl()}<ToggleGroup label="Select annotations with" value={s.selectOn} onValueChange={set('selectOn')} items={[{ value: 'click', label: 'Click' }, { value: 'dblclick', label: 'Double-click' }]} />{/snippet}
 								{@render row('Select annotations with', '', selCtl)}
-								{#snippet foreignCtl()}<ToggleGroup label="Other apps’ annotations" value={s.foreignAnnotations} onValueChange={set('foreignAnnotations')} items={[{ value: 'editable', label: 'Editable' }, { value: 'readonly', label: 'Read-only' }, { value: 'hidden', label: 'Hidden' }]} />{/snippet}
+								{#snippet foreignCtl()}<ToggleGroup label="Other apps’ annotations" value={s.foreignAnnotations} onValueChange={set('foreignAnnotations')} items={[{ value: 'readonly', label: 'Read-only' }, { value: 'editable', label: 'Editable' }, { value: 'hidden', label: 'Hidden' }]} />{/snippet}
 								{@render row('Annotations from other apps', 'Highlights made in Preview, Acrobat…', foreignCtl)}
 							{:else if settingsDialog.section === 'saving'}
-								{#snippet autoCtl()}<Select label="Autosave" value={String(s.autosaveSeconds)} onValueChange={(v) => settings.set('autosaveSeconds', Number(v))} items={[{ value: '0', label: 'Off (⌘S only)' }, { value: '30', label: 'Every 30 s' }, { value: '60', label: 'Every minute' }, { value: '300', label: 'Every 5 min' }]} />{/snippet}
+								{#snippet autoCtl()}<Select label="Autosave" value={String(s.autosaveSeconds)} onValueChange={(v) => settings.set('autosaveSeconds', Number(v))} items={[{ value: '0', label: `Off (${keys.save} only)` }, { value: '30', label: 'Every 30 s' }, { value: '60', label: 'Every minute' }, { value: '300', label: 'Every 5 min' }]} />{/snippet}
 								{@render row('Autosave', 'Annotations are written into the PDF file', autoCtl)}
 								{@render toggle('confirmUnsaved', 'Ask before closing unsaved work', 'Otherwise unsaved annotations are saved automatically on close')}
 							{:else if settingsDialog.section === 'research'}
@@ -136,11 +151,23 @@
 								{#snippet keyCtl()}<input class="h-8 w-56 rounded-md border border-stone-300 bg-transparent px-2 font-mono text-xs dark:border-stone-700" type="password" value={s.semanticScholarKey} placeholder="Optional" onchange={(e) => settings.set('semanticScholarKey', e.currentTarget.value.trim())} />{/snippet}
 								{@render row('Semantic Scholar API key', 'Higher rate limits', keyCtl)}
 							{:else if settingsDialog.section === 'library'}
-								{#snippet sortCtl()}<Select label="Sort papers by" value={s.sortBy} onValueChange={set('sortBy')} items={[{ value: 'added', label: 'Date added' }, { value: 'opened', label: 'Last opened' }, { value: 'year', label: 'Year' }, { value: 'title', label: 'Title' }]} />{/snippet}
+								{#snippet sortCtl()}<span class="flex items-center gap-2"><Select label="Sort papers by" value={s.sortBy} onValueChange={set('sortBy')} items={sortOptions.map((o) => ({ value: o.value, label: o.label }))} /><ToggleGroup label="Order" value={s.sortDesc ? 'desc' : 'asc'} onValueChange={(v) => settings.set('sortDesc', v === 'desc')} items={[{ value: 'desc', label: '', title: 'Descending', icon: 'icon-[lucide--arrow-down-wide-narrow]' }, { value: 'asc', label: '', title: 'Ascending', icon: 'icon-[lucide--arrow-up-narrow-wide]' }]} /></span>{/snippet}
 								{@render row('Sort papers by', '', sortCtl)}
 								{#snippet sizeCtl()}<ToggleGroup label="Card size" value={s.cardSize} onValueChange={set('cardSize')} items={[{ value: 'small', label: 'Small' }, { value: 'medium', label: 'Medium' }, { value: 'large', label: 'Large' }]} />{/snippet}
 								{@render row('Card size', '', sizeCtl)}
-								{#snippet locCtl()}<button class="h-8 rounded-md border border-stone-300 px-3 text-[13px] hover:bg-stone-100 dark:border-stone-700 dark:hover:bg-stone-800" onclick={() => library.choose()}>Change…</button>{/snippet}
+								{#snippet coverCtl()}<Select label="Cover style" value={s.coverStyle} onValueChange={set('coverStyle')} items={coverStyles} />{/snippet}
+								{@render row('Cover style', '', coverCtl)}
+								{#snippet samplesCtl()}
+									<span class="flex items-center gap-2">
+										{#if starter.running}<span class="text-xs text-stone-500 tabular-nums">Adding {starter.done}/{starter.total || '…'}</span>
+										{:else}
+											<button class={button('secondary')} onclick={() => downloadStarter()}>{hasStarter() ? 'Add missing' : 'Add'}</button>
+											{#if hasStarter()}<button class={button('destructive-soft')} onclick={removeExamples}>Remove</button>{/if}
+										{/if}
+									</span>
+								{/snippet}
+								{@render row('Example papers', starter.error ?? 'Annotated papers to explore the app (tagged #demo)', samplesCtl)}
+								{#snippet locCtl()}<button class={button('secondary')} onclick={() => library.choose()}>Change…</button>{/snippet}
 								{@render row('Library folder', library.name, locCtl)}
 							{:else if settingsDialog.section === 'hooks'}
 								{#snippet hookCtl()}<Select label="Hook notifications" value={s.hookToasts} onValueChange={set('hookToasts')} items={[{ value: 'errors', label: 'Failures only' }, { value: 'all', label: 'Every run' }, { value: 'off', label: 'Never' }]} />{/snippet}
@@ -149,7 +176,7 @@
 									Put executable scripts in <code>.xivly/hooks/</code>, named after an event: <code>paper-added</code>, <code>paper-saved</code>, <code>paper-updated</code>, <code>paper-removed</code>. They run in the paper's folder with <code>paper.json</code> on stdin and <code>XIVLY_*</code> variables. See <code>paper-added.sample</code>.
 								</p>
 								{#if platform.reveal}
-									<button class="mt-3 h-8 rounded-md border border-stone-300 px-3 text-[13px] hover:bg-stone-100 dark:border-stone-700 dark:hover:bg-stone-800" onclick={() => platform.reveal?.('.xivly/hooks')}>Show hooks folder</button>
+									<button class={button('secondary', 'mt-3')} onclick={() => platform.reveal?.('.xivly/hooks')}>Show hooks folder</button>
 								{/if}
 							{:else}
 								{#each shortcuts as group (group.title)}

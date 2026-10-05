@@ -1,0 +1,3 @@
+/* Cascade layer order, loaded before any other stylesheet: the first mention of a
+   layer fixes its rank, and svelte-pdf-mini's component styles can load before app.css. */
+@layer theme, base, svelte-pdf-mini, components, utilities;

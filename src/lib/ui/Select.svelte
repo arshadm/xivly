@@ -12,11 +12,11 @@
 		{current}<span class="icon-[lucide--chevrons-up-down] size-3.5 text-stone-400"></span>
 	</Select.Trigger>
 	<Select.Portal>
-		<Select.Content sideOffset={4} forceMount class="z-[70]">
+		<Select.Content sideOffset={4} forceMount class="z-(--z-menu)">
 			{#snippet child({ wrapperProps, props, open })}
 				{#if open}
 					<div {...wrapperProps}>
-						<div {...props} transition:scale={{ start: 0.97, duration: 100 }} class="z-[70] min-w-40 rounded-lg border border-stone-200 bg-white p-1 text-[13px] shadow-xl dark:border-stone-700 dark:bg-stone-900">
+						<div {...props} transition:scale={{ start: 0.97, duration: 100 }} class="z-(--z-menu) min-w-40 rounded-xl border border-stone-200 bg-white p-1 text-[13px] text-stone-800 dark:text-stone-100 shadow-xl dark:border-stone-700 dark:bg-stone-900">
 							{#each items as item (item.value)}
 								<Select.Item value={item.value} label={item.label} class="flex cursor-default items-center justify-between gap-3 rounded-md px-2 py-1.5 outline-none data-[highlighted]:bg-stone-100 dark:data-[highlighted]:bg-stone-800">
 									{#snippet children({ selected })}{item.label}{#if selected}<span class="icon-[lucide--check] size-3.5"></span>{/if}{/snippet}

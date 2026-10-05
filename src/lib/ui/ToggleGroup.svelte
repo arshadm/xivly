@@ -22,6 +22,7 @@
 		<ToggleGroup.Item
 			value={item.value}
 			title={item.title}
+			aria-label={item.label || item.title}
 			class="inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-xs text-stone-600 transition-colors hover:text-stone-900 data-[state=on]:bg-white data-[state=on]:text-stone-900 data-[state=on]:shadow-sm dark:text-stone-400 dark:hover:text-stone-100 dark:data-[state=on]:bg-stone-600 dark:data-[state=on]:text-white"
 		>
 			{#if item.icon}<span class={cn(item.icon, 'size-3.5')}></span>{/if}

@@ -16,7 +16,6 @@ const inbox = `${root}-inbox`;
 const cache = join(homedir(), '.cache/xivly-seed');
 
 const categories = [
-	{ id: 'to-read', name: 'To read', color: 'sand' },
 	{ id: 'vision', name: 'Vision', color: 'sage' },
 	{ id: 'language', name: 'Language', color: 'sky' },
 	{ id: 'generative', name: 'Generative', color: 'rose' },
@@ -61,7 +60,7 @@ const papers: Seed[] = [
 	{ arxiv: '2309.06180', category: 'systems', tags: ['llm', 'inference'],
 		links: { project: 'https://vllm.ai', github: ['https://github.com/vllm-project/vllm'] } },
 	{ arxiv: 'hep-th/9711200', category: 'theory', tags: ['ads-cft', 'classic'] }, // old-style id
-	{ arxiv: '2106.09685', category: 'to-read', tags: ['llm', 'fine-tuning'],
+	{ arxiv: '2106.09685', category: 'language', tags: ['llm', 'fine-tuning'],
 		links: { github: ['https://github.com/microsoft/LoRA'] } },
 	{ arxiv: '1512.03385', tags: ['classification', 'classic'] }, // uncategorized
 	// Edge case: category id not in library.json (e.g. set by an agent) -> Uncategorized.

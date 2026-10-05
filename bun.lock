@@ -11,10 +11,9 @@
         "@tauri-apps/plugin-fs": "^2.6.0",
         "@tauri-apps/plugin-opener": "^2.7.0",
         "@tauri-apps/plugin-store": "^2.5.0",
-        "@tauri-apps/plugin-window-state": "^2.5.0",
         "bits-ui": "^2.19.5",
         "clsx": "^2.1.1",
-        "svelte-pdf-mini": "^0.2.0",
+        "svelte-pdf-mini": "^0.3.0",
         "tailwind-merge": "^3.7.0",
       },
       "devDependencies": {
@@ -26,6 +25,8 @@
         "@tailwindcss/vite": "^4.3.3",
         "@tauri-apps/cli": "^2",
         "@types/wicg-file-system-access": "^2023.10.7",
+        "fflate": "^0.8.3",
+        "pdfjs-dist": "^6.4.299",
         "svelte": "^5.57.1",
         "svelte-check": "^4.6.0",
         "tailwindcss": "^4.3.3",
@@ -209,8 +210,6 @@
 
     "@tauri-apps/plugin-store": ["@tauri-apps/plugin-store@2.5.0", "", { "dependencies": { "@tauri-apps/api": "^2.12.0" } }, "sha512-+ykjiQwMJCSk/U2enHA8peKBWgDKgrP7JfZnGwQpqzwA0nVtKTc0LCyxWr2whOrcQoQqtUdr9NVdDZpfKpT1Xw=="],
 
-    "@tauri-apps/plugin-window-state": ["@tauri-apps/plugin-window-state@2.5.0", "", { "dependencies": { "@tauri-apps/api": "^2.12.0" } }, "sha512-ySI/32fpC1ZTslIZ00/wf9HujyDnkG3OPL16uuLjG53y1hTgjIJ9G2VPuOL1IV8GVr3xeF6lnr6h2T73HuGXow=="],
-
     "@types/cookie": ["@types/cookie@0.6.0", "", {}, "sha512-4Kh9a6B2bQciAhf7FSuMRRkUWecJgJu9nPnx3yzpsfXX/c50REIqpHY4C82bXP90qrLtXtkDxTZosYO3UpOwlA=="],
 
     "@types/estree": ["@types/estree@1.0.9", "", {}, "sha512-GhdPgy1el4/ImP05X05Uw4cw2/M93BCUmnEvWZNStlCzEKME4Fkk+YpoA5OiHNQmoS7Cafb8Xa3Pya8m1Qrzeg=="],
@@ -379,7 +378,7 @@
 
     "svelte-check": ["svelte-check@4.7.6", "", { "dependencies": { "@jridgewell/trace-mapping": "^0.3.25", "@sveltejs/load-config": "^0.2.3", "chokidar": "^4.0.1", "fdir": "^6.2.0", "picocolors": "^1.0.0", "sade": "^1.7.4" }, "peerDependencies": { "svelte": "^4.0.0 || ^5.0.0-next.0", "typescript": "^5.0.0 || ^6.0.0" }, "bin": { "svelte-check": "bin/svelte-check" } }, "sha512-t2scM//ZuVbSY/T2w6FSBw1v9s2NEmh/g+sy1lqtosW5ylBV5AF4wFb1Ts9Kf3MbfPDUDJDZ9L436YT0SPTdvw=="],
 
-    "svelte-pdf-mini": ["svelte-pdf-mini@0.2.0", "", { "dependencies": { "@cantoo/pdf-lib": "^2.11.1", "@floating-ui/dom": "^1.8.0", "dompurify": "^3.4.16", "katex": "^0.19.0", "marked": "^18.0.14", "pdfjs-dist": "^6.4.299", "perfect-freehand": "^1.2.3", "runed": "^0.37.1", "svelte-toolbelt": "^0.10.6" }, "peerDependencies": { "svelte": "^5.57.0" } }, "sha512-kUbDEYYkM34Xkzbav6t/1boJTmLtyV+MRqUJppiyrdh112pr45agr+loXheLNBTWCsndYmKyCZPhYWTBSgBBAg=="],
+    "svelte-pdf-mini": ["svelte-pdf-mini@0.3.0", "", { "dependencies": { "@cantoo/pdf-lib": "^2.11.1", "@floating-ui/dom": "^1.8.0", "dompurify": "^3.4.16", "katex": "^0.19.0", "marked": "^18.0.14", "pdfjs-dist": "^6.4.299", "perfect-freehand": "^1.2.3", "runed": "^0.37.1", "svelte-toolbelt": "^0.10.6" }, "peerDependencies": { "svelte": "^5.57.0" } }, "sha512-l3VzH//yDtHWoZ3yvB5gfIQpuzIN9KZXNBZ8b8fuCbuGi4McGCfMBwa7svMi7P9xteL4TegohuwjoqzmfZZbJg=="],
 
     "svelte-toolbelt": ["svelte-toolbelt@0.10.6", "", { "dependencies": { "clsx": "^2.1.1", "runed": "^0.35.1", "style-to-object": "^1.0.8" }, "peerDependencies": { "svelte": "^5.30.2" } }, "sha512-YWuX+RE+CnWYx09yseAe4ZVMM7e7GRFZM6OYWpBKOb++s+SQ8RBIMMe+Bs/CznBMc0QPLjr+vDBxTAkozXsFXQ=="],
 

@@ -15,13 +15,40 @@
 	const paper = PaperContext.getOr(null);
 	const extractor = layoutExtractor((n) => viewer.document.getPageText(n));
 	const groups = $derived(viewer.lastContext ? contextActions(viewer.lastContext, { viewer, annotations: store, paper, extractor, onOpenReference, saveFile }) : []);
+	// WebKit (the desktop app) clears a text selection whenever focus moves outside
+	// it, and the menu focuses each item under the pointer: keep the right-clicked
+	// selection while the menu is open, so it stays visible and actions still see it.
+	let kept: Range | null = null;
+	const restore = () => {
+		const sel = getSelection();
+		if (!kept || !sel || !sel.isCollapsed) return;
+		sel.removeAllRanges();
+		sel.addRange(kept);
+	};
+	// Off the pages (the gray around them) there's nothing to act on: let the
+	// right-click through to the app's menu for this window instead.
+	const onPagesOnly = (props: Record<string, unknown>) => ({
+		...props,
+		oncontextmenu: (e: MouseEvent) => {
+			const keyboard = e.button !== 2 && e.clientX === 0 && e.clientY === 0; // Menu key / Shift+F10
+			if (!keyboard && !(e.target as Element | null)?.closest?.('[data-pdf-page]')) return;
+			const sel = getSelection();
+			kept = sel && !sel.isCollapsed ? sel.getRangeAt(0).cloneRange() : null;
+			(props.oncontextmenu as ((e: MouseEvent) => void) | undefined)?.(e);
+		}
+	});
+	const run = (action: PdfAction) => {
+		restore();
+		kept = null; // the action may clear the selection (e.g. after highlighting): don't bring it back
+		action.run?.();
+	};
 	const titles: Record<string, string> = { selection: 'Selection', annotation: 'Annotation', citation: 'Citation', figure: 'Figure', link: 'Link', page: 'Page' };
 	const item =
 		'flex h-8 cursor-default items-center gap-2 rounded-md px-2 text-[13px] outline-none select-none data-[disabled]:opacity-40 data-[highlighted]:bg-stone-100 dark:data-[highlighted]:bg-stone-800';
-	const content = 'z-50 min-w-56 rounded-xl border border-stone-200 bg-white p-1 shadow-xl dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100';
+	const content = 'z-(--z-menu) max-h-[85vh] min-w-52 overflow-y-auto overscroll-contain rounded-xl border border-stone-200 bg-white p-1 text-[13px] text-stone-800 shadow-xl dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100';
 </script>
 
-{#snippet entry(action: PdfAction)}
+{#snippet entry(action: PdfAction, checkable = false)}
 	{#if action.items?.length}
 		<ContextMenu.Sub>
 			<ContextMenu.SubTrigger class={item} disabled={action.disabled}>
@@ -30,22 +57,25 @@
 				<span class="icon-[lucide--chevron-right] size-3.5 text-stone-400"></span>
 			</ContextMenu.SubTrigger>
 			<ContextMenu.SubContent class={content} sideOffset={6}>
-				{#each action.items as sub (sub.id)}{@render entry(sub)}{/each}
+				{#each action.items as sub (sub.id)}{@render entry(sub, action.items.some((x) => x.checked !== undefined))}{/each}
 			</ContextMenu.SubContent>
 		</ContextMenu.Sub>
 	{:else}
-		<ContextMenu.Item class="{item} {action.danger ? 'text-red-600 dark:text-red-400' : ''}" disabled={action.disabled} onSelect={() => action.run?.()}>
+		<ContextMenu.Item class="{item} {action.danger ? 'text-red-600 data-[highlighted]:bg-red-50! dark:text-red-400 dark:data-[highlighted]:bg-red-950/50!' : ''}" disabled={action.disabled} onSelect={() => run(action)}>
 			{#if action.color}<span class="size-3.5 rounded-full ring-1 ring-black/10" style:background={action.color}></span>{/if}
 			<span class="flex-1">{action.label}</span>
-			{#if action.checked}<span class="icon-[lucide--check] size-3.5"></span>{/if}
 			{#if action.keys}<Kbd>{action.keys}</Kbd>{/if}
+			<!-- Check marks share the last column, after any shortcut, so they line up. -->
+			{#if checkable}<span class="size-3.5 shrink-0 {action.checked ? 'icon-[lucide--check]' : ''}"></span>{/if}
 		</ContextMenu.Item>
 	{/if}
 {/snippet}
 
-<ContextMenu.Root>
+<svelte:document onselectionchange={restore} />
+
+<ContextMenu.Root onOpenChange={(open) => !open && (kept = null)}>
 	<ContextMenu.Trigger>
-		{#snippet child({ props })}{@render trigger({ props })}{/snippet}
+		{#snippet child({ props })}{@render trigger({ props: onPagesOnly(props) })}{/snippet}
 	</ContextMenu.Trigger>
 	<ContextMenu.Portal>
 		<ContextMenu.Content class={content}>
@@ -53,7 +83,7 @@
 				{#if gi > 0}<ContextMenu.Separator class="my-1 h-px bg-stone-200 dark:bg-stone-700" />{/if}
 				<ContextMenu.Group>
 					<ContextMenu.GroupHeading class="px-2 pt-1.5 pb-1 text-[11px] font-medium tracking-wide text-stone-400 uppercase">{group.kind === 'figure' && viewer.lastContext?.figure ? viewer.lastContext.figure.label : titles[group.kind]}</ContextMenu.GroupHeading>
-					{#each group.actions as action (action.id)}{@render entry(action)}{/each}
+					{#each group.actions as action (action.id)}{@render entry(action, group.actions.some((x) => x.checked !== undefined))}{/each}
 				</ContextMenu.Group>
 			{/each}
 			{#if !groups.length}<div class="px-2 py-1.5 text-[13px] text-stone-400">…</div>{/if}

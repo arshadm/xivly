@@ -10,8 +10,6 @@ export interface LibraryFs {
 	list(path: string): Promise<{ name: string; dir: boolean }[]>;
 	exists(path: string): Promise<boolean>;
 	mkdir(path: string): Promise<void>;
-	/** Rename a file or folder; fails if `to` exists. */
-	rename(from: string, to: string): Promise<void>;
 	/** Recoverable delete (system Trash on desktop, `.xivly/trash/` on web). */
 	trash(path: string): Promise<void>;
 }

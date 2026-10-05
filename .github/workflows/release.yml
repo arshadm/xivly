@@ -1,7 +1,15 @@
-# Release: push a tag `vX.Y.Z` (see `bun run release X.Y.Z`).
-# Builds a universal macOS app, publishes a GitHub Release, then bumps the
-# cask in julien-blanchon/homebrew-tap. Updates are delivered by
-# `brew upgrade` only (no in-app updater).
+# Release: push a tag `vX.Y.Z` (see `bun run release X.Y.Z` and RELEASING.md).
+#
+#   prepare   versions agree with the tag, svelte-pdf-mini is on npm, type
+#             check, then a DRAFT GitHub release is created (or reused).
+#   build     matrix, each job uploads its bundles to that draft:
+#               macOS   universal .dmg (+ .app.tar.gz), signed + notarized
+#               Linux   .AppImage + .deb (ubuntu-24.04)
+#               Windows NSIS -setup.exe + .msi
+#   publish   checks every asset is there, then publishes the release.
+#   homebrew  bumps the cask in julien-blanchon/homebrew-tap from the
+#             published DMG (stable releases only).
+# Updates are delivered by `brew upgrade` only (no in-app updater).
 #
 # Secrets:
 #   HOMEBREW_TAP_DEPLOY_KEY       SSH deploy key with write access to homebrew-tap
@@ -14,22 +22,125 @@ name: release
 
 on:
   push:
-    tags: ["v*"]
+    tags: ["v*.*.*"]
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to release, e.g. v0.2.0"
+        required: true
+      publish:
+        description: "Publish the release and bump the cask (off: leave it as a draft)"
+        type: boolean
+        default: true
+
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
 
 permissions:
   contents: write
 
+env:
+  TAG: ${{ inputs.tag || github.ref_name }}
+
 jobs:
-  macos:
-    runs-on: macos-latest
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+      release-id: ${{ steps.draft.outputs.id }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.TAG }}
+
+      - name: Versions match the tag
+        id: version
+        run: |
+          node scripts/check-version.js "$TAG"
+          VERSION=${TAG#v}
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          case "$VERSION" in *-*) echo "prerelease=true" ;; *) echo "prerelease=false" ;; esac >> "$GITHUB_OUTPUT"
+
+      # Xivly depends on svelte-pdf-mini from npm: release that first.
+      - name: svelte-pdf-mini is on npm
+        run: |
+          LOCKED=$(grep -o '"svelte-pdf-mini@[^"]*"' bun.lock | head -1 | tr -d '"')
+          if ! npm view "$LOCKED" version >/dev/null 2>&1; then
+            echo "::error::$LOCKED (bun.lock) is not on npm. Release svelte-pdf-mini first (see RELEASING.md)."
+            exit 1
+          fi
+          echo "$LOCKED is on npm."
+
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun run check
+
+      - name: Draft release
+        id: draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+          PRERELEASE: ${{ steps.version.outputs.prerelease }}
+        run: |
+          find_release() {
+            gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
+              --jq ".[] | select(.tag_name == \"$TAG\") | .id" | head -1
+          }
+          ID=$(find_release)
+          if [ -z "$ID" ]; then
+            cat > "$RUNNER_TEMP/notes.md" <<NOTES
+          **macOS** (Apple silicon + Intel, macOS 26+): install or update with Homebrew
+          \`\`\`
+          brew install --cask julien-blanchon/tap/xivly
+          brew upgrade --cask xivly
+          \`\`\`
+          or download \`Xivly_${VERSION}_universal.dmg\`.
+
+          **Linux**: \`Xivly_${VERSION}_amd64.AppImage\` or \`Xivly_${VERSION}_amd64.deb\`.
+
+          **Windows**: \`Xivly_${VERSION}_x64-setup.exe\` or the \`.msi\`.
+
+          NOTES
+            set -- "$TAG" --draft --verify-tag --title "Xivly $TAG" \
+              --notes-file "$RUNNER_TEMP/notes.md" --generate-notes
+            if [ "$PRERELEASE" = "true" ]; then set -- "$@" --prerelease; fi
+            gh release create "$@"
+            ID=$(find_release)
+          else
+            echo "Reusing release $ID for $TAG."
+          fi
+          test -n "$ID"
+          echo "id=$ID" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS (universal)
+            os: macos-latest
+            rust-targets: aarch64-apple-darwin,x86_64-apple-darwin
+          - name: Linux (x86_64)
+            os: ubuntu-24.04
+          - name: Windows (x86_64)
+            os: windows-latest
+    name: build ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
     env:
       SIGNED: ${{ secrets.APPLE_CERTIFICATE != '' }}
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.TAG }}
 
       - name: Import Apple certificate
-        if: env.SIGNED == 'true'
+        if: runner.os == 'macOS' && env.SIGNED == 'true'
         env:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
@@ -57,42 +168,106 @@ jobs:
           echo "APPLE_SIGNING_IDENTITY=$IDENTITY" >> "$GITHUB_ENV"
 
       - name: Ad-hoc signing
-        if: env.SIGNED != 'true'
+        if: runner.os == 'macOS' && env.SIGNED != 'true'
         run: echo "APPLE_SIGNING_IDENTITY=-" >> "$GITHUB_ENV"
+
+      - name: Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libxdo-dev libssl-dev patchelf build-essential file
+          # The AppImage bundles this WebKitGTK: its JS engine must run pdf.js (see +layout.svelte's check).
+          echo "WebKitGTK $(pkg-config --modversion webkit2gtk-4.1)"
+
+      - name: Bundle arguments
+        id: args
+        env:
+          PRERELEASE: ${{ needs.prepare.outputs.prerelease }}
+        run: |
+          case "$RUNNER_OS" in
+            macOS) ARGS="--target universal-apple-darwin" ;; # bundles from tauri.conf.json: app, dmg
+            Linux) ARGS="--bundles appimage,deb" ;;
+            # WiX (.msi) only accepts numeric versions: prereleases ship NSIS only.
+            Windows) if [ "$PRERELEASE" = "true" ]; then ARGS="--bundles nsis"; else ARGS="--bundles nsis,msi"; fi ;;
+          esac
+          echo "args=$ARGS" >> "$GITHUB_OUTPUT"
 
       - uses: oven-sh/setup-bun@v2
       - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: aarch64-apple-darwin,x86_64-apple-darwin
+          targets: ${{ matrix.rust-targets }}
       - uses: swatinem/rust-cache@v2
         with:
           workspaces: "./src-tauri -> target"
       - run: bun install --frozen-lockfile
 
       - uses: tauri-apps/tauri-action@v1
-        id: tauri
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: v__VERSION__
-          releaseName: Xivly v__VERSION__
-          releaseBody: |
-            Install or update with Homebrew:
-            ```
-            brew install --cask julien-blanchon/tap/xivly
-            brew upgrade --cask xivly
-            ```
-          releaseDraft: false
-          args: --target universal-apple-darwin
+          releaseId: ${{ needs.prepare.outputs.release-id }}
+          args: ${{ steps.args.outputs.args }}
+          uploadUpdaterJson: false
+          retryAttempts: 1
 
+  publish:
+    needs: [prepare, build]
+    # Tag pushes always publish; a manual run can stop at the draft.
+    if: github.event_name != 'workflow_dispatch' || inputs.publish
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.prepare.outputs.version }}
+      PRERELEASE: ${{ needs.prepare.outputs.prerelease }}
+    steps:
+      - name: Every platform uploaded its bundles
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_ID: ${{ needs.prepare.outputs.release-id }}
+        run: |
+          ASSETS=$(gh api "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID/assets?per_page=100" --jq '.[].name')
+          echo "$ASSETS"
+          EXPECTED="_universal.dmg _amd64.AppImage _amd64.deb _x64-setup.exe"
+          [ "$PRERELEASE" = "true" ] || EXPECTED="$EXPECTED .msi"
+          MISSING=
+          for suffix in $EXPECTED; do
+            echo "$ASSETS" | grep -q -- "$suffix\$" || MISSING="$MISSING *$suffix"
+          done
+          if [ -n "$MISSING" ]; then
+            echo "::error::Missing release assets:$MISSING"
+            exit 1
+          fi
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_ID: ${{ needs.prepare.outputs.release-id }}
+        run: |
+          if [ "$PRERELEASE" = "true" ]; then LATEST=false; else LATEST=true; fi
+          gh api -X PATCH "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" \
+            -F draft=false -F prerelease="$PRERELEASE" -f make_latest="$LATEST" \
+            --jq '"Published \(.html_url)"'
+
+  homebrew:
+    needs: [prepare, publish]
+    if: needs.prepare.outputs.prerelease != 'true'
+    runs-on: ubuntu-latest
+    env:
+      SIGNED: ${{ secrets.APPLE_CERTIFICATE != '' }}
+      VERSION: ${{ needs.prepare.outputs.version }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.TAG }}
+
+      # From the published release, so the cask's sha256 is the one users download.
       - name: Bump Homebrew cask
         env:
+          GH_TOKEN: ${{ github.token }}
           TAP_KEY: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
-          VERSION: ${{ steps.tauri.outputs.appVersion }}
-          ARTIFACTS: ${{ steps.tauri.outputs.artifactPaths }}
         run: |
-          DMG=$(echo "$ARTIFACTS" | jq -r '.[] | select(endswith(".dmg"))' | head -1)
-          SHA=$(shasum -a 256 "$DMG" | cut -d' ' -f1)
+          gh release download "$TAG" -R "$GITHUB_REPOSITORY" --pattern '*_universal.dmg' --dir "$RUNNER_TEMP/dmg"
+          DMG=$(find "$RUNNER_TEMP/dmg" -name '*.dmg' | head -1)
+          SHA=$(sha256sum "$DMG" | cut -d' ' -f1)
           # Asset name with the version templated, e.g. Xivly_#{version}_universal.dmg
           ASSET=$(basename "$DMG" | sed "s/$VERSION/#{version}/")
           # Deploy key: write access to the tap repo only.

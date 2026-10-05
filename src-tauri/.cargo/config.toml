@@ -1,0 +1,4 @@
+# `tauri dev` starts the app with `cargo run`: on macOS, run it from inside an
+# app bundle so it has a bundle identifier (see scripts/dev-app.sh).
+[target.'cfg(target_os = "macos")']
+runner = "../scripts/dev-app.sh"

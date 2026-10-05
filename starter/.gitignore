@@ -1,0 +1,3 @@
+pdfs/
+# starter.zip unzipped here to try the example library in dev (never in static/: builds would ship it)
+build/
