@@ -2,7 +2,7 @@
 # Cargo runner for `tauri dev` on macOS (src-tauri/.cargo/config.toml).
 # A bare `target/debug/xivly` has no bundle identifier as far as macOS is
 # concerned, and clipboard managers (Paste…) drop copies from an app without
-# one. So run it from a minimal `Xivly Dev.app` next to it: the binary's own
+# one. So run it from a minimal `Xivly Dev.app` (in `dev.noindex/` next to it): the binary's own
 # Info.plist plus an identifier (`<identifier>.dev`, apart from the installed
 # app) and the icon. Anything else cargo runs (tests…) runs as is.
 set -eu
@@ -13,7 +13,8 @@ shift
 root=$(cd "$(dirname "$0")/.." && pwd)
 dir=$(cd "$(dirname "$bin")" && pwd)
 id="$(plutil -extract identifier raw -o - "$root/src-tauri/tauri.conf.json").dev"
-app="$dir/Xivly Dev.app"
+# In a `.noindex` folder: Spotlight skips it, so the dev build never shows up next to the installed app.
+app="$dir/dev.noindex/Xivly Dev.app"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 plist="$app/Contents/Info.plist"
 rm -f "$plist"
