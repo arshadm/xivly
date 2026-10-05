@@ -41,7 +41,7 @@ const defaults = {
 	sidePanel: false,
 	minimap: false,
 	minimapVariant: 'pages' as MinimapVariant,
-	tocRail: true,
+	tocRail: false,
 	progressBar: true,
 	breadcrumb: true,
 	linkPreviews: true,

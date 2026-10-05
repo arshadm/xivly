@@ -23,6 +23,7 @@
 		value,
 		onchange,
 		showLabel = false,
+		reserve = [],
 		shortcut,
 		class: className = ''
 	}: {
@@ -33,6 +34,8 @@
 		onchange: (value: T) => void;
 		/** Show the mode's name next to its icon (or alone, without one). */
 		showLabel?: boolean;
+		/** Other labels the button may show (e.g. when its options change): it keeps room for them too. */
+		reserve?: string[];
 		shortcut?: string;
 		class?: string;
 	} = $props();
@@ -52,7 +55,15 @@
 			onclick={(e) => onchange(options[(index + (e.shiftKey ? options.length - 1 : 1)) % options.length].value)}
 		>
 			{#if current.icon}<span class="{current.icon} size-4 shrink-0"></span>{/if}
-			{#if showLabel}<span class="truncate">{current.label}</span>{/if}
+			<!-- All labels share one grid cell: the button is as wide as the longest, so it
+			     never shifts the layout when the mode changes (clicking again hits it again). -->
+			{#if showLabel}
+				<span class="grid text-left">
+					{#each [...new Set([...options.map((o) => o.label), ...reserve])] as l (l)}
+						<span class="col-start-1 row-start-1 whitespace-nowrap {l === current.label ? '' : 'invisible'}" aria-hidden={l !== current.label}>{l}</span>
+					{/each}
+				</span>
+			{/if}
 		</button>
 	{/snippet}
 </Tip>

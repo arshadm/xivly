@@ -32,7 +32,21 @@
 	});
 	$effect(() => void setWindowTitle(library.name ? `Xivly — ${library.name}` : 'Xivly'));
 
-	const viewKey = $derived(JSON.stringify(library.view));
+	// The grid is rebuilt (a fade) only when the view changes to papers that share none with
+	// the previous ones (e.g. one category to another): otherwise shared cards move (flip).
+	let shownIds = new Set<string>();
+	let shownView = '';
+	let gridGeneration = 0;
+	const gridKey = $derived.by(() => {
+		const view = JSON.stringify(library.view);
+		const ids = library.filtered.map((p) => p.id);
+		if (view !== shownView) {
+			if (shownView && !ids.some((id) => shownIds.has(id))) gridGeneration++;
+			shownView = view;
+		}
+		shownIds = new Set(ids);
+		return gridGeneration;
+	});
 	const minCard = $derived({ small: 140, medium: 170, large: 220 }[settings.values.cardSize]);
 
 	const newCategory = () => showCategoryDialog();
@@ -71,6 +85,8 @@
 	}
 
 	const sortByOptions: CycleOption<SortKey>[] = sortOptions.map((o) => ({ value: o.value, label: o.label, icon: o.icon }));
+	/** Every order label, whatever the sort: the order button keeps room for the longest. */
+	const orderLabels = sortOptions.flatMap((o) => [o.desc, o.asc]);
 	const orderOptions = $derived.by((): CycleOption<boolean>[] => {
 		const o = sortOptions.find((x) => x.value === settings.values.sortBy) ?? sortOptions[0];
 		return [
@@ -101,7 +117,7 @@
 			{#if library.view.kind !== 'recent'}
 				<div class="flex items-center">
 					<CycleButton title="Sort by" options={sortByOptions} value={settings.values.sortBy} onchange={(v) => settings.set('sortBy', v)} showLabel class="h-8" />
-					<CycleButton title="Order" options={orderOptions} value={settings.values.sortDesc} onchange={(v) => settings.set('sortDesc', v)} showLabel class="h-8" />
+					<CycleButton title="Order" options={orderOptions} value={settings.values.sortDesc} onchange={(v) => settings.set('sortDesc', v)} showLabel reserve={orderLabels} class="h-8" />
 				</div>
 			{/if}
 			<ToggleGroup label="Show papers" value={settings.values.readFilter} onValueChange={(v) => settings.set('readFilter', v)} items={readOptions.map((o) => ({ value: o.value, label: o.value === 'all' ? 'All' : o.label }))} />
@@ -134,9 +150,9 @@
 
 		<div class="min-h-0 flex-1 overflow-y-auto px-6 pt-4 pb-10">
 			{#if library.filtered.length}
-				<!-- Switching category swaps the whole grid (a short fade); searching
-				     and tag filters within it re-flow with flip (local transitions). -->
-				{#key viewKey}
+				<!-- Cards move (flip) between views that share papers, and as searching and
+				     tag filters re-flow; a view with none in common swaps the grid (a fade). -->
+				{#key gridKey}
 					<ul class="grid gap-5" style:grid-template-columns="repeat(auto-fill, minmax({minCard}px, 1fr))" in:fade={{ duration: 160 }}>
 						{#each library.filtered as paper (paper.id)}
 							<li animate:flip={{ duration: 260, easing: cubicOut }} in:fade={{ duration: 160 }} out:scale={{ start: 0.96, duration: 120 }}>
