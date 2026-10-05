@@ -1,6 +1,6 @@
 [package]
 name = "xivly"
-version = "0.1.0"
+version = "0.1.1"
 description = "Xivly — papers without distraction"
 authors = ["Julien Blanchon <julien@blanchon.cc>"]
 edition = "2021"
