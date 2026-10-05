@@ -8,6 +8,7 @@
 	import Separator from '$lib/ui/Separator.svelte';
 	import { Toolbar } from 'bits-ui';
 	import { Annotations, AnnotationsContext, comboLabel, type AnnotationTool, type KeymapAction } from 'svelte-pdf-mini';
+	import { settings } from '$lib/settings.svelte';
 	import Tip from '../ui/Tip.svelte';
 	import CompactColor from './CompactColor.svelte';
 	import { cn } from '../ui/cn';
@@ -25,15 +26,28 @@
 	const btn = iconButton(7, 'data-[active]:bg-stone-900 data-[active]:text-white dark:data-[active]:bg-stone-100 dark:data-[active]:text-stone-900');
 	const names: Record<string, string> = { select: 'Select', hand: 'Pan', highlight: 'Highlight', underline: 'Underline', strikeout: 'Strike out', squiggly: 'Squiggly', area: 'Box', note: 'Note', ink: 'Pen', rect: 'Box', ellipse: 'Ellipse', line: 'Line', arrow: 'Arrow', freetext: 'Text', eraser: 'Eraser' };
 	const key = (a: string) => (a in store.keymap ? comboLabel(store.keymap, a as KeymapAction) : undefined);
+
+	// Select has two modes: with the color menu on selected text (default), or plain, for
+	// selecting while reading (H still highlights). Clicking it again, or V again, switches.
+	const plain = $derived(!settings.values.selectionMenu);
+	let wasSelect = false;
+	const remember = () => (wasSelect = store.tool === 'select');
+	const switchMode = () => wasSelect && settings.set('selectionMenu', plain);
+	const toolLabel = (t: AnnotationTool) => (t === 'select' ? (plain ? 'Select, without the color menu' : 'Select, with the color menu') : names[t]);
+	const icon = (t: AnnotationTool) => (t === 'select' && plain ? 'icon-[lucide--text-cursor]' : toolIcons[t]);
 </script>
 
 <Toolbar.Root class={cn('flex min-w-0 flex-nowrap items-center gap-0.5', className)} aria-label={label}>
 	{#each tools as t (t)}
-		<Tip label={names[t]} shortcut={key(`tool.${t}`)}>
+		<Tip label={toolLabel(t)} shortcut={key(`tool.${t}`)}>
 			{#snippet child({ props: tip })}
 				<Toolbar.Button {...tip}>
 					{#snippet child({ props })}
-						<Annotations.Tool tool={t} {...props} class={btn}><span class="{toolIcons[t]} size-4" aria-hidden="true"></span></Annotations.Tool>
+						{#if t === 'select'}
+							<Annotations.Tool tool={t} {...props} class={btn} onpointerdown={remember} onkeydown={(e: KeyboardEvent) => (e.key === 'Enter' || e.key === ' ') && remember()} onclick={switchMode}><span class="{icon(t)} size-4" aria-hidden="true"></span></Annotations.Tool>
+						{:else}
+							<Annotations.Tool tool={t} {...props} class={btn}><span class="{icon(t)} size-4" aria-hidden="true"></span></Annotations.Tool>
+						{/if}
 					{/snippet}
 				</Toolbar.Button>
 			{/snippet}

@@ -12,7 +12,7 @@
 		{ value: 'page-height', label: 'Page height' },
 		{ value: 'page-fit', label: 'Page fit' }
 	];
-	const steps = [0.5, 0.75, 1, 1.25, 1.5, 2, 3, 4].map((s) => ({ value: `z:${s}`, label: `${Math.round(s * 100)}%` }));
+	const steps = [0.5, 0.75, 1, 1.25, 1.5, 2, 3].filter((z) => z >= viewer.minZoom && z <= viewer.maxZoom).map((s) => ({ value: `z:${s}`, label: `${Math.round(s * 100)}%` }));
 	const value = $derived(viewer.zoomMode === 'manual' ? `z:${viewer.zoom}` : viewer.zoomMode);
 	const label = $derived(viewer.zoomMode === 'manual' ? `${Math.round(viewer.zoom * 100)}%` : modes.find((m) => m.value === viewer.zoomMode)?.label);
 	const choose = (v: string) => (v.startsWith('z:') ? viewer.zoomTo(Number(v.slice(2))) : (viewer.zoomMode = v as ZoomMode));

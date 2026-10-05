@@ -1,25 +1,21 @@
 <!-- Editable paper details: title, authors, year, category, tags, links. -->
 <script lang="ts">
-	import { iconButton, mutedIcon } from '$lib/ui/button';
-	import { fileManager, trashName } from '$lib/os';
 	import { paperLinks } from '$lib/cite';
 	import { hfListUrl } from '$lib/huggingface';
 	import { library } from '$lib/library.svelte';
-	import { bibtex } from '$lib/cite';
-	import { addTag, trashPaper } from '$lib/paper-menu';
-	import { clipboard } from '$lib/ui/clipboard';
+	import { addTag } from '$lib/paper-menu';
 	import type { Snippet } from 'svelte';
 	import { platform } from '$lib/platform';
 	import type { Paper, PaperPatch } from '$lib/types';
 	import Tip from '$lib/ui/Tip.svelte';
+	import PaperActions from './PaperActions.svelte';
 	import { toast } from './Toasts.svelte';
 
-	/** `actions`: extra buttons for the action row (the reader adds its exports). */
-	let { paper, actions }: { paper: Paper; actions?: Snippet<[{ btn: string }]> } = $props();
-
-	const fail = (e: unknown) => toast(String(e), 'error');
-	const copy = (text: string, what: string) => clipboard.write(text).then(() => toast(`${what} copied`), fail);
-	const btn = iconButton(7, mutedIcon);
+	/**
+	 * `actions`: extra buttons for the action row (the reader adds its exports).
+	 * `footer`: render that row here, pinned to the bottom (a dialog puts it in its own footer).
+	 */
+	let { paper, actions, footer = true }: { paper: Paper; actions?: Snippet<[{ btn: string }]>; footer?: boolean } = $props();
 
 	const save = (patch: PaperPatch) => library.update(paper.id, patch).catch((e) => toast(String(e), 'error'));
 	const links = $derived(paperLinks(paper));
@@ -118,19 +114,8 @@
 		</div>
 	{/if}
 
-	<!-- Actions: one row of icons pinned to the bottom (tooltips say what they do). A container
-	     with padding sets --details-pad (and --details-bg) so the bar spans it edge to edge. -->
-	<div class="sticky bottom-[calc(-1*var(--details-pad,0px))] -mx-(--details-pad) mt-auto -mb-(--details-pad) flex flex-wrap items-center gap-0.5 border-t border-stone-200 bg-(--details-bg,var(--color-stone-50)) px-(--details-pad) py-2 dark:border-stone-800 dark:bg-(--details-bg-dark,var(--color-stone-900))">
-		{#snippet action(label: string, icon: string, run: () => unknown, danger = false)}
-			<Tip {label}>
-				{#snippet child({ props })}<button {...props} class="{btn} {danger ? 'text-red-500! hover:bg-red-50! hover:text-red-600! dark:text-red-400! dark:hover:bg-red-950/50!' : ''}" aria-label={label} onclick={run}><span class="{icon} size-4"></span></button>{/snippet}
-			</Tip>
-		{/snippet}
-		{@render action('Copy BibTeX', 'icon-[lucide--quote]', () => copy(bibtex(paper), 'BibTeX'))}
-		{@render actions?.({ btn })}
-		{#if platform.reveal}{@render action(`Show in ${fileManager}`, 'icon-[lucide--folder-search]', () => platform.reveal?.(`papers/${paper.id}/paper.pdf`))}{/if}
-		{@render action('Refresh metadata (PDF and Hugging Face)', 'icon-[lucide--refresh-cw]', () => library.refreshMetadata(paper.id).then(() => toast('Metadata updated'), fail))}
-		<span class="flex-1" aria-hidden="true"></span>
-		{@render action(`Move to ${trashName}`, 'icon-[lucide--trash-2]', () => trashPaper(paper), true)}
-	</div>
+	{#if footer}
+		<!-- Pinned to the bottom of the scrolling panel. -->
+		<PaperActions {paper} {actions} class="sticky bottom-0 mt-auto border-t border-stone-200 bg-stone-50 py-2 dark:border-stone-800 dark:bg-stone-900" />
+	{/if}
 </div>

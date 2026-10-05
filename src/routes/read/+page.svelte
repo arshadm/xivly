@@ -59,7 +59,7 @@
 	import Tip from '$lib/ui/Tip.svelte';
 	import ZoomSelect from '$lib/ui/ZoomSelect.svelte';
 	import ZoomSlider from '$lib/ui/ZoomSlider.svelte';
-	import { contextMenuState, setFallbackMenu, type MenuItem } from '$lib/ui/context-menu.svelte';
+	import { contextMenuState, isEditable, setFallbackMenu, type MenuItem } from '$lib/ui/context-menu.svelte';
 	import FocusEffect from '$lib/ui/focus/FocusEffect.svelte';
 
 	const id = $derived(page.url.searchParams.get('id') ?? '');
@@ -352,6 +352,13 @@
 		else if (matches(e, keys.lineMarkers)) (e.preventDefault(), settings.set('lineMarkers', !s.lineMarkers));
 	}
 
+	// V while Select is already on switches its mode (with / without the color menu). Capture
+	// phase: runs before the viewer's own V, which would make Select current either way.
+	function onSelectKey(e: KeyboardEvent) {
+		if (!store || store.tool !== 'select' || e.metaKey || e.ctrlKey || e.altKey || isEditable(e.target)) return;
+		if ((store.keymap['tool.select'] ?? []).includes(e.key.toLowerCase())) settings.set('selectionMenu', !s.selectionMenu);
+	}
+
 	/** A viewer shortcut's label ("←", "⌘+"), from the active keymap. */
 	const viewKey = (action: KeymapAction) => (viewer ? comboLabel(viewer.keymap, action) : undefined);
 
@@ -365,7 +372,7 @@
 	const toggleOpt = 'rounded px-1.5 py-0.5 font-mono text-[11px] text-stone-500 data-[active]:bg-stone-800 data-[active]:text-white dark:data-[active]:bg-stone-200 dark:data-[active]:text-stone-900';
 </script>
 
-<svelte:window {onkeydown} />
+<svelte:window {onkeydown} onkeydowncapture={onSelectKey} />
 
 {#snippet panelToggle()}
 	<Tip label={panelOpen ? 'Hide side panel' : 'Show side panel'} shortcut={keys.panelAlt}>
@@ -388,6 +395,8 @@
 			pageFrame={s.pageFrame}
 			theme={theme.dark ? 'dark' : 'light'}
 			zoomMode={initialZoom}
+			minZoom={0.5}
+			maxZoom={3}
 			bind:columns={() => s.columns, (v) => settings.set('columns', v === 'auto' ? 'auto' : v === 2 ? 2 : 1)}
 			bind:scrollMode={() => s.scrollMode, (v) => settings.set('scrollMode', v)}
 			firstPageAlone={s.firstPageAlone}

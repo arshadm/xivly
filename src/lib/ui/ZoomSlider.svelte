@@ -8,7 +8,10 @@
 	import type { ViewerState } from 'svelte-pdf-mini';
 	import { cn } from './cn';
 
-	let { viewer, min = 0.25, max = 10, class: className }: { viewer: ViewerState; min?: number; max?: number; class?: string } = $props();
+	let { viewer, class: className }: { viewer: ViewerState; class?: string } = $props();
+	// The viewer's zoom limits are the slider's ends.
+	const min = $derived(viewer.minZoom);
+	const max = $derived(viewer.maxZoom);
 	// Slider in log space so 50%→100% feels like 100%→200%.
 	const toPos = (z: number) => Math.log(Math.min(max, Math.max(min, z)) / min) / Math.log(max / min);
 	const toZoom = (p: number) => min * Math.pow(max / min, p);
