@@ -11,3 +11,4 @@ vite.config.ts.timestamp-*
 static/pdfjs
 demo-library
 demo-library-inbox
+.env

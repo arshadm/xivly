@@ -19,5 +19,5 @@ const run = (cmd) => execSync(cmd, { stdio: "inherit" });
 run("cargo update -p xivly --offline --manifest-path src-tauri/Cargo.toml");
 run("git add package.json src-tauri/tauri.conf.json src-tauri/Cargo.toml src-tauri/Cargo.lock");
 run(`git commit -m "release v${version}"`);
-run(`git tag v${version}`);
+run(`git tag -a v${version} -m "v${version}"`);
 console.log(`\nTagged v${version}. Push with: git push --follow-tags`);
