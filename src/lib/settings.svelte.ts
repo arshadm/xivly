@@ -3,6 +3,10 @@
 import type { InkSmoothing, MinimapVariant, ScrollMode, ZoomMode } from 'svelte-pdf-mini';
 import { platform } from './platform';
 
+/** Days covered by each "Recent" window. */
+export const recentWindows = { day: 1, week: 7, month: 30 } as const;
+export type RecentWindow = keyof typeof recentWindows;
+
 export type PageFrame = 'rounded' | 'shadow' | 'border' | 'flat' | 'none';
 
 export type CoverStyle = 'book' | 'stack' | 'flat' | 'page';
@@ -83,6 +87,8 @@ const defaults = {
 	sortDesc: true,
 	/** Show every paper, only unread or only read ones. */
 	readFilter: 'all' as 'all' | 'unread' | 'read',
+	/** What "Recent" covers: papers opened within the last day, week or month. */
+	recentWindow: 'week' as RecentWindow,
 
 	// Desktop
 	hookToasts: 'errors' as 'all' | 'errors' | 'off'
@@ -183,7 +189,8 @@ function overrides(values: Settings): Partial<Settings> {
 function pick(stored: Partial<Settings>): Partial<Settings> {
 	const known = Object.entries(stored).filter(([k]) => k in defaults);
 	// Choices that no longer exist fall back to the default.
-	return Object.fromEntries(known.filter(([k, v]) => k !== 'coverStyle' || coverStyles.some((c) => c.value === v))) as Partial<Settings>;
+	const valid = ([k, v]: [string, unknown]) => (k === 'coverStyle' ? coverStyles.some((c) => c.value === v) : k === 'recentWindow' ? typeof v === 'string' && v in recentWindows : true);
+	return Object.fromEntries(known.filter(valid)) as Partial<Settings>;
 }
 
 export const settings = new SettingsState();

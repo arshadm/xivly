@@ -6,7 +6,7 @@ import { extractMetadata, tidyTitle } from './extract';
 import { fetchHfPaper } from './huggingface';
 import { platform } from './platform';
 import { merge, Repo, slugify } from './repo';
-import { settings, type SortKey } from './settings.svelte';
+import { recentWindows, settings, type SortKey } from './settings.svelte';
 import type { Category, CategoryColor, LibraryFile, Paper, PaperPatch } from './types';
 
 /** Always listed; hidden by default, so tagging a paper `archived` archives it. */
@@ -61,11 +61,12 @@ class Library {
 	filtered = $derived.by(() => {
 		const q = this.query.trim().toLowerCase();
 		const v = this.view;
+		const recentSince = Date.now() - recentWindows[settings.values.recentWindow] * 864e5;
 		const list = this.papers.filter((p) => {
 			if (v.kind === 'category' && p.category !== v.id) return false;
 			// Includes ids missing from library.json (deleted elsewhere, set by an agent).
 			if (v.kind === 'uncategorized' && this.category(p.category)) return false;
-			if (v.kind === 'recent' && !p.opened) return false;
+			if (v.kind === 'recent' && !(p.opened && Date.parse(p.opened) >= recentSince)) return false;
 			for (const [t, mode] of Object.entries(this.tagFilter)) if (!!p.tags?.includes(t) !== (mode === 'in')) return false;
 			const rf = settings.values.readFilter;
 			if (rf !== 'all' && !!p.read !== (rf === 'read')) return false;

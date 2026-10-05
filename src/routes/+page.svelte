@@ -18,7 +18,7 @@
 	import AddPapers, { addPapers } from '$lib/components/AddPapers.svelte';
 	import CategoryDialog, { showCategoryDialog } from '$lib/components/CategoryDialog.svelte';
 	import CycleButton, { type CycleOption } from '$lib/ui/CycleButton.svelte';
-	import type { SortKey } from '$lib/settings.svelte';
+	import type { RecentWindow, SortKey } from '$lib/settings.svelte';
 	import { starter } from '$lib/onboarding/starter.svelte';
 	import ToggleGroup from '$lib/ui/ToggleGroup.svelte';
 
@@ -85,6 +85,17 @@
 	}
 
 	const sortByOptions: CycleOption<SortKey>[] = sortOptions.map((o) => ({ value: o.value, label: o.label, icon: o.icon }));
+	const emptyMessage = $derived.by(() => {
+		if (!library.papers.length) return 'Your library is empty.';
+		if (library.view.kind !== 'recent' || library.query) return 'No papers match.';
+		const label = recentOptions.find((o) => o.value === settings.values.recentWindow)?.label.toLowerCase();
+		return `Nothing opened in the ${label}.`;
+	});
+	const recentOptions: CycleOption<RecentWindow>[] = [
+		{ value: 'day', label: 'Last day', icon: 'icon-[lucide--clock]' },
+		{ value: 'week', label: 'Last 7 days', icon: 'icon-[lucide--calendar-days]' },
+		{ value: 'month', label: 'Last 30 days', icon: 'icon-[lucide--calendar-range]' }
+	];
 	/** Every order label, whatever the sort: the order button keeps room for the longest. */
 	const orderLabels = sortOptions.flatMap((o) => [o.desc, o.asc]);
 	const orderOptions = $derived.by((): CycleOption<boolean>[] => {
@@ -119,6 +130,8 @@
 					<CycleButton title="Sort by" options={sortByOptions} value={settings.values.sortBy} onchange={(v) => settings.set('sortBy', v)} showLabel class="h-8" />
 					<CycleButton title="Order" options={orderOptions} value={settings.values.sortDesc} onchange={(v) => settings.set('sortDesc', v)} showLabel reserve={orderLabels} class="h-8" />
 				</div>
+			{:else}
+				<CycleButton title="Recent" options={recentOptions} value={settings.values.recentWindow} onchange={(v) => settings.set('recentWindow', v)} showLabel class="h-8" />
 			{/if}
 			<ToggleGroup label="Show papers" value={settings.values.readFilter} onValueChange={(v) => settings.set('readFilter', v)} items={readOptions.map((o) => ({ value: o.value, label: o.value === 'all' ? 'All' : o.label }))} />
 			<label class="flex h-8 w-64 items-center gap-2 rounded-lg bg-stone-200/60 pr-1.5 pl-2.5 ring-blue-500/60 focus-within:bg-white focus-within:ring-2 dark:bg-stone-800/60 dark:focus-within:bg-stone-900">
@@ -164,7 +177,7 @@
 			{:else}
 				<div class="grid h-full place-items-center text-center text-sm text-stone-500" in:fade>
 					<div>
-						<p>{library.papers.length ? 'No papers match.' : 'Your library is empty.'}</p>
+						<p>{emptyMessage}</p>
 						<p class="mt-2 flex items-center justify-center gap-1">Drop PDFs here, press <Kbd>{keys.addPapers}</Kbd>, or paste an arXiv link</p>
 					</div>
 				</div>
