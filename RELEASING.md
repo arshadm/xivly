@@ -1,6 +1,6 @@
 # Releasing Xivly
 
-A release is triggered by pushing a tag `vX.Y.Z`. `.github/workflows/release.yml` builds the desktop app for macOS, Linux and Windows, uploads everything to one GitHub release (kept as a draft until all platforms succeed), publishes it, then bumps the Homebrew cask.
+A release is triggered by pushing a tag `vX.Y.Z`. `.github/workflows/release.yml` builds the desktop app for macOS, Linux and Windows and the Chrome extension, uploads everything to one GitHub release (kept as a draft until all platforms succeed), publishes it, then bumps the Homebrew cask and (once set up) submits the extension to the Chrome Web Store.
 
 ## Ordering: svelte-pdf-mini first
 
@@ -57,8 +57,32 @@ Prereleases: `bun run release 0.2.0-rc.1` → tag `v0.2.0-rc.1`. The GitHub rele
    - **macOS** (`macos-latest`): `--target universal-apple-darwin`, bundles from `tauri.conf.json` (`app`, `dmg`). Imports the Developer ID certificate into a temporary keychain; `tauri build` signs the app, notarizes it and staples it. The DMG is then notarized itself (`xcrun notarytool submit --wait`), stapled and checked (`stapler validate`, `spctl`), and uploaded with `gh release upload --clobber`. Assets: `Xivly_X.Y.Z_universal.dmg`, `Xivly_X.Y.Z_universal.app.tar.gz`.
    - **Linux** (`ubuntu-24.04`, for a WebKitGTK recent enough to run pdf.js): installs `libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libxdo-dev libssl-dev patchelf`, `--bundles appimage,deb,rpm`. Assets: `Xivly_X.Y.Z_amd64.AppImage`, `Xivly_X.Y.Z_amd64.deb`, `Xivly-X.Y.Z-1.x86_64.rpm`. Built against glibc 2.39: Ubuntu 24.04, Debian 13, Fedora 40 or newer (not Ubuntu 22.04 / Debian 12).
    - **Windows** (`windows-latest`): `--bundles nsis,msi`. Assets: `Xivly_X.Y.Z_x64-setup.exe`, `Xivly_X.Y.Z_x64_en-US.msi`. Linux and Windows upload with `tauri-apps/tauri-action` (`releaseId`).
+   - **extension** (ubuntu, its own job): `bun run build:extension`. Asset: `Xivly_X.Y.Z_chrome.zip`.
 3. **publish** (after all builds): fails if any expected asset is missing, otherwise publishes the draft. It is marked **Latest** only if it is the newest stable version, so re-running an old tag never takes "Latest" from a newer one. A failed build leaves the release as a draft, invisible to users and to Homebrew.
 4. **homebrew** (stable versions only, after publish; one run at a time across tags): downloads the published `*_universal.dmg`, computes its sha256, renders `Casks/xivly.rb` with `scripts/cask.sh` and pushes it to `julien-blanchon/homebrew-tap` (rebase + retry on a race). It never moves the cask to an older version than the one in the tap, and is a no-op when unchanged.
+5. **chrome-web-store** (stable versions only, after publish): uploads the published `*_chrome.zip` with the [Chrome Web Store API](https://developer.chrome.com/docs/webstore/using-api) (v2, plain `curl`) and submits it for review; Google reviews it before users get it (from hours to a few days). A no-op with a notice until set up (below), and when the store already has that version. Prereleases never go to the store: Chrome versions are numbers only, so `0.4.0-rc.1` is `0.4.0` there and the final `0.4.0` could not be uploaded after it.
+
+### Chrome Web Store (one-time setup)
+
+Costs: a **one-time US$5** developer registration fee. The Google Cloud project and the API are free (no billing account needed).
+
+1. **Developer account**: register at the [Chrome Web Store Developer Dashboard](https://chrome.google.com/webstore/devconsole) with the Google account that will own the listing, pay the $5 fee, verify the contact email.
+2. **First upload, by hand**: `bun run build:extension`, then *Add new item* with `dist/Xivly_X.Y.Z_chrome.zip`. Fill in the listing (description, at least one 1280×800 screenshot, category *Productivity* or *Education*), the *Privacy* tab (single purpose: read and organize papers; justify `contextMenus` (*Open in Xivly*), `activeTab` (the URL of the tab whose toolbar menu was used) and the optional host permissions (downloading a PDF from a site that doesn't allow cross-origin downloads, asked per site when first needed); no remote code; no data collected: the library stays on the user's disk or in the browser), and submit. The item ID (32 letters) appears in the dashboard; the *Publisher ID* is under *Publisher → Settings*.
+3. **OAuth credentials** (Google Cloud Console, any project):
+   - *APIs & Services → Library*: enable **Chrome Web Store API**.
+   - *OAuth consent screen*: user type *External*, your email as a test user, then **Publish app** (set it *In production*: in *Testing*, refresh tokens expire after 7 days). Google shows an "unverified app" warning to you once; there is nothing to verify for a single user.
+   - *Credentials → Create credentials → OAuth client ID*, type *Web application*, authorized redirect URI `https://developers.google.com/oauthplayground`.
+   - In the [OAuth Playground](https://developers.google.com/oauthplayground): settings (gear) → *Use your own OAuth credentials* (client ID + secret), scope `https://www.googleapis.com/auth/chromewebstore`, *Authorize APIs* with the developer account, *Exchange authorization code for tokens*: copy the **refresh token**.
+4. **GitHub**:
+   ```sh
+   gh secret set CWS_CLIENT_ID -R julien-blanchon/xivly
+   gh secret set CWS_CLIENT_SECRET -R julien-blanchon/xivly
+   gh secret set CWS_REFRESH_TOKEN -R julien-blanchon/xivly
+   gh variable set CWS_PUBLISHER_ID -R julien-blanchon/xivly --body <publisher id>
+   gh variable set CWS_EXTENSION_ID -R julien-blanchon/xivly --body <item id>
+   ```
+
+From then on every stable release is uploaded and submitted for review. If the job fails with `invalid_grant`, the refresh token was revoked or expired: get a new one (step 3).
 
 ### Windows code signing (SignPath Foundation)
 
@@ -119,7 +143,7 @@ Re-running a failed release (or the failed jobs) is safe: the draft is reused, a
 
 ```sh
 gh run list -R julien-blanchon/xivly -w release.yml -L 1
-gh release view v0.2.0 -R julien-blanchon/xivly           # not a draft; dmg, app.tar.gz, AppImage, deb, rpm, setup.exe, msi
+gh release view v0.2.0 -R julien-blanchon/xivly           # not a draft; dmg, app.tar.gz, AppImage, deb, rpm, setup.exe, msi, chrome.zip
 brew update && brew upgrade --cask xivly                  # or: brew info --cask julien-blanchon/tap/xivly
 spctl -a -vv /Applications/Xivly.app                      # "source=Notarized Developer ID" for signed builds
 xcrun stapler validate Xivly_0.2.0_universal.dmg          # the DMG itself is notarized and stapled
