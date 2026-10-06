@@ -8,7 +8,7 @@
 	import { button, iconButton, mutedIcon } from '$lib/ui/button';
 	import { Dialog } from 'bits-ui';
 	import type { Snippet } from 'svelte';
-	import { fade, scale } from 'svelte/transition';
+	import UiDialog from '$lib/ui/Dialog.svelte';
 	import { library } from '$lib/library.svelte';
 	import { platform } from '$lib/platform';
 	import { coverStyles, settings, type SettingKey, type Settings } from '$lib/settings.svelte';
@@ -61,17 +61,7 @@
 	{@render row(label, hint, control)}
 {/snippet}
 
-<Dialog.Root bind:open={settingsDialog.open}>
-	<Dialog.Portal>
-		<Dialog.Overlay forceMount>
-			{#snippet child({ props, open })}
-				{#if open}<div {...props} transition:fade={{ duration: 150 }} class="fixed inset-0 z-(--z-dialog) bg-stone-950/30 backdrop-blur-[2px]"></div>{/if}
-			{/snippet}
-		</Dialog.Overlay>
-		<Dialog.Content forceMount>
-			{#snippet child({ props, open })}
-				{#if open}
-					<div {...props} transition:scale={{ start: 0.97, duration: 150 }} class="fixed top-1/2 left-1/2 z-(--z-dialog) flex h-[min(640px,88vh)] w-[min(820px,94vw)] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-2xl bg-white text-stone-800 shadow-2xl outline-none dark:bg-stone-900 dark:text-stone-100">
+<UiDialog bind:open={settingsDialog.open} bare class="flex h-[min(640px,88vh)] w-[min(820px,94vw)] overflow-hidden">
 						<nav class="flex w-52 shrink-0 flex-col gap-0.5 border-r border-stone-200 bg-stone-50 p-3 dark:border-stone-800 dark:bg-stone-950/40">
 							<Dialog.Title class="px-2 pt-1 pb-3 font-serif text-lg">Settings</Dialog.Title>
 							{#each visible as sec (sec.id)}
@@ -187,9 +177,4 @@
 							{/if}
 							</div>
 						</div>
-					</div>
-				{/if}
-			{/snippet}
-		</Dialog.Content>
-	</Dialog.Portal>
-</Dialog.Root>
+</UiDialog>

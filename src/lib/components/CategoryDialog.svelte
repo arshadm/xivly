@@ -12,10 +12,11 @@
 	import { Dialog } from 'bits-ui';
 	import { paperColors } from 'svelte-pdf-mini';
 	import { untrack } from 'svelte';
-	import { fade, scale } from 'svelte/transition';
 	import { categoryColor, library } from '$lib/library.svelte';
 	import type { CategoryColor } from '$lib/types';
-	import { button } from '$lib/ui/button';
+	import { button, iconButton, mutedIcon } from '$lib/ui/button';
+	import { cn } from '$lib/ui/cn';
+	import UiDialog from '$lib/ui/Dialog.svelte';
 	import Tip from '$lib/ui/Tip.svelte';
 	import { toast } from './Toasts.svelte';
 
@@ -61,44 +62,30 @@
 	}
 </script>
 
-<Dialog.Root bind:open={categoryDialog.open}>
-	<Dialog.Portal>
-		<Dialog.Overlay forceMount>
-			{#snippet child({ props, open })}
-				{#if open}<div {...props} transition:fade={{ duration: 150 }} class="fixed inset-0 z-(--z-dialog) bg-stone-950/30 backdrop-blur-[2px]"></div>{/if}
+<UiDialog bind:open={categoryDialog.open} bare form onsubmit={submit} class="w-[min(400px,92vw)] p-5">
+	<Dialog.Title class="font-serif text-lg">{editing ? 'Edit category' : 'New category'}</Dialog.Title>
+	<div class="mt-4 flex items-center gap-2">
+		<Tip label="{label(color)} (click for another)">
+			{#snippet child({ props })}
+				<button {...props} type="button" aria-label="Color: {label(color)}" onclick={nextPreset} class={iconButton(8, 'rounded-lg bg-stone-100 dark:bg-stone-800 dark:hover:bg-stone-700')}>
+					<span class="size-4 rounded-full ring-1 ring-black/10" style:background={categoryColor(color).accent}></span>
+				</button>
 			{/snippet}
-		</Dialog.Overlay>
-		<Dialog.Content forceMount>
-			{#snippet child({ props, open })}
-				{#if open}
-					<form {...props} onsubmit={submit} transition:scale={{ start: 0.97, duration: 150 }} class="fixed top-1/2 left-1/2 z-(--z-dialog) w-[min(400px,92vw)] -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white p-5 text-stone-800 shadow-2xl outline-none dark:bg-stone-900 dark:text-stone-100">
-						<Dialog.Title class="font-serif text-lg">{editing ? 'Edit category' : 'New category'}</Dialog.Title>
-						<div class="mt-4 flex items-center gap-2">
-							<Tip label="{label(color)} (click for another)">
-								{#snippet child({ props })}
-									<button {...props} type="button" aria-label="Color: {label(color)}" onclick={nextPreset} class="grid size-8 shrink-0 place-items-center rounded-lg bg-stone-100 outline-none hover:bg-stone-200/80 focus-visible:ring-2 focus-visible:ring-blue-500/60 dark:bg-stone-800 dark:hover:bg-stone-700">
-										<span class="size-4 rounded-full ring-1 ring-black/10" style:background={categoryColor(color).accent}></span>
-									</button>
-								{/snippet}
-							</Tip>
-							<Tip label="Pick any color">
-								{#snippet child({ props })}
-									<button {...props} type="button" aria-label="Pick any color" onclick={() => picker?.click()} class="relative grid size-8 shrink-0 place-items-center rounded-lg outline-none hover:bg-stone-100 focus-visible:ring-2 focus-visible:ring-blue-500/60 dark:hover:bg-stone-800 {custom ? 'bg-stone-100 text-stone-800 dark:bg-stone-800 dark:text-stone-100' : 'text-stone-500'}">
-										<span class="icon-[lucide--pipette] size-4"></span>
-										<input bind:this={picker} type="color" tabindex="-1" aria-hidden="true" class="pointer-events-none absolute inset-0 opacity-0" value={categoryColor(color).accent} oninput={(e) => (color = e.currentTarget.value as CategoryColor)} />
-									</button>
-								{/snippet}
-							</Tip>
-							<!-- svelte-ignore a11y_autofocus -->
-							<input bind:value={name} autofocus placeholder="Name, e.g. Robotics" aria-label="Name" class="h-8 min-w-0 flex-1 rounded-lg bg-stone-100 px-2.5 text-[13px] outline-none placeholder:text-stone-400 focus-visible:ring-2 focus-visible:ring-blue-500/60 dark:bg-stone-800" />
-						</div>
-						<div class="mt-5 flex justify-end gap-2">
-							<Dialog.Close type="button" class={button('secondary')}>Cancel</Dialog.Close>
-							<button type="submit" class={button('primary')} disabled={!name.trim()}>{editing ? 'Save' : 'Create'}</button>
-						</div>
-					</form>
-				{/if}
+		</Tip>
+		<Tip label="Pick any color">
+			{#snippet child({ props })}
+				<button {...props} type="button" aria-label="Pick any color" onclick={() => picker?.click()} class={iconButton(8, cn('rounded-lg', custom ? 'bg-stone-100 text-stone-800 dark:bg-stone-800 dark:text-stone-100' : mutedIcon))}>
+					<span class="icon-[lucide--pipette] size-4"></span>
+				</button>
 			{/snippet}
-		</Dialog.Content>
-	</Dialog.Portal>
-</Dialog.Root>
+		</Tip>
+		<!-- The system color picker, opened by the button above (not nested in it). -->
+		<input bind:this={picker} type="color" tabindex="-1" aria-hidden="true" class="pointer-events-none absolute size-0 opacity-0" value={categoryColor(color).accent} oninput={(e) => (color = e.currentTarget.value as CategoryColor)} />
+		<!-- svelte-ignore a11y_autofocus -->
+		<input bind:value={name} autofocus placeholder="Name, e.g. Robotics" aria-label="Name" class="h-8 min-w-0 flex-1 rounded-lg bg-stone-100 px-2.5 text-[13px] outline-none placeholder:text-stone-400 focus-visible:ring-2 focus-visible:ring-blue-500/60 dark:bg-stone-800" />
+	</div>
+	<div class="mt-5 flex justify-end gap-2">
+		<Dialog.Close type="button" class={button('secondary')}>Cancel</Dialog.Close>
+		<button type="submit" class={button('primary')} disabled={!name.trim()}>{editing ? 'Save' : 'Create'}</button>
+	</div>
+</UiDialog>
