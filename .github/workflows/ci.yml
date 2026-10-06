@@ -22,6 +22,7 @@ jobs:
           restore-keys: bun-${{ runner.os }}-
       - run: bun install --frozen-lockfile
       - run: bun run check
+      - run: bun run test
       - run: bun run build:web
 
   # The desktop app ships on all three: compile, lint and test the Rust side on each.
