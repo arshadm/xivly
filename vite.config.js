@@ -40,6 +40,11 @@ export default defineConfig(() => ({
     // bun run dev:extension: open extension pages reload themselves after each rebuild.
     __XIVLY_EXTENSION_DEV__: JSON.stringify(process.env.XIVLY_EXTENSION_DEV === "1"),
   },
+  // Chrome refuses file names starting with "_", which base64 hashes can.
+  ...(process.env.XIVLY_EXTENSION === "1" && {
+    build: { rolldownOptions: { output: { hashCharacters: "base36" } } },
+    worker: { rolldownOptions: { output: { hashCharacters: "base36" } } },
+  }),
 
   // Unit tests (bun run test): pure logic and the library folder over an in-memory fs.
   test: {
