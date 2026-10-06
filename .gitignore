@@ -12,3 +12,5 @@ static/pdfjs
 demo-library
 demo-library-inbox
 .env
+/build-extension
+/dist

@@ -41,7 +41,7 @@
 	import { settings } from '$lib/settings.svelte';
 	import { keys, matches } from '$lib/shortcuts';
 	import { theme } from '$lib/theme.svelte';
-	import { askUnsaved, closeWindow, openPaper, saveFile, setWindowTitle } from '$lib/windows';
+	import { askUnsaved, closeWindow, openPaper, saveFile, searchParams, setWindowTitle } from '$lib/windows';
 	import PaperDetails from '$lib/components/PaperDetails.svelte';
 	import { settingsDialog } from '$lib/components/SettingsDialog.svelte';
 	import { shortcutsHelp } from '$lib/components/ShortcutsHelp.svelte';
@@ -64,7 +64,7 @@
 	import ZoomSlider from '$lib/ui/ZoomSlider.svelte';
 	import { contextMenuState, isEditable, setFallbackMenu, type MenuItem } from '$lib/ui/context-menu.svelte';
 
-	const id = $derived(page.url.searchParams.get('id') ?? '');
+	const id = $derived(searchParams(page.url).get('id') ?? '');
 	const paper = $derived(library.get(id));
 	const s = $derived(settings.values);
 

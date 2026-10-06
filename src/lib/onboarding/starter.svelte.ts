@@ -23,11 +23,12 @@ export const STARTER_CATEGORIES: Category[] = [
 ];
 
 /**
- * The released desktop app downloads from the web app's site, the web build from
- * its own origin (the Pages deploy adds it), and dev from `starter/build/` (unzip
- * starter.zip there: it stays out of `static/`, so builds never ship it).
+ * The released desktop app and the Chrome extension download from the web app's
+ * site, the web build from its own origin (the Pages deploy adds it), and dev
+ * from `starter/build/` (unzip starter.zip there: it stays out of `static/`, so
+ * builds never ship it).
  */
-const base = () => (dev ? '/starter/build/' : platform.kind === 'desktop' ? 'https://julien-blanchon.github.io/xivly/starter/' : asset('/starter/'));
+const base = () => (dev ? '/starter/build/' : platform.kind === 'desktop' || __XIVLY_EXTENSION__ ? 'https://julien-blanchon.github.io/xivly/starter/' : asset('/starter/'));
 
 export const starter = $state({ running: false, done: 0, total: 0, error: null as string | null });
 

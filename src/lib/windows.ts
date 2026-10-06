@@ -5,6 +5,9 @@ import { toast } from './components/Toasts.svelte';
 import { platform } from './platform';
 
 const readerPath = (id: string) => `${resolve('/read')}?id=${encodeURIComponent(id)}`;
+
+/** A page's query (`?id=…`): after the `#` in the Chrome extension (hash router, svelte.config.js). */
+export const searchParams = (url: URL) => (__XIVLY_EXTENSION__ ? new URLSearchParams(url.hash.split('?')[1]) : url.searchParams);
 /** Window labels allow `a-zA-Z0-9-/:_`; paper ids are slugs. */
 const labelFor = (id: string) => `paper-${id.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
 

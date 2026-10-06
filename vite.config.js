@@ -33,6 +33,10 @@ const noStoreLibrary = {
 export default defineConfig(() => ({
   plugins: [noStoreLibrary, tailwindcss(), sveltekit()],
 
+  // Chrome extension build (bun run build:extension): its code (src/lib/extension/)
+  // sits behind this constant, so the web and desktop bundles leave it out.
+  define: { __XIVLY_EXTENSION__: JSON.stringify(process.env.XIVLY_EXTENSION === "1") },
+
   // Unit tests (bun run test): pure logic and the library folder over an in-memory fs.
   test: {
     include: ["src/**/*.test.ts"],

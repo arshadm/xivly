@@ -1,0 +1,83 @@
+/// <reference types="chrome" />
+// Chrome extension, page side: the app is the web build in an extension page,
+// plus what the service worker (./background.ts) asks of it. Loaded by
+// +layout.svelte in extension builds only.
+import { untrack } from 'svelte';
+import { goto } from '$app/navigation';
+import { resolve } from '$app/paths';
+import { page } from '$app/state';
+import { parseArxiv } from '$lib/arxiv';
+import { toast } from '$lib/components/Toasts.svelte';
+import { library } from '$lib/library.svelte';
+import { prompts } from '$lib/ui/prompt.svelte';
+import { searchParams } from '$lib/windows';
+import type { ExtensionMessage } from './messages';
+
+export function startExtension() {
+	// The toolbar button focuses a tab showing the library.
+	chrome.runtime.onMessage.addListener((message: ExtensionMessage, _sender, respond) => {
+		if (message.type !== 'find-library' || page.route.id !== '/') return false;
+		void chrome.tabs.getCurrent().then(respond);
+		return true;
+	});
+	// "Open in Xivly" opens `#/?add=<url>`: added once the library is open (it may need a click first).
+	$effect.root(() => {
+		$effect(() => {
+			const url = searchParams(page.url).get('add');
+			if (url && library.status === 'ready') untrack(() => void open(url));
+		});
+	});
+}
+
+/** Add the paper at `url` (arXiv, or any PDF), then read it in this tab. */
+async function open(url: string) {
+	// A reload must not add it again.
+	await goto(resolve('/'), { replaceState: true });
+	try {
+		const id = parseArxiv(url) ? (await library.importArxiv(url)).id : await importPdf(url);
+		if (id) await goto(`${resolve('/read')}?id=${encodeURIComponent(id)}`, { replaceState: true });
+	} catch (e) {
+		toast(e instanceof Error ? e.message : String(e), 'error');
+	}
+}
+
+/** Any PDF on the web; the link is kept (`links.other`), so the same one opens its paper again. */
+async function importPdf(url: string): Promise<string | undefined> {
+	const existing = library.papers.find((p) => p.links?.other?.includes(url));
+	if (existing) return existing.id;
+	const res = await download(url);
+	if (!res) return;
+	const bytes = new Uint8Array(await res.arrayBuffer());
+	// The header may follow some junk (up to 1 KB, as PDF readers allow).
+	if (!new TextDecoder('latin1').decode(bytes.subarray(0, 1024)).includes('%PDF-')) throw new Error('That isn’t a PDF');
+	const name = decodeURIComponent(new URL(res.url).pathname.split('/').pop() ?? '').replace(/\.pdf$/i, '') || 'paper';
+	const [id] = await library.import([new File([bytes], `${name}.pdf`, { type: 'application/pdf' })]);
+	if (id) await library.update(id, (cur) => ({ links: { ...cur.links, other: [...(cur.links?.other ?? []), url] } }));
+	return id;
+}
+
+/**
+ * Sites that don't allow cross-origin downloads (CORS) need their host
+ * permission, optional in the manifest: asked for the first time, in a click.
+ */
+async function download(url: string): Promise<Response | null> {
+	const { origin, host } = new URL(url);
+	const origins = [`${origin}/*`];
+	try {
+		return ok(await fetch(url));
+	} catch (e) {
+		if (!(e instanceof TypeError) || (await chrome.permissions.contains({ origins }))) throw e;
+	}
+	const allow = await prompts.confirm(`Download papers from ${host}?`, {
+		message: `${host} doesn’t let other sites download its PDFs. Chrome will ask you to let Xivly read ${host}: it only downloads the PDFs you open in Xivly.`,
+		confirmLabel: 'Continue'
+	});
+	// Still in the click on "Continue" (Chrome asks only in a user gesture).
+	if (!allow || !(await chrome.permissions.request({ origins }))) return null;
+	return ok(await fetch(url));
+}
+
+function ok(res: Response) {
+	if (!res.ok) throw new Error(`${new URL(res.url).host}: HTTP ${res.status}`);
+	return res;
+}

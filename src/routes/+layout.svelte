@@ -15,7 +15,7 @@
 	import { keys, matches } from '$lib/shortcuts';
 	import { mac, os } from '$lib/os';
 	import { theme } from '$lib/theme.svelte';
-	import { fixRestoredSize, showLibrary } from '$lib/windows';
+	import { fixRestoredSize, searchParams, showLibrary } from '$lib/windows';
 	import SettingsDialog, { settingsDialog } from '$lib/components/SettingsDialog.svelte';
 	import Welcome from '$lib/components/Welcome.svelte';
 	import Toasts, { toast } from '$lib/components/Toasts.svelte';
@@ -58,6 +58,7 @@
 			return () => void unlisten.then((f) => f());
 		}
 		settings.init().then(() => library.init());
+		if (__XIVLY_EXTENSION__) void import('$lib/extension/app.svelte').then((m) => m.startExtension());
 		if (platform.kind !== 'desktop') return;
 		void fixRestoredSize();
 		const win = getCurrentWindow();
@@ -122,7 +123,7 @@
 	// A reader window only refreshes its own paper.
 	function onfocus() {
 		if (library.status !== 'ready') return;
-		const id = page.route.id === '/read' ? page.url.searchParams.get('id') : null;
+		const id = page.route.id === '/read' ? searchParams(page.url).get('id') : null;
 		void (id ? library.reloadPaper(id) : library.reload());
 	}
 
@@ -149,8 +150,9 @@
 <Tooltip.Provider delayDuration={400} skipDelayDuration={200}>
 	<div class="h-full bg-stone-50 text-stone-800 dark:bg-stone-950 dark:text-stone-200">
 		{#if page.route.id?.startsWith('/dev')}
-			<!-- Dev tools (e.g. /dev/starter) don't need a library. -->
-			{@render children()}
+			<!-- Dev tools (e.g. /dev/starter) don't need a library. The extension
+			     build skips dev/+layout.ts (svelte.config.js), which 404s them. -->
+			{#if !__XIVLY_EXTENSION__}{@render children()}{/if}
 		{:else if !modern}
 			<div class="grid h-full place-items-center px-6 text-center" data-tauri-drag-region>
 				<div>
