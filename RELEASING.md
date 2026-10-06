@@ -60,6 +60,47 @@ Prereleases: `bun run release 0.2.0-rc.1` → tag `v0.2.0-rc.1`. The GitHub rele
 3. **publish** (after all builds): fails if any expected asset is missing, otherwise publishes the draft. It is marked **Latest** only if it is the newest stable version, so re-running an old tag never takes "Latest" from a newer one. A failed build leaves the release as a draft, invisible to users and to Homebrew.
 4. **homebrew** (stable versions only, after publish; one run at a time across tags): downloads the published `*_universal.dmg`, computes its sha256, renders `Casks/xivly.rb` with `scripts/cask.sh` and pushes it to `julien-blanchon/homebrew-tap` (rebase + retry on a race). It never moves the cask to an older version than the one in the tap, and is a no-op when unchanged.
 
+### Windows code signing (SignPath Foundation)
+
+Free for open-source projects through the [SignPath Foundation](https://signpath.org); the policy it requires is [CODE_SIGNING.md](CODE_SIGNING.md). Until it is set up, the workflow skips signing and Windows builds ship unsigned, exactly as before.
+
+**How it works.** SignPath signs *GitHub artifacts* and verifies their origin (every job of the run on GitHub-hosted runners, the tagged commit of this repository), so it can't be a per-file `signCommand` called by the bundler. On Windows, when SignPath is configured, `build`:
+
+1. builds the program only (`tauri build --no-bundle`) and uploads `xivly.exe` as an artifact;
+2. submits it with [`signpath/github-action-submit-signing-request`](https://github.com/SignPath/github-action-submit-signing-request) (artifact configuration `app`) and waits (up to an hour: release signing waits for a manual approval);
+3. puts the signed `xivly.exe` back and bundles the installers around it (`tauri bundle`), so the installed program is signed too;
+4. uploads the NSIS setup and the MSI as an artifact, signs them (configuration `installers`, or `installers-nsis` for prereleases, which have no MSI), checks the signatures (`Get-AuthenticodeSignature`) and uploads them to the draft release.
+
+**Setup**, once the Foundation has approved the project:
+
+1. In SignPath: the organization and project (slug, e.g. `xivly`), with GitHub as trusted build system and the repository linked.
+2. Artifact configurations, from the files in [`.signpath/`](.signpath): `app.xml` → slug `app`, `installers.xml` → slug `installers`, `installers-nsis.xml` → slug `installers-nsis`.
+3. Signing policies: `release-signing` (Foundation certificate, approver: the maintainer) and, if offered, `test-signing` (prereleases).
+4. A CI user with submitter rights on those policies; create its API token.
+5. In GitHub (*Settings → Secrets and variables → Actions*):
+
+   | Kind | Name | Value |
+   | --- | --- | --- |
+   | Secret | `SIGNPATH_API_TOKEN` | the CI user's API token |
+   | Variable | `SIGNPATH_ORGANIZATION_ID` | the organization ID |
+   | Variable | `SIGNPATH_PROJECT_SLUG` | e.g. `xivly` |
+   | Variable | `SIGNPATH_SIGNING_POLICY_SLUG` | `release-signing` |
+   | Variable (optional) | `SIGNPATH_TEST_SIGNING_POLICY_SLUG` | `test-signing`, used for prereleases |
+
+   Signing turns on only when the secret and the three required variables all exist.
+6. Try it with a prerelease tag (`v0.3.1-rc.1`): it uses the test policy when there is one, and leaves Homebrew alone.
+
+**Verify a signed build** on Windows:
+
+```powershell
+Get-AuthenticodeSignature .\Xivly_X.Y.Z_x64-setup.exe | Format-List Status, SignerCertificate
+Get-AuthenticodeSignature .\Xivly_X.Y.Z_x64_en-US.msi | Format-List Status, SignerCertificate
+Get-AuthenticodeSignature "$env:LOCALAPPDATA\Xivly\xivly.exe"   # after installing (NSIS, per-user)
+signtool verify /pa /v .\Xivly_X.Y.Z_x64-setup.exe                # Windows SDK
+```
+
+`Status` should be `Valid`, the signer the SignPath Foundation. SmartScreen may still warn on the first downloads of a new certificate until it builds reputation.
+
 ### Build cache
 
 A tag can restore caches saved on the default branch, not another tag's. `cache.yml` warms the release builds' Rust cache on `main` (same toolchain, targets and `shared-key: release-<OS>`, `tauri build --no-bundle`): when `Cargo.lock`/`Cargo.toml` change, weekly (GitHub evicts caches unused for 7 days) and by hand (`gh workflow run cache.yml`). Releases only restore it (`save-if: false`). Without a warm cache each platform compiles every crate (about 11 minutes); with it, only Xivly's own crate and the bundling remain. Before a release after a dependency bump, let `cache.yml` finish on main first. Bun's package cache is cached too (`bun.lock` key).

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SignPath artifact configuration "installers-nsis" (slug: installers-nsis), prereleases:
+  WiX needs a numeric version, so a prerelease ships the NSIS setup only.
+  The GitHub artifact is a zip holding nsis/ (the root is the common parent of the upload paths, so the folder is kept).
+-->
+<artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
+  <zip-file>
+    <pe-file path="nsis/Xivly_*_x64-setup.exe">
+      <authenticode-sign/>
+    </pe-file>
+  </zip-file>
+</artifact-configuration>

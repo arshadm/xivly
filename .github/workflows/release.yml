@@ -7,7 +7,8 @@
 #               macOS   universal .dmg (+ .app.tar.gz): app signed + notarized,
 #                       then the DMG itself notarized and stapled, uploaded here
 #               Linux   .AppImage + .deb + .rpm (ubuntu-24.04: glibc 2.39+)
-#               Windows NSIS -setup.exe + .msi
+#               Windows NSIS -setup.exe + .msi, signed by SignPath when configured
+#                       (app exe first, then the installers built around it)
 #   publish   checks every asset is there, then publishes the release (marked
 #             "Latest" only if it is the newest stable version).
 #   homebrew  bumps the cask in julien-blanchon/homebrew-tap from the published
@@ -24,6 +25,10 @@
 #   APPLE_ID, APPLE_PASSWORD      app-specific password, for notarization } ad-hoc signed and
 #   APPLE_TEAM_ID                                                         } the cask strips
 #   KEYCHAIN_PASSWORD             any random string                       } the quarantine flag
+#   SIGNPATH_API_TOKEN            SignPath CI user token } optional: Windows builds are signed
+#   vars.SIGNPATH_ORGANIZATION_ID, SIGNPATH_PROJECT_SLUG,  } only when all of these exist,
+#   SIGNPATH_SIGNING_POLICY_SLUG (+ optional              } unsigned otherwise (see
+#   SIGNPATH_TEST_SIGNING_POLICY_SLUG for prereleases)     } CODE_SIGNING.md)
 # The Apple credentials are only given to the steps that sign or notarize.
 name: release
 
@@ -92,6 +97,7 @@ jobs:
           restore-keys: bun-${{ runner.os }}-
       - run: bun install --frozen-lockfile
       - run: bun run check
+      - run: bun run test
 
       - name: Draft release
         id: draft
@@ -165,6 +171,10 @@ jobs:
     env:
       SIGNED: ${{ secrets.APPLE_CERTIFICATE != '' }}
       VERSION: ${{ needs.prepare.outputs.version }}
+      # Windows code signing (SignPath Foundation): a no-op until the project is set up.
+      SIGNPATH: ${{ secrets.SIGNPATH_API_TOKEN != '' && vars.SIGNPATH_ORGANIZATION_ID != '' && vars.SIGNPATH_PROJECT_SLUG != '' && vars.SIGNPATH_SIGNING_POLICY_SLUG != '' }}
+      # Prereleases use the test-signing policy when there is one.
+      SIGNPATH_POLICY: ${{ (needs.prepare.outputs.prerelease == 'true' && vars.SIGNPATH_TEST_SIGNING_POLICY_SLUG) || vars.SIGNPATH_SIGNING_POLICY_SLUG }}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
@@ -277,8 +287,8 @@ jobs:
           tar -czf "$APP_TGZ" -C "$BUNDLE/macos" Xivly.app
           gh release upload "$TAG" "$DMG" "$APP_TGZ" --clobber -R "$GITHUB_REPOSITORY"
 
-      - name: Build and upload (Linux, Windows)
-        if: runner.os != 'macOS'
+      - name: Build and upload (Linux, Windows unsigned)
+        if: runner.os == 'Linux' || (runner.os == 'Windows' && env.SIGNPATH != 'true')
         uses: tauri-apps/tauri-action@1deb371b0cd8bd54025b384f1cd735e725c4060f # v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -288,6 +298,84 @@ jobs:
           uploadUpdaterJson: false
           retryAttempts: 1
 
+
+      # ── Windows, signed by SignPath (CODE_SIGNING.md) ──────────────────────
+      # SignPath signs GitHub artifacts (origin-verified: GitHub-hosted runners only),
+      # not single files from a build script. So: build the program, sign xivly.exe,
+      # bundle the installers around the signed exe, sign the installers, upload.
+      - name: Build the program (Windows)
+        if: runner.os == 'Windows' && env.SIGNPATH == 'true'
+        run: bun run tauri build --no-bundle
+
+      - name: Unsigned program artifact
+        id: unsigned-app
+        if: runner.os == 'Windows' && env.SIGNPATH == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: xivly-exe-unsigned
+          path: src-tauri/target/release/xivly.exe
+          if-no-files-found: error
+
+      - name: Sign the program
+        if: runner.os == 'Windows' && env.SIGNPATH == 'true'
+        uses: signpath/github-action-submit-signing-request@f6d04783b4569d051e0c80105fe66e82819d0092 # v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ env.SIGNPATH_POLICY }}
+          artifact-configuration-slug: app
+          github-artifact-id: ${{ steps.unsigned-app.outputs.artifact-id }}
+          wait-for-completion: true
+          # Release signing can wait for a manual approval in SignPath.
+          wait-for-completion-timeout-in-seconds: 3600
+          output-artifact-directory: ${{ runner.temp }}/signed-app
+
+      - name: Bundle the installers around the signed program
+        if: runner.os == 'Windows' && env.SIGNPATH == 'true'
+        run: |
+          cp "$RUNNER_TEMP/signed-app/xivly.exe" src-tauri/target/release/xivly.exe
+          bun run tauri bundle ${{ steps.args.outputs.args }}
+
+      - name: Unsigned installers artifact
+        id: unsigned-installers
+        if: runner.os == 'Windows' && env.SIGNPATH == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: xivly-installers-unsigned
+          path: |
+            src-tauri/target/release/bundle/nsis/*-setup.exe
+            src-tauri/target/release/bundle/msi/*.msi
+          if-no-files-found: error
+
+      - name: Sign the installers
+        if: runner.os == 'Windows' && env.SIGNPATH == 'true'
+        uses: signpath/github-action-submit-signing-request@f6d04783b4569d051e0c80105fe66e82819d0092 # v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ env.SIGNPATH_POLICY }}
+          # Prereleases ship no MSI (WiX needs a numeric version).
+          artifact-configuration-slug: ${{ needs.prepare.outputs.prerelease == 'true' && 'installers-nsis' || 'installers' }}
+          github-artifact-id: ${{ steps.unsigned-installers.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 3600
+          output-artifact-directory: ${{ runner.temp }}/signed-installers
+
+      - name: Check and upload the signed installers
+        if: runner.os == 'Windows' && env.SIGNPATH == 'true'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $files = Get-ChildItem "$env:RUNNER_TEMP/signed-installers" -File -Recurse
+          foreach ($f in $files) {
+            $sig = Get-AuthenticodeSignature $f.FullName
+            if ($sig.Status -ne 'Valid') { throw "$($f.Name): signature $($sig.Status)" }
+            "$($f.Name): $($sig.SignerCertificate.Subject)"
+          }
+          gh release upload $env:TAG @($files.FullName) --clobber -R $env:GITHUB_REPOSITORY
   publish:
     needs: [prepare, build]
     # Tag pushes always publish; a manual run can stop at the draft.
