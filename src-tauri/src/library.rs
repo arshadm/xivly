@@ -19,6 +19,8 @@ use crate::hooks;
 
 pub struct AppState {
     pub config: std::sync::Mutex<AppConfig>,
+    /// Why config.json couldn't be read at launch, until a library is picked again.
+    pub config_error: std::sync::Mutex<Option<String>>,
 }
 
 fn root(state: &State<AppState>) -> Result<PathBuf> {
@@ -88,6 +90,9 @@ fn library_path(app: &AppHandle) -> Result<PathBuf> {
         }
         return Ok(path.clone());
     }
+    if let Some(err) = state.config_error.lock().unwrap().as_ref() {
+        return Err(format!("Couldn't read Xivly's settings ({err}): choose your library folder again").into());
+    }
     let path = default_library(&app.path().home_dir()?, &app.path().document_dir()?);
     std::fs::create_dir_all(&path)?;
     cfg.library = Some(path.clone());
@@ -107,6 +112,7 @@ pub async fn pick_library(app: AppHandle, state: State<'_, AppState>) -> Result<
     let mut cfg = state.config.lock().unwrap();
     cfg.library = Some(path.clone());
     config::save(&app, &cfg)?;
+    *state.config_error.lock().unwrap() = None;
     Ok(Some(path))
 }
 
@@ -159,7 +165,7 @@ pub async fn fs_write(state: State<'_, AppState>, request: tauri::ipc::Request<'
 }
 
 /// Write via a temp file + rename, so sync clients never see a half-written file.
-fn write_atomic(p: &Path, bytes: &[u8]) -> Result<()> {
+pub(crate) fn write_atomic(p: &Path, bytes: &[u8]) -> Result<()> {
     if let Some(dir) = p.parent() {
         std::fs::create_dir_all(dir)?;
     }
@@ -178,7 +184,8 @@ fn write_atomic(p: &Path, bytes: &[u8]) -> Result<()> {
     loop {
         match std::fs::rename(&tmp, p) {
             Ok(()) => return Ok(()),
-            Err(e) if cfg!(windows) && tries < 5 && e.kind() == std::io::ErrorKind::PermissionDenied => {
+            // Access denied, sharing or lock violation (ERROR_ACCESS_DENIED / _SHARING_ / _LOCK_VIOLATION).
+            Err(e) if cfg!(windows) && tries < 5 && matches!(e.raw_os_error(), Some(5 | 32 | 33)) => {
                 tries += 1;
                 std::thread::sleep(std::time::Duration::from_millis(50 * tries));
             }
@@ -230,7 +237,8 @@ pub async fn fs_list(state: State<'_, AppState>, path: String) -> Result<Vec<Ent
             .flatten()
             .map(|e| Entry {
                 name: e.file_name().to_string_lossy().into_owned(),
-                dir: e.file_type().map(|t| t.is_dir()).unwrap_or(false),
+                // Follows symlinks: a linked folder lists as a folder.
+                dir: std::fs::metadata(e.path()).map(|m| m.is_dir()).unwrap_or(false),
             })
             .collect())
     })
@@ -239,7 +247,8 @@ pub async fn fs_list(state: State<'_, AppState>, path: String) -> Result<Vec<Ent
 
 #[tauri::command]
 pub async fn fs_exists(state: State<'_, AppState>, path: String) -> Result<bool> {
-    Ok(resolve(&root(&state)?, &path)?.exists())
+    let p = resolve(&root(&state)?, &path)?;
+    blocking(move || Ok(p.try_exists()?)).await
 }
 
 #[tauri::command]
@@ -279,6 +288,10 @@ pub async fn fs_abs(state: State<'_, AppState>, path: String) -> Result<PathBuf>
 /// trashed right after); other events run in the background.
 #[tauri::command]
 pub async fn run_hook(app: AppHandle, state: State<'_, AppState>, event: String, paper_id: String) -> Result<()> {
+    // Only the events Xivly fires (an empty name would match every dotfile in hooks/).
+    if !hooks::EVENTS.contains(&event.as_str()) {
+        return Err(format!("Unknown hook event: {event:?}").into());
+    }
     let r = root(&state)?;
     let dir = resolve_entry(&r, &format!("papers/{paper_id}"))?;
     if event == "paper-removed" {

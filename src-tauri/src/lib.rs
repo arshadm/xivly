@@ -6,16 +6,23 @@ mod library;
 use std::collections::HashSet;
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::{Duration, Instant};
 
 use tauri::{Emitter, Manager};
 
 static QUITTING: AtomicBool = AtomicBool::new(false);
-/// During a quit request: the windows that still have to answer.
-static PENDING: Mutex<Option<HashSet<String>>> = Mutex::new(None);
+/// During a quit request: the windows that still have to answer, and when it was asked.
+static PENDING: Mutex<Option<(HashSet<String>, Instant)>> = Mutex::new(None);
+/// A quit still unanswered after this long is stale (a window that hung, or that
+/// never got the request): the next ⌘Q asks again instead of waiting forever. A
+/// window showing its "unsaved changes" dialog keeps the quit pending meanwhile.
+const STALE_QUIT: Duration = Duration::from_secs(15);
+
+type Pending = Option<(HashSet<String>, Instant)>;
 
 /// Quit once no window is left to answer.
-fn quit_if_done(app: &tauri::AppHandle, pending: &mut Option<HashSet<String>>) {
-    if pending.as_ref().is_some_and(HashSet::is_empty) {
+fn quit_if_done(app: &tauri::AppHandle, pending: &mut Pending) {
+    if pending.as_ref().is_some_and(|(set, _)| set.is_empty()) {
         *pending = None;
         QUITTING.store(true, Ordering::SeqCst);
         app.exit(0);
@@ -32,7 +39,7 @@ fn quit_response(app: tauri::AppHandle, window: tauri::Window, ok: bool) {
         *pending = None;
         return;
     }
-    if let Some(set) = pending.as_mut() {
+    if let Some((set, _)) = pending.as_mut() {
         set.remove(window.label());
     }
     quit_if_done(&app, &mut pending);
@@ -46,9 +53,10 @@ fn begin_quit(app: &tauri::AppHandle) -> bool {
         return false;
     }
     let mut pending = PENDING.lock().unwrap_or_else(|e| e.into_inner());
-    // A quit already in progress keeps waiting for its windows.
-    if pending.is_none() {
-        *pending = Some(windows);
+    // A quit already in progress keeps waiting for its windows, unless it went stale.
+    let stale = pending.as_ref().is_some_and(|(_, at)| at.elapsed() > STALE_QUIT);
+    if pending.is_none() || stale {
+        *pending = Some((windows, Instant::now()));
         let _ = app.emit("quit-requested", ());
     }
     true
@@ -73,8 +81,16 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .setup(|app| {
-            let config = config::load(app.handle());
-            app.manage(library::AppState { config: std::sync::Mutex::new(config) });
+            // A broken config.json is reported (the user picks the library again), never
+            // silently replaced by a new default library.
+            let (config, config_error) = match config::load(app.handle()) {
+                Ok(config) => (config, None),
+                Err(e) => (config::AppConfig::default(), Some(e.to_string())),
+            };
+            app.manage(library::AppState {
+                config: std::sync::Mutex::new(config),
+                config_error: std::sync::Mutex::new(config_error),
+            });
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -104,7 +120,7 @@ pub fn run() {
             // A window closed mid-quit has nothing left to answer.
             tauri::RunEvent::WindowEvent { label, event: tauri::WindowEvent::Destroyed, .. } => {
                 let mut pending = PENDING.lock().unwrap_or_else(|e| e.into_inner());
-                if let Some(set) = pending.as_mut() {
+                if let Some((set, _)) = pending.as_mut() {
                     set.remove(&label);
                 }
                 quit_if_done(app, &mut pending);

@@ -20,6 +20,9 @@ use std::time::{Duration, Instant};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter};
 
+/// The events Xivly runs hooks for (`HookEvent` in src/lib/platform/types.ts).
+pub const EVENTS: [&str; 4] = ["paper-added", "paper-saved", "paper-updated", "paper-removed"];
+
 #[derive(Serialize, Clone)]
 pub struct HookResult {
     pub event: String,
@@ -188,20 +191,25 @@ fn command_for(hook: &Path) -> std::result::Result<Command, String> {
 /// Windows runs PowerShell (`.ps1`) and batch (`.cmd`, `.bat`) hooks.
 #[cfg(windows)]
 fn command_for(hook: &Path) -> std::result::Result<Command, String> {
+    use std::os::windows::process::CommandExt;
+    // The app has no console: without this, each hook would flash a console window.
+    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
     let ext = hook.extension().and_then(|e| e.to_str()).map(str::to_ascii_lowercase);
-    match ext.as_deref() {
+    let mut c = match ext.as_deref() {
         Some("ps1") => {
-            let mut c = Command::new("powershell");
-            c.args(["-NoProfile", "-ExecutionPolicy", "Bypass", "-File"]).arg(hook);
-            Ok(c)
+            // By full path: not whatever `powershell` an altered PATH finds first.
+            let root = std::env::var_os("SystemRoot").unwrap_or_else(|| "C:\\Windows".into());
+            let exe = Path::new(&root).join("System32\\WindowsPowerShell\\v1.0\\powershell.exe");
+            let mut c = Command::new(exe);
+            c.args(["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File"]).arg(hook);
+            c
         }
-        Some("cmd" | "bat") => {
-            let mut c = Command::new("cmd");
-            c.arg("/C").arg(hook);
-            Ok(c)
-        }
-        _ => Err("On Windows, hooks are .ps1, .cmd or .bat files".into()),
-    }
+        // Run directly: Rust quotes batch-file arguments safely (no `cmd /C` string).
+        Some("cmd" | "bat") => Command::new(hook),
+        _ => return Err("On Windows, hooks are .ps1, .cmd or .bat files".into()),
+    };
+    c.creation_flags(CREATE_NO_WINDOW);
+    Ok(c)
 }
 
 #[cfg(unix)]

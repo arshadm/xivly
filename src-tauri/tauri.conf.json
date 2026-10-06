@@ -28,7 +28,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; font-src 'self' data: blob:; worker-src 'self' blob:; connect-src 'self' ipc: http://ipc.localhost https://arxiv.org https://export.arxiv.org https://huggingface.co https://api.semanticscholar.org https://api.openalex.org https://api.crossref.org https://doi.org https://cdn.jsdelivr.net https://julien-blanchon.github.io",
+      "csp": "default-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; font-src 'self' data: blob:; worker-src 'self' blob:; connect-src 'self' ipc: http://ipc.localhost https://arxiv.org https://export.arxiv.org https://huggingface.co https://api.semanticscholar.org https://api.openalex.org https://api.crossref.org https://doi.org https://julien-blanchon.github.io",
       "devCsp": null
     }
   },

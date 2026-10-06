@@ -18,19 +18,16 @@ fn config_path(app: &AppHandle) -> Result<PathBuf> {
     Ok(app.path().app_config_dir()?.join("config.json"))
 }
 
-pub fn load(app: &AppHandle) -> AppConfig {
-    config_path(app)
-        .ok()
-        .and_then(|p| std::fs::read(p).ok())
-        .and_then(|b| serde_json::from_slice(&b).ok())
-        .unwrap_or_default()
+/// The saved config; none yet is the default, but an unreadable one is an error.
+pub fn load(app: &AppHandle) -> Result<AppConfig> {
+    match std::fs::read(config_path(app)?) {
+        Ok(bytes) => Ok(serde_json::from_slice(&bytes)?),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(AppConfig::default()),
+        Err(e) => Err(e.into()),
+    }
 }
 
+/// Written atomically: a crash mid-write never leaves a half-written config.
 pub fn save(app: &AppHandle, config: &AppConfig) -> Result<()> {
-    let path = config_path(app)?;
-    if let Some(dir) = path.parent() {
-        std::fs::create_dir_all(dir)?;
-    }
-    std::fs::write(path, serde_json::to_vec_pretty(config)?)?;
-    Ok(())
+    crate::library::write_atomic(&config_path(app)?, &serde_json::to_vec_pretty(config)?)
 }
