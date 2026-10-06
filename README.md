@@ -7,7 +7,7 @@ Read, annotate and organize research papers. A desktop app (Tauri: macOS, Window
 
 - **macOS**: `brew install --cask julien-blanchon/tap/xivly` (update with `brew upgrade --cask xivly`), or the `.dmg` from [Releases](https://github.com/julien-blanchon/xivly/releases). Signed and notarized.
 - **Windows**: the `.exe` (or `.msi`) installer from [Releases](https://github.com/julien-blanchon/xivly/releases). Not code-signed yet: SmartScreen asks once.
-- **Linux**: the `.AppImage` or `.deb` from [Releases](https://github.com/julien-blanchon/xivly/releases). The `.deb` uses your system's WebKitGTK, which must be recent enough to run the PDF engine (Xivly says so on start if it isn't); the AppImage bundles its own.
+- **Linux** (x86_64, glibc 2.39+: Ubuntu 24.04, Debian 13, Fedora 40 or newer): the `.AppImage`, `.deb` or `.rpm` from [Releases](https://github.com/julien-blanchon/xivly/releases). The `.deb` and `.rpm` use your system's WebKitGTK, which must be recent enough to run the PDF engine (Xivly says so on start if it isn't); the AppImage bundles its own.
 - **Web**: [julien-blanchon.github.io/xivly](https://julien-blanchon.github.io/xivly), in a recent Chrome, Edge, Arc or Safari 26.
 
 There is no auto-update: Homebrew updates the Mac app; elsewhere, download the new release.
@@ -92,4 +92,4 @@ In dev, the app reads the example library from `starter/build/` (unzip `starter.
 bun run release 0.2.0 && git push --follow-tags
 ```
 
-The `release` workflow builds the macOS (universal, signed and notarized), Windows (`.exe`, `.msi`) and Linux (`.AppImage`, `.deb`) apps into one GitHub Release, publishes it once every build is there, then bumps `Casks/xivly.rb` in `julien-blanchon/homebrew-tap`. Release svelte-pdf-mini first when Xivly needs a new version of it. Details, secrets and troubleshooting: [RELEASING.md](RELEASING.md). The `pages` workflow deploys the web version on every push to `main`; `ci` checks the web app and the Rust side on macOS, Windows and Linux.
+The `release` workflow builds the macOS (universal; app and DMG signed, notarized and stapled), Windows (`.exe`, `.msi`) and Linux (`.AppImage`, `.deb`, `.rpm`) apps into one GitHub Release, publishes it once every build is there, then bumps `Casks/xivly.rb` in `julien-blanchon/homebrew-tap`. Release svelte-pdf-mini first when Xivly needs a new version of it. Details, secrets and troubleshooting: [RELEASING.md](RELEASING.md). The `pages` workflow deploys the web version on every push to `main`; `ci` checks the web app and the Rust side on macOS, Windows and Linux; `cache` keeps the release builds' Rust cache warm.

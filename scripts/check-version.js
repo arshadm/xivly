@@ -5,10 +5,21 @@
 import { readFileSync } from "node:fs";
 
 const read = (file) => readFileSync(file, "utf8");
+/** `version` of the `[package]` table (its lines up to the next table header). */
+function packageVersion(toml) {
+  const lines = toml.split(/\r?\n/);
+  const start = lines.findIndex((l) => l.trim() === "[package]");
+  if (start < 0) return undefined;
+  for (const line of lines.slice(start + 1)) {
+    if (/^\s*\[/.test(line)) break;
+    const m = line.match(/^\s*version\s*=\s*"([^"]+)"/);
+    if (m) return m[1];
+  }
+}
 const versions = {
   "package.json": JSON.parse(read("package.json")).version,
   "src-tauri/tauri.conf.json": JSON.parse(read("src-tauri/tauri.conf.json")).version,
-  "src-tauri/Cargo.toml": read("src-tauri/Cargo.toml").match(/^\[package\][^[]*?^version\s*=\s*"([^"]+)"/m)?.[1],
+  "src-tauri/Cargo.toml": packageVersion(read("src-tauri/Cargo.toml")),
   "src-tauri/Cargo.lock": read("src-tauri/Cargo.lock").match(/\[\[package\]\]\nname = "xivly"\nversion = "([^"]+)"/)?.[1],
 };
 
