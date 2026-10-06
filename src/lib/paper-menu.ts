@@ -15,12 +15,12 @@ const fail = (e: unknown) => toast(String(e), 'error');
 export async function addTag(p: Paper) {
 	const raw = await prompts.ask('New tag', { placeholder: 'e.g. transformers', confirmLabel: 'Add' });
 	const tag = raw?.replace(/^#/, '').toLowerCase().replace(/\s+/g, '-');
-	if (tag && !p.tags?.includes(tag)) await library.update(p.id, { tags: [...(p.tags ?? []), tag] }).catch(fail);
+	if (tag && !p.tags?.includes(tag)) await library.toggleTag(p.id, tag).catch(fail);
 }
 
 export async function trashPaper(p: Paper) {
 	const ok = await prompts.confirm(`Move “${p.title}” to the ${trashName}?`, {
-		message: platform.kind === 'desktop' ? `Its folder goes to the ${trashName}.` : 'Its folder goes to .xivly/trash in your library.',
+		message: platform.kind === 'desktop' ? `Its folder goes to the ${trashName}.` : 'Its folder goes to .xivly/trash in your library, kept there for 30 days.',
 		confirmLabel: `Move to ${trashName}`,
 		danger: true
 	});
@@ -31,12 +31,11 @@ export async function trashPaper(p: Paper) {
 /** Archiving is the `archived` tag (hidden by default in the library). */
 function toggleArchived(p: Paper): MenuItem {
 	const archived = !!p.tags?.includes(ARCHIVED);
-	const tags = archived ? p.tags!.filter((t) => t !== ARCHIVED) : [...(p.tags ?? []), ARCHIVED];
 	return {
 		label: archived ? 'Unarchive' : 'Archive',
 		icon: archived ? 'icon-[lucide--archive-restore]' : 'icon-[lucide--archive]',
 		separatorBefore: true,
-		onSelect: () => library.update(p.id, { tags: tags.length ? tags : null }).catch(fail)
+		onSelect: () => library.toggleTag(p.id, ARCHIVED).catch(fail)
 	};
 }
 
@@ -71,10 +70,7 @@ export function paperMenu(p: Paper): MenuItem[] {
 				...library.allTags.map((t) => ({
 					label: `#${t}`,
 					checked: p.tags?.includes(t),
-					onSelect: () => {
-						const tags = p.tags?.includes(t) ? p.tags.filter((x) => x !== t) : [...(p.tags ?? []), t];
-						return library.update(p.id, { tags: tags.length ? tags : null }).catch(fail);
-					}
+					onSelect: () => library.toggleTag(p.id, t).catch(fail)
 				})),
 				{ label: 'New tag…', icon: 'icon-[lucide--plus]', separatorBefore: library.allTags.length > 0, onSelect: () => addTag(p) }
 			]

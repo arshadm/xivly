@@ -62,6 +62,8 @@ export interface Paper {
 	added: string;
 	/** Last opened, used for "Recent". */
 	opened?: string;
+	/** Added by the example library (Settings › Library › Example papers removes these). */
+	starter?: boolean;
 	/** Hugging Face paper page, models / datasets / Spaces citing it. */
 	hf?: HfLinks;
 	/** Added by the example library (Settings › Library can remove them all). */

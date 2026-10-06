@@ -26,8 +26,28 @@ const str = (v: unknown) => (typeof v === 'string' ? v : undefined);
 const strs = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : undefined);
 
 /** paper.json is edited by people and agents: keep the fields the app relies on well-typed. */
-function normalizePaper(id: string, meta: Json): Paper {
+export function normalizePaper(id: string, meta: Json): Paper {
 	return { ...meta, id, title: str(meta.title)?.trim() || id, added: str(meta.added) ?? '', authors: strs(meta.authors), tags: strs(meta.tags), category: str(meta.category) } as Paper;
+}
+
+const isColor = (v: unknown) => typeof v === 'string' && v.length > 0;
+
+/** library.json too: a category without a name or color, or tags that aren't a list, must not break the app. */
+export function normalizeLibrary(raw: Json): LibraryFile {
+	const categories = (Array.isArray(raw.categories) ? raw.categories : DEFAULT_LIBRARY.categories)
+		.filter((c): c is Json => !!c && typeof c === 'object' && typeof (c as Json).id === 'string')
+		.map((c) => ({ ...c, id: c.id as string, name: str(c.name) || (c.id as string), color: isColor(c.color) ? c.color : 'stone' }));
+	return { ...raw, version: typeof raw.version === 'number' ? raw.version : 1, categories, tags: strs(raw.tags) ?? [] } as LibraryFile;
+}
+
+/** A change to a JSON file: a patch, or a function of the current content (applied under the file's lock). */
+export type Patch<T> = Json | ((current: T) => Json);
+
+/** Thrown when writing to a paper whose folder is gone (trashed from another window, Finder…). */
+export class RemovedError extends Error {
+	constructor(id: string) {
+		super(`“${id}” is no longer in the library`);
+	}
 }
 
 /** Shallow merge: `null` deletes a key, `undefined` is ignored. */
@@ -90,13 +110,20 @@ export class Repo {
 		return this.fs.write(path, enc.encode(JSON.stringify(value, null, 2) + '\n'));
 	}
 
-	/** Read-merge-write under the file's lock. */
-	#patchJson(path: string, patch: Json): Promise<Json> {
+	/** Read-merge-write under the file's lock; `guard` runs first, under the lock too. */
+	#patchJson<T extends Json = Json>(path: string, patch: Patch<T>, guard?: () => Promise<void>): Promise<Json> {
 		return this.#lock(path, async () => {
-			const next = merge((await this.#readJson(path)) ?? {}, patch);
+			await guard?.();
+			const current = (await this.#readJson(path)) ?? {};
+			const next = merge(current, typeof patch === 'function' ? patch(current as T) : patch);
 			await this.#writeJson(path, next);
 			return next;
 		});
+	}
+
+	/** A write to a paper must never bring back a folder trashed meanwhile (`write` creates parents). */
+	async #present(id: string) {
+		if (!(await this.fs.exists(`papers/${id}`))) throw new RemovedError(id);
 	}
 
 	#hook(event: HookEvent, id: string) {
@@ -122,12 +149,19 @@ export class Repo {
 	}
 
 	async readLibrary(): Promise<LibraryFile> {
-		return merge(DEFAULT_LIBRARY as unknown as Json, (await this.#readJson('.xivly/library.json')) ?? {}) as unknown as LibraryFile;
+		return normalizeLibrary(merge(DEFAULT_LIBRARY as unknown as Json, (await this.#readJson('.xivly/library.json')) ?? {}));
 	}
 
-	async updateLibrary(patch: Partial<LibraryFile>): Promise<LibraryFile> {
-		const next = await this.#patchJson('.xivly/library.json', patch);
-		return merge(DEFAULT_LIBRARY as unknown as Json, next) as unknown as LibraryFile;
+	/**
+	 * Merge into library.json. A function gets the current file (normalized), so
+	 * a change to its lists never overwrites edits made meanwhile elsewhere.
+	 */
+	async updateLibrary(patch: Partial<LibraryFile> | ((current: LibraryFile) => Partial<LibraryFile>)): Promise<LibraryFile> {
+		const next = await this.#patchJson<Json>(
+			'.xivly/library.json',
+			typeof patch === 'function' ? (cur) => patch(normalizeLibrary(merge(DEFAULT_LIBRARY as unknown as Json, cur))) as Json : (patch as Json)
+		);
+		return normalizeLibrary(merge(DEFAULT_LIBRARY as unknown as Json, next));
 	}
 
 	// ── Papers ────────────────────────────────────────────────────────────
@@ -161,23 +195,44 @@ export class Repo {
 		const id = await this.#lock('papers/', async () => {
 			let id = base;
 			for (let n = 2; await this.fs.exists(`papers/${id}`); n++) id = `${base}-${n}`;
-			await this.#writeJson(`papers/${id}/paper.json`, paper);
+			// The empty folder reserves the id (a folder without files isn't listed as a paper).
+			await this.fs.mkdir(`papers/${id}`);
 			return id;
 		});
-		await this.fs.write(`papers/${id}/paper.pdf`, bytes);
+		try {
+			// PDF first: a folder with paper.json but no PDF would show as a broken paper.
+			await this.fs.write(`papers/${id}/paper.pdf`, bytes);
+			await this.#writeJson(`papers/${id}/paper.json`, paper);
+		} catch (e) {
+			await this.fs.trash(`papers/${id}`).catch(() => {});
+			throw e;
+		}
 		this.#hook('paper-added', id);
 		return { ...paper, id } as Paper;
 	}
 
-	async update(id: string, patch: PaperPatch): Promise<Paper> {
-		const next = await this.#patchJson(`papers/${id}/paper.json`, { ...patch, id: undefined });
+	/**
+	 * Reserve `papers/<id>` for files written by hand (the example library):
+	 * `false` when that folder already exists.
+	 */
+	reserve(id: string): Promise<boolean> {
+		return this.#lock('papers/', async () => {
+			if (await this.fs.exists(`papers/${id}`)) return false;
+			await this.fs.mkdir(`papers/${id}`);
+			return true;
+		});
+	}
+
+	/** Merge into paper.json (a function gets the current content, under the lock). Refused once the paper is gone. */
+	async update(id: string, patch: Patch<Paper>): Promise<Paper> {
+		const next = await this.#patchJson<Paper>(`papers/${id}/paper.json`, withoutId(patch), () => this.#present(id));
 		this.#hook('paper-updated', id);
 		return { ...next, id } as Paper;
 	}
 
 	/** Like `update`, without firing a hook (reading position, last opened). */
-	async touch(id: string, patch: PaperPatch) {
-		await this.#patchJson(`papers/${id}/paper.json`, patch);
+	async touch(id: string, patch: Patch<Paper>) {
+		await this.#patchJson<Paper>(`papers/${id}/paper.json`, withoutId(patch), () => this.#present(id));
 	}
 
 	readPdf(id: string) {
@@ -186,13 +241,22 @@ export class Repo {
 
 	async savePdf(id: string, bytes: Uint8Array) {
 		if (dec.decode(bytes.subarray(0, 4)) !== '%PDF') throw new Error('Refusing to save: not a PDF');
-		await this.#lock(`papers/${id}/paper.pdf`, () => this.fs.write(`papers/${id}/paper.pdf`, bytes));
+		await this.#lock(`papers/${id}/paper.pdf`, async () => {
+			await this.#present(id);
+			await this.fs.write(`papers/${id}/paper.pdf`, bytes);
+		});
 		this.#hook('paper-saved', id);
 	}
 
 	async remove(id: string) {
 		// Hook first (the platform waits for it): once trashed, the folder is gone.
 		await this.platform.runHook?.('paper-removed', id).catch((e) => console.warn('hook failed', e));
-		await this.fs.trash(`papers/${id}`);
+		// Under the paper's locks: a save or an edit in progress finishes first, later ones see it's gone.
+		await this.#lock(`papers/${id}/paper.json`, () => this.#lock(`papers/${id}/paper.pdf`, () => this.fs.trash(`papers/${id}`)));
 	}
+}
+
+/** Never write a paper's id into its own paper.json (it's the folder name). */
+function withoutId(patch: Patch<Paper>): Patch<Paper> {
+	return typeof patch === 'function' ? (cur) => ({ ...patch(cur), id: undefined }) : { ...patch, id: undefined };
 }
