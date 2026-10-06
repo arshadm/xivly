@@ -24,6 +24,15 @@ jobs:
       - run: bun run check
       - run: bun run test
       - run: bun run build:web
+      # The Chrome extension: the web build, packaged (the script checks the
+      # manifest and the files it names, and that no inline script is left).
+      - run: bun run build:extension
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: chrome-extension
+          path: dist/*_chrome.zip
+          if-no-files-found: error
+          retention-days: 14
 
   # The desktop app ships on all three: compile, lint and test the Rust side on each.
   rust:

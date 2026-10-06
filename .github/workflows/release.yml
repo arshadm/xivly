@@ -9,10 +9,14 @@
 #               Linux   .AppImage + .deb + .rpm (ubuntu-24.04: glibc 2.39+)
 #               Windows NSIS -setup.exe + .msi, signed by SignPath when configured
 #                       (app exe first, then the installers built around it)
+#   extension the Chrome extension zip (`bun run build:extension`)
 #   publish   checks every asset is there, then publishes the release (marked
 #             "Latest" only if it is the newest stable version).
 #   homebrew  bumps the cask in julien-blanchon/homebrew-tap from the published
 #             DMG (stable releases only, never to an older version).
+#   chrome-web-store  uploads the published zip to the Chrome Web Store and
+#             submits it for review (stable releases only; a no-op until set up,
+#             see RELEASING.md).
 # Updates are delivered by `brew upgrade` only (no in-app updater).
 #
 # Rust builds restore the cache warmed on main by cache.yml (tags can read
@@ -29,6 +33,10 @@
 #   vars.SIGNPATH_ORGANIZATION_ID, SIGNPATH_PROJECT_SLUG,  } only when all of these exist,
 #   SIGNPATH_SIGNING_POLICY_SLUG (+ optional              } unsigned otherwise (see
 #   SIGNPATH_TEST_SIGNING_POLICY_SLUG for prereleases)     } CODE_SIGNING.md)
+#   CWS_CLIENT_ID, CWS_CLIENT_SECRET,     } optional: the Chrome Web Store upload
+#   CWS_REFRESH_TOKEN (OAuth, see         } runs only when all of these exist
+#   RELEASING.md), vars.CWS_PUBLISHER_ID, }
+#   vars.CWS_EXTENSION_ID                 }
 # The Apple credentials are only given to the steps that sign or notarize.
 name: release
 
@@ -125,6 +133,8 @@ jobs:
           **Linux** (x86_64, glibc 2.39+: Ubuntu 24.04, Debian 13, Fedora 40 or newer): \`Xivly_${VERSION}_amd64.AppImage\`, \`Xivly_${VERSION}_amd64.deb\` or the \`.rpm\`.
 
           **Windows** (10 and 11, x64): \`Xivly_${VERSION}_x64-setup.exe\` or the \`.msi\`. Not code-signed yet: SmartScreen asks once (More info → Run anyway).
+
+          **Chrome extension** (Chrome, Edge, Brave, Arc): \`Xivly_${VERSION}_chrome.zip\`. Unzip it, then "Load unpacked" at \`chrome://extensions\` (Developer mode).
 
           NOTES
             set -- "$TAG" --draft --verify-tag --title "Xivly $TAG" \
@@ -376,8 +386,29 @@ jobs:
             "$($f.Name): $($sig.SignerCertificate.Subject)"
           }
           gh release upload $env:TAG @($files.FullName) --clobber -R $env:GITHUB_REPOSITORY
+  # The web build as a Chrome extension (no Rust, any runner).
+  extension:
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ env.TAG }}
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: bun-${{ runner.os }}-
+      - run: bun install --frozen-lockfile
+      - run: bun run build:extension
+      - name: Upload the extension
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$TAG" dist/*_chrome.zip --clobber -R "$GITHUB_REPOSITORY"
+
   publish:
-    needs: [prepare, build]
+    needs: [prepare, build, extension]
     # Tag pushes always publish; a manual run can stop at the draft.
     if: github.event_name != 'workflow_dispatch' || inputs.publish
     runs-on: ubuntu-latest
@@ -392,7 +423,7 @@ jobs:
         run: |
           ASSETS=$(gh api "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID/assets?per_page=100" --jq '.[].name')
           echo "$ASSETS"
-          EXPECTED="_universal.dmg _universal.app.tar.gz _amd64.AppImage _amd64.deb .x86_64.rpm _x64-setup.exe"
+          EXPECTED="_universal.dmg _universal.app.tar.gz _amd64.AppImage _amd64.deb .x86_64.rpm _x64-setup.exe _chrome.zip"
           [ "$PRERELEASE" = "true" ] || EXPECTED="$EXPECTED .msi"
           MISSING=
           for suffix in $EXPECTED; do
@@ -473,3 +504,62 @@ jobs:
             sleep 5
           done
           exit 1
+
+  # Chrome Web Store API v2 (https://developer.chrome.com/docs/webstore/using-api).
+  # The item must exist (first upload by hand), and each upload needs a higher
+  # version: prereleases (0.4.0-rc.1 is 0.4.0 to Chrome) never go there.
+  chrome-web-store:
+    needs: [prepare, publish]
+    if: needs.prepare.outputs.prerelease != 'true'
+    runs-on: ubuntu-latest
+    # One store submission at a time, whatever the tag.
+    concurrency:
+      group: chrome-web-store
+      cancel-in-progress: false
+    env:
+      CWS: ${{ secrets.CWS_CLIENT_ID != '' && secrets.CWS_CLIENT_SECRET != '' && secrets.CWS_REFRESH_TOKEN != '' && vars.CWS_PUBLISHER_ID != '' && vars.CWS_EXTENSION_ID != '' }}
+    steps:
+      - name: Not set up
+        if: env.CWS != 'true'
+        run: echo "::notice::Chrome Web Store publishing is not set up (see RELEASING.md), skipped."
+
+      # From the published release: the store gets exactly what users download.
+      - name: Upload and submit for review
+        if: env.CWS == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CLIENT_ID: ${{ secrets.CWS_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CWS_CLIENT_SECRET }}
+          REFRESH_TOKEN: ${{ secrets.CWS_REFRESH_TOKEN }}
+          ITEM: publishers/${{ vars.CWS_PUBLISHER_ID }}/items/${{ vars.CWS_EXTENSION_ID }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          gh release download "$TAG" -R "$GITHUB_REPOSITORY" --pattern '*_chrome.zip' --dir "$RUNNER_TEMP/zip"
+          ZIP=$(find "$RUNNER_TEMP/zip" -name '*_chrome.zip' | head -1)
+          TOKEN=$(curl -sSf https://oauth2.googleapis.com/token \
+            -d client_id="$CLIENT_ID" -d client_secret="$CLIENT_SECRET" \
+            -d refresh_token="$REFRESH_TOKEN" -d grant_type=refresh_token | jq -r .access_token)
+          echo "::add-mask::$TOKEN"
+          API=https://chromewebstore.googleapis.com
+          # Re-running a release whose version is already there: nothing to do.
+          STATUS=$(curl -sSf -H "Authorization: Bearer $TOKEN" "$API/v2/$ITEM:fetchStatus")
+          echo "$STATUS" | jq .
+          if echo "$STATUS" | jq -e --arg v "$VERSION" '[.. | .crxVersion? // empty] | index($v)' >/dev/null; then
+            echo "$VERSION is already in the Chrome Web Store."
+            exit 0
+          fi
+          UPLOAD=$(curl -sS -H "Authorization: Bearer $TOKEN" -X POST -T "$ZIP" "$API/upload/v2/$ITEM:upload")
+          echo "$UPLOAD" | jq .
+          STATE=$(echo "$UPLOAD" | jq -r .uploadState)
+          # Large packages are processed asynchronously.
+          for _ in $(seq 30); do
+            [ "$STATE" = "IN_PROGRESS" ] || break
+            sleep 10
+            STATE=$(curl -sSf -H "Authorization: Bearer $TOKEN" "$API/v2/$ITEM:fetchStatus" | jq -r '.lastAsyncUploadState // "IN_PROGRESS"')
+          done
+          if [ "$STATE" != "SUCCEEDED" ]; then
+            echo "::error::Chrome Web Store upload: $STATE"
+            exit 1
+          fi
+          curl -sSf -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+            -X POST "$API/v2/$ITEM:publish" -d '{"publishType":"DEFAULT_PUBLISH"}' | jq .
