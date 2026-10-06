@@ -5,10 +5,10 @@
 
 Read, annotate and organize research papers. A desktop app (Tauri: macOS, Windows, Linux) **and** a static web app (GitHub Pages) from the same codebase, built on [svelte-pdf-mini](https://github.com/julien-blanchon/svelte-pdf-mini).
 
-- **macOS**: `brew install --cask julien-blanchon/tap/xivly` (update with `brew upgrade --cask xivly`), or the `.dmg` from [Releases](https://github.com/julien-blanchon/xivly/releases). Signed and notarized.
+- **macOS** (26.2 or later): `brew install --cask julien-blanchon/tap/xivly` (update with `brew upgrade --cask xivly`), or the `.dmg` from [Releases](https://github.com/julien-blanchon/xivly/releases). Signed and notarized.
 - **Windows**: the `.exe` (or `.msi`) installer from [Releases](https://github.com/julien-blanchon/xivly/releases). Not code-signed yet (SmartScreen asks once): signing is pending approval by the SignPath Foundation. Once it lands: free code signing provided by [SignPath.io](https://about.signpath.io), certificate by [SignPath Foundation](https://signpath.org) ([code signing policy](CODE_SIGNING.md)).
 - **Linux** (x86_64, glibc 2.39+: Ubuntu 24.04, Debian 13, Fedora 40 or newer): the `.AppImage`, `.deb` or `.rpm` from [Releases](https://github.com/julien-blanchon/xivly/releases). The `.deb` and `.rpm` use your system's WebKitGTK, which must be recent enough to run the PDF engine (Xivly says so on start if it isn't); the AppImage bundles its own.
-- **Web**: [julien-blanchon.github.io/xivly](https://julien-blanchon.github.io/xivly), in a recent Chrome, Edge, Arc or Safari 26.
+- **Web**: [julien-blanchon.github.io/xivly](https://julien-blanchon.github.io/xivly), in a recent Chrome, Edge, Arc or Safari 26.2.
 
 There is no auto-update: Homebrew updates the Mac app; elsewhere, download the new release.
 

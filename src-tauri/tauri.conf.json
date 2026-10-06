@@ -49,7 +49,7 @@
       "icons/icon.ico"
     ],
     "macOS": {
-      "minimumSystemVersion": "26.0",
+      "minimumSystemVersion": "26.2",
       "hardenedRuntime": true
     }
   },

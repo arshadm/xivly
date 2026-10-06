@@ -1,5 +1,7 @@
 #!/bin/sh
 # Print the Homebrew cask for a release.
+# Homebrew only knows major macOS versions: :tahoe (26); the app itself requires
+# 26.2 (LSMinimumSystemVersion, from tauri.conf.json).
 # Usage: scripts/cask.sh <version> <sha256> <asset name with #{version}> <signed: true|false>
 set -eu
 VERSION=$1 SHA=$2 ASSET=$3 SIGNED=${4:-true}

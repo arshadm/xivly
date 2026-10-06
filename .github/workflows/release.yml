@@ -115,7 +115,7 @@ jobs:
           FOUND=$(find_release)
           if [ -z "$FOUND" ]; then
             cat > "$RUNNER_TEMP/notes.md" <<NOTES
-          **macOS** (Apple silicon + Intel, macOS 26+): install or update with Homebrew
+          **macOS** (Apple silicon + Intel, macOS 26.2+): install or update with Homebrew
           \`\`\`
           brew install --cask julien-blanchon/tap/xivly
           brew upgrade --cask xivly
