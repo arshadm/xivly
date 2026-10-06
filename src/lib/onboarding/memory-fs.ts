@@ -31,6 +31,7 @@ export class MemoryFs implements LibraryFs {
 	}
 	async trash(path: string) {
 		for (const p of [...this.files.keys()]) if (p === path || p.startsWith(`${path}/`)) this.files.delete(p);
+		for (const d of [...this.#dirs]) if (d === path || d.startsWith(`${path}/`)) this.#dirs.delete(d);
 	}
 	#mkdirs(path: string) {
 		const parts = path.split('/').filter(Boolean);

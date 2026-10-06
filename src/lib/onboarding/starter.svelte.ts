@@ -6,8 +6,9 @@ import { dev } from '$app/environment';
 import { library } from '$lib/library.svelte';
 import { platform } from '$lib/platform';
 import type { Category } from '$lib/types';
+import { checkManifest, manifestIds, type StarterManifest } from './manifest';
 
-const STARTER_FILE = /^papers\/[a-z0-9-]+\/paper\.(pdf|json)$/;
+export type { StarterManifest };
 
 /** Every example paper carries this tag (filter, or remove them all at once). */
 export const STARTER_TAG = 'demo';
@@ -20,13 +21,6 @@ export const STARTER_CATEGORIES: Category[] = [
 	{ id: 'robotics', name: 'Robotics', color: 'mint' },
 	{ id: 'classics', name: 'Classics', color: 'clay' }
 ];
-
-export interface StarterManifest {
-	version: number;
-	created: string;
-	categories: Category[];
-	files: { path: string; size: number }[];
-}
 
 /**
  * The released desktop app downloads from the web app's site, the web build from
@@ -47,15 +41,6 @@ export async function starterManifest(): Promise<StarterManifest | null> {
 	} catch {
 		return null;
 	}
-}
-
-/** Paper ids (folder names) in a manifest. */
-export const manifestIds = (m: Pick<StarterManifest, 'files'>) => [...new Set(m.files.map((f) => f.path.split('/')[1]))];
-
-/** Throws if a manifest would write anything but paper files (hooks, settings…). */
-export function checkManifest(m: Pick<StarterManifest, 'files'>) {
-	const bad = m.files.find((f) => !STARTER_FILE.test(f.path));
-	if (bad) throw new Error(`Unexpected file in the example library: ${bad.path}`);
 }
 
 const enc = new TextEncoder();

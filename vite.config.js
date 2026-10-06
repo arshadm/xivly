@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { defineConfig } from "vite";
 import { sveltekit } from "@sveltejs/kit/vite";
 import tailwindcss from "@tailwindcss/vite";
@@ -31,6 +32,12 @@ const noStoreLibrary = {
 // https://vite.dev/config/
 export default defineConfig(() => ({
   plugins: [noStoreLibrary, tailwindcss(), sveltekit()],
+
+  // Unit tests (bun run test): pure logic and the library folder over an in-memory fs.
+  test: {
+    include: ["src/**/*.test.ts"],
+    environment: "node",
+  },
 
   optimizeDeps: {
     // svelte-pdf-mini loads the pdf.js worker via `pdfjs-dist/...?url`, which
