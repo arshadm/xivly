@@ -155,8 +155,8 @@
 
 	<main class="flex min-w-0 flex-1 flex-col">
 		<!-- A container: at narrow widths labels and the read filter fold away (720px windows). -->
-		<header class="@container flex h-12 shrink-0 items-center gap-3 px-6" data-tauri-drag-region>
-			<h1 class="min-w-0 truncate font-serif text-xl" data-tauri-drag-region>{title}</h1>
+		<header class="@container flex h-12 shrink-0 items-center gap-3 px-6 max-lg:gap-2" data-tauri-drag-region>
+			<h1 class="min-w-0 shrink-[0.05] truncate font-serif text-xl" data-tauri-drag-region>{title}</h1>
 			<span class="text-sm text-stone-400 tabular-nums" data-tauri-drag-region>{library.filtered.length}</span>
 			<div class="flex-1" data-tauri-drag-region></div>
 			{#if starter.running}
@@ -173,7 +173,7 @@
 				<CycleButton title="Recent" options={recentOptions} value={settings.values.recentWindow} onchange={(v) => settings.set('recentWindow', v)} showLabel labelClass="@max-4xl:hidden" class="h-8" />
 			{/if}
 			<ToggleGroup class="@max-2xl:hidden" label="Show papers" value={settings.values.readFilter} onValueChange={(v) => settings.set('readFilter', v)} items={readOptions.map((o) => ({ value: o.value, label: o.value === 'all' ? 'All' : o.label }))} />
-			<label class="flex h-8 max-w-64 min-w-28 flex-1 items-center gap-2 rounded-lg bg-stone-200/60 pr-1.5 pl-2.5 ring-blue-500/60 focus-within:bg-white focus-within:ring-2 dark:bg-stone-800/60 dark:focus-within:bg-stone-900">
+			<label class="flex h-8 w-64 min-w-28 shrink-[4] items-center gap-2 rounded-lg bg-stone-200/60 pr-1.5 pl-2.5 ring-blue-500/60 focus-within:bg-white focus-within:ring-2 dark:bg-stone-800/60 dark:focus-within:bg-stone-900">
 				<span class="icon-[lucide--search] size-3.5 shrink-0 text-stone-400"></span>
 				<input
 					bind:this={search}
