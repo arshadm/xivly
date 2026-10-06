@@ -63,6 +63,22 @@ describe('normalizeLibrary', () => {
 });
 
 describe('Repo', () => {
+	it('keeps what was shown when a paper.json can\'t be read for a moment', async () => {
+		const { fs, r } = await repo();
+		const p = await r.add(PDF, { title: 'A real title', tags: ['x'] });
+		const shown = (await r.readPaper(p.id))!;
+		// A read failing while another process rewrites the file (twice: the retry fails too).
+		const read = fs.read.bind(fs);
+		let fails = 2;
+		fs.read = async (path: string) => (path.endsWith('paper.json') && fails-- > 0 ? Promise.reject(new Error('busy')) : read(path));
+		expect(await r.readPaper(p.id, shown)).toEqual(shown);
+		fails = 2;
+		expect((await r.listPapers(new Map([[p.id, shown]])))[0].title).toBe('A real title');
+		// One transient failure: the retry reads the file.
+		fails = 1;
+		expect((await r.readPaper(p.id))!.tags).toEqual(['x']);
+	});
+
 	it('init never overwrites existing files', async () => {
 		const fs = new MemoryFs();
 		await fs.write('AGENTS.md', enc.encode('mine'));

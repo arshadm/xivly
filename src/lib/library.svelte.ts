@@ -121,7 +121,7 @@ class Library {
 	async reload() {
 		if (!this.repo) return;
 		try {
-			const [file, papers] = await Promise.all([this.repo.readLibrary(), this.repo.listPapers()]);
+			const [file, papers] = await Promise.all([this.repo.readLibrary(), this.repo.listPapers(new Map(this.papers.map((p) => [p.id, p])))]);
 			this.#setFile(file);
 			this.#setPapers(papers);
 			this.error = null;
@@ -134,7 +134,7 @@ class Library {
 	async reloadPaper(id: string) {
 		if (!this.repo) return;
 		try {
-			const [file, paper] = await Promise.all([this.repo.readLibrary(), this.repo.readPaper(id)]);
+			const [file, paper] = await Promise.all([this.repo.readLibrary(), this.repo.readPaper(id, this.get(id))]);
 			this.#setFile(file);
 			this.#setPapers(paper ? [...this.papers.filter((p) => p.id !== id), paper] : this.papers.filter((p) => p.id !== id));
 		} catch (e) {

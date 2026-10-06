@@ -166,19 +166,30 @@ export class Repo {
 
 	// ── Papers ────────────────────────────────────────────────────────────
 
-	/** One paper, or null once its folder is gone. */
-	async readPaper(id: string): Promise<Paper | null> {
-		const meta = await this.#readJson<Json>(`papers/${id}/paper.json`).catch(() => ({}));
+	/**
+	 * One paper, or null once its folder is gone. Read under the file's lock (never
+	 * mid-write by this app) and retried once: a read can fail while another
+	 * process (sync client, agent) rewrites the file. If it still can't be read,
+	 * `previous` (what was shown so far) is kept; without one the paper still
+	 * shows, under its folder name (edits to it will fail loudly).
+	 */
+	async readPaper(id: string, previous?: Paper): Promise<Paper | null> {
+		const path = `papers/${id}/paper.json`;
+		const read = () => this.#lock(path, () => this.#readJson<Json>(path));
+		let meta: Json | null;
+		try {
+			meta = await read().catch(async () => (await sleep(150), read()));
+		} catch {
+			return previous ?? normalizePaper(id, {});
+		}
 		if (!meta && !(await this.fs.exists(`papers/${id}/paper.pdf`))) return null;
 		return normalizePaper(id, meta ?? {});
 	}
 
-	async listPapers(): Promise<Paper[]> {
+	/** Every paper; `previous` (by id) is kept for a paper whose paper.json can't be read right now. */
+	async listPapers(previous?: ReadonlyMap<string, Paper>): Promise<Paper[]> {
 		const dirs = (await this.fs.list('papers')).filter((e) => e.dir && !e.name.startsWith('.'));
-		const papers = await Promise.all(
-			// A broken paper.json shouldn't hide the paper (edits to it will fail loudly).
-			dirs.map(({ name: id }) => this.readPaper(id))
-		);
+		const papers = await Promise.all(dirs.map(({ name: id }) => this.readPaper(id, previous?.get(id))));
 		return papers.filter((p): p is Paper => !!p);
 	}
 
@@ -255,6 +266,8 @@ export class Repo {
 		await this.#lock(`papers/${id}/paper.json`, () => this.#lock(`papers/${id}/paper.pdf`, () => this.fs.trash(`papers/${id}`)));
 	}
 }
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /** Never write a paper's id into its own paper.json (it's the folder name). */
 function withoutId(patch: Patch<Paper>): Patch<Paper> {
