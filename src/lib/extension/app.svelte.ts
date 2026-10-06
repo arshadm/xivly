@@ -14,6 +14,7 @@ import { searchParams } from '$lib/windows';
 import type { ExtensionMessage } from './messages';
 
 export function startExtension() {
+	if (__XIVLY_EXTENSION_DEV__) liveReload();
 	// The toolbar button focuses a tab showing the library.
 	chrome.runtime.onMessage.addListener((message: ExtensionMessage, _sender, respond) => {
 		if (message.type !== 'find-library' || page.route.id !== '/') return false;
@@ -27,6 +28,28 @@ export function startExtension() {
 			if (url && library.status === 'ready') untrack(() => void open(url));
 		});
 	});
+}
+
+/**
+ * `bun run dev:extension` rebuilds into build-extension/ and writes
+ * dev-build.json last: a new page build reloads this tab, a new service worker
+ * or manifest reloads the whole extension (Chrome reads unpacked files live).
+ */
+function liveReload() {
+	let last: { page: string; worker: string } | undefined;
+	setInterval(async () => {
+		const build = await fetch('/dev-build.json', { cache: 'no-store' })
+			.then((r) => r.json())
+			.catch(() => undefined);
+		if (!build) return;
+		if (last && build.worker !== last.worker) {
+			// The reload closes this tab: the new service worker reopens it.
+			const { reopen = [] } = await chrome.storage.local.get('reopen');
+			await chrome.storage.local.set({ reopen: [...(reopen as string[]), location.href] });
+			chrome.runtime.reload();
+		} else if (last && build.page !== last.page) location.reload();
+		last = build;
+	}, 1000);
 }
 
 /** Add the paper at `url` (arXiv, or any PDF), then read it in this tab. */

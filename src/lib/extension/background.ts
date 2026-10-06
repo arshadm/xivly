@@ -19,6 +19,13 @@ chrome.runtime.onInstalled.addListener(() => {
 	});
 });
 
+// bun run dev:extension: a reload closes the extension's tabs; reopen them.
+if (__XIVLY_EXTENSION_DEV__)
+	void chrome.storage.local.get('reopen').then(({ reopen }) => {
+		for (const url of (reopen as string[] | undefined) ?? []) void chrome.tabs.create({ url });
+		void chrome.storage.local.remove('reopen');
+	});
+
 chrome.action.onClicked.addListener(() => void showLibrary());
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {

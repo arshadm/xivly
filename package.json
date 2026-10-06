@@ -8,6 +8,7 @@
     "build": "vite build",
     "build:web": "XIVLY_WEB=1 BASE_PATH=${BASE_PATH-/xivly} vite build && cp build/404.html build/index.html && touch build/.nojekyll",
     "build:extension": "XIVLY_EXTENSION=1 vite build && bun scripts/build-extension.ts",
+    "dev:extension": "bun scripts/dev-extension.ts",
     "preview": "vite preview",
     "prepare": "svelte-kit sync || echo ''",
     "postinstall": "node scripts/copy-pdfjs-assets.js",

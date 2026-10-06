@@ -35,7 +35,11 @@ export default defineConfig(() => ({
 
   // Chrome extension build (bun run build:extension): its code (src/lib/extension/)
   // sits behind this constant, so the web and desktop bundles leave it out.
-  define: { __XIVLY_EXTENSION__: JSON.stringify(process.env.XIVLY_EXTENSION === "1") },
+  define: {
+    __XIVLY_EXTENSION__: JSON.stringify(process.env.XIVLY_EXTENSION === "1"),
+    // bun run dev:extension: open extension pages reload themselves after each rebuild.
+    __XIVLY_EXTENSION_DEV__: JSON.stringify(process.env.XIVLY_EXTENSION_DEV === "1"),
+  },
 
   // Unit tests (bun run test): pure logic and the library folder over an in-memory fs.
   test: {

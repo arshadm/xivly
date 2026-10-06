@@ -71,6 +71,7 @@ bun run dev              # web, http://localhost:1420
 bun run check            # svelte-check
 bun run build:web        # static build for Pages (BASE_PATH=/xivly)
 bun run build:extension  # Chrome extension: build-extension/ (unpacked) + dist/Xivly_<version>_chrome.zip
+bun run dev:extension    # the same, unpacked, rebuilt on every change (live reload)
 ```
 
 To hack on svelte-pdf-mini at the same time: `cd ../svelte-pdf-mini/packages/svelte-pdf-mini && bun link`, then `bun link svelte-pdf-mini` here. Vite caches dependencies in memory: restart the dev server after rebuilding the library.
@@ -92,7 +93,7 @@ What it adds to the web app:
 
 Permissions: `contextMenus` and `activeTab` (no install warning). Sites that let other sites download their PDFs (arXiv, most hosts with CORS) need nothing else; for the others Xivly asks first, then Chrome asks for that one site (`optional_host_permissions`). Nothing is read from pages, and no PDF is opened in Xivly unless you ask.
 
-To try a build: `chrome://extensions` → *Developer mode* → *Load unpacked* → `build-extension/` (after a rebuild, the reload button on its card). Inspect the service worker from that card, the app with the usual DevTools. The library folder is picked as on the web; Chrome keeps the extension's library (and its folder access) apart from the website's.
+To try it: `bun run dev:extension`, then `chrome://extensions` → *Developer mode* → *Load unpacked* → `build-extension/`, once. It rebuilds on every change in `src/` or `static/` (about 5 s): open Xivly tabs reload by themselves, and the whole extension reloads (its tabs reopened) when the service worker or the manifest changes. After `bun run build:extension`, use the reload button on the extension's card instead. Inspect the service worker from that card, the app with the usual DevTools. The library folder is picked as on the web; Chrome keeps the extension's library (and its folder access) apart from the website's.
 
 Publishing to the Chrome Web Store is part of the release workflow once set up (a one-time $5 developer fee): see [RELEASING.md](RELEASING.md#chrome-web-store-one-time-setup).
 

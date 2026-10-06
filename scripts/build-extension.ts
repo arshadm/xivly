@@ -13,6 +13,7 @@ import { join, relative } from 'node:path';
 import { zipSync } from 'fflate';
 
 const out = 'build-extension';
+const dev = process.argv.includes('--dev');
 const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
 const fail = (msg: string) => {
 	console.error(msg);
@@ -31,7 +32,7 @@ if (/<script(?![^>]*\ssrc=)[^>]*>/.test(page) || /\son[a-z]+=/i.test(page)) fail
 writeFileSync(join(out, 'index.html'), page);
 
 // ── Service worker ──────────────────────────────────────────────────────────
-const sw = await Bun.build({ entrypoints: ['src/lib/extension/background.ts'], outdir: out, naming: 'background.js', target: 'browser', format: 'esm', minify: true });
+const sw = await Bun.build({ entrypoints: ['src/lib/extension/background.ts'], outdir: out, naming: 'background.js', target: 'browser', format: 'esm', minify: true, define: { __XIVLY_EXTENSION_DEV__: String(dev) } });
 if (!sw.success) fail(sw.logs.join('\n'));
 
 // ── Icons ───────────────────────────────────────────────────────────────────
@@ -57,7 +58,8 @@ const manifest = {
 	action: { default_title: 'Xivly', default_icon: iconSet },
 	background: { service_worker: 'background.js', type: 'module' },
 	// contextMenus: "Open in Xivly". activeTab: the URL of the tab whose toolbar menu was used.
-	permissions: ['contextMenus', 'activeTab'],
+	// storage (dev builds only): the tabs to reopen after a live reload.
+	permissions: ['contextMenus', 'activeTab', ...(dev ? ['storage'] : [])],
 	// Downloading a PDF from a site without CORS, asked for that site when first needed.
 	optional_host_permissions: ['https://*/*', 'http://*/*'],
 	// The desktop CSP (src-tauri/tauri.conf.json), with any download source: PDFs come from anywhere.
@@ -73,6 +75,24 @@ const named = [...Object.values(iconSet), manifest.background.service_worker, 'i
 const missing = named.filter((f) => !statSync(join(out, f), { throwIfNoEntry: false }));
 if (missing.length) fail(`manifest.json names missing files: ${missing.join(', ')}`);
 if (!/^\d+(\.\d+){0,3}$/.test(manifest.version)) fail(`"${manifest.version}" is not a Chrome version (1 to 4 numbers).`);
+
+// ── Dev build (bun run dev:extension): no zip; dev-build.json, written last, tells
+// open pages what changed (src/lib/extension/app.svelte.ts liveReload).
+if (dev) {
+	const hash = (files: string[]) => Bun.hash(files.map((f) => readFileSync(join(out, f), 'utf8')).join('\0')).toString(36);
+	const all: string[] = [];
+	const list = (dir: string) => {
+		for (const name of readdirSync(join(out, dir))) {
+			const path = join(dir, name);
+			if (statSync(join(out, path)).isDirectory()) list(path);
+			else all.push(path);
+		}
+	};
+	list('');
+	writeFileSync(join(out, 'dev-build.json'), JSON.stringify({ page: hash(all.sort()), worker: hash(['background.js', 'manifest.json']) }));
+	console.log(`${out}/ (unpacked, live reload)`);
+	process.exit(0);
+}
 
 // ── Zip ─────────────────────────────────────────────────────────────────────
 const files: Record<string, Uint8Array> = {};
