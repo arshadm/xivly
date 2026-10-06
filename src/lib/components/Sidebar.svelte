@@ -61,8 +61,7 @@
 				onSelect: async () => {
 					const papers = library.papers.filter((p) => p.tags?.includes(tag));
 					if (!(await prompts.confirm(`Remove #${tag} from ${papers.length} paper${papers.length > 1 ? 's' : ''}?`, { confirmLabel: 'Remove', danger: true }))) return;
-					for (const p of papers) await library.update(p.id, { tags: p.tags!.filter((t) => t !== tag) }).catch(fail);
-					library.setTagFilter(tag, null);
+					await library.removeTag(tag).catch(fail);
 				}
 			}
 		];

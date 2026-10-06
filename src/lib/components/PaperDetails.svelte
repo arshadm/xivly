@@ -59,7 +59,7 @@
 			{#each paper.tags ?? [] as tag (tag)}
 				<span class="inline-flex items-center gap-0.5 rounded-full bg-stone-200 py-0.5 pr-1 pl-2 text-xs dark:bg-stone-800">
 					#{tag}
-					<button class="grid size-4 place-items-center rounded-full text-stone-400 outline-none hover:text-stone-700 focus-visible:ring-2 focus-visible:ring-blue-500/60" aria-label="Remove tag {tag}" onclick={() => save({ tags: paper.tags!.filter((t) => t !== tag) })}><span class="icon-[lucide--x] size-3"></span></button>
+					<button class="grid size-4 place-items-center rounded-full text-stone-400 outline-none hover:text-stone-700 focus-visible:ring-2 focus-visible:ring-blue-500/60" aria-label="Remove tag {tag}" onclick={() => library.toggleTag(paper.id, tag).catch((e) => toast(String(e), 'error'))}><span class="icon-[lucide--x] size-3"></span></button>
 				</span>
 			{/each}
 			<Tip label="Add a tag">
