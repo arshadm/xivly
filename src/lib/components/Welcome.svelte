@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { button } from '$lib/ui/button';
 	import { library } from '$lib/library.svelte';
+	import { mac } from '$lib/os';
 	import { platform } from '$lib/platform';
 	import Wordmark from '$lib/ui/Wordmark.svelte';
 
@@ -25,9 +26,9 @@
 		{:else}
 			<p class="mt-8 text-sm leading-relaxed text-stone-600 dark:text-stone-400">
 				{#if platform.onDisk}
-					Xivly keeps your library as plain files in a folder you choose: one folder per paper, with the PDF (annotations inside) and a <code>paper.json</code>. Put it in iCloud Drive to sync, or open it with Claude Code.
+					Xivly keeps your library as plain files in a folder you choose: one folder per paper, with the PDF (annotations inside) and a <code>paper.json</code>. Put it in {mac ? 'iCloud Drive' : 'OneDrive or Dropbox'} to sync, or open it with Claude Code.
 				{:else}
-					This browser can't open a folder on your disk, so your library will live in the browser's private storage. Use Chrome, Edge or Arc (or the macOS app) to keep it as plain files.
+					This browser can't open a folder on your disk, so your library will live in the browser's private storage. Use Chrome, Edge or Arc (or the desktop app) to keep it as plain files.
 				{/if}
 			</p>
 			<button class="{btn} mt-8" onclick={() => library.choose()}>

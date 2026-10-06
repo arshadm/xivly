@@ -11,9 +11,10 @@
 /* macOS desktop windows: the traffic lights overlay the content (title bar style "overlay"). */
 @custom-variant lights (&:where([data-lights], [data-lights] *));
 
-/* Stacking of floating UI: dialogs < alerts (a confirm over a dialog) < menus and
-   popovers (they open from inside dialogs) < tooltips < toasts. */
+/* Stacking of floating UI: the drop overlay < dialogs < alerts (a confirm over a
+   dialog) < menus and popovers (they open from inside dialogs) < tooltips < toasts. */
 :root {
+	--z-overlay: 40;
 	--z-dialog: 50;
 	--z-alert: 60;
 	--z-menu: 70;
@@ -26,9 +27,13 @@
   --font-serif: "New York", "Iowan Old Style", Georgia, serif;
 }
 
+/* The app shell never scrolls: only its panels and the PDF viewport do. A
+   wheel over chrome (header, panel edges, floating previews) must not move
+   the whole window. */
 html,
 body {
   height: 100%;
+  overflow: hidden;
   overscroll-behavior: none;
   -webkit-user-select: none;
   user-select: none;
@@ -54,15 +59,6 @@ html.dark {
   color: var(--color-stone-200);
   background: var(--color-stone-950);
   color-scheme: dark;
-}
-
-/* The app shell never scrolls: only its panels and the PDF viewport do. A
-   wheel over chrome (header, panel edges, floating previews) must not move
-   the whole window. */
-html,
-body {
-  height: 100%;
-  overflow: hidden;
 }
 
 /* Minimal annotations: no author name or date on notes. */

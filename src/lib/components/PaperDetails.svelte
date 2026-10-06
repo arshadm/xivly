@@ -1,5 +1,6 @@
 <!-- Editable paper details: title, authors, year, category, tags, links. -->
 <script lang="ts">
+	import { iconButton, mutedIcon } from '$lib/ui/button';
 	import { paperLinks } from '$lib/cite';
 	import { hfListUrl } from '$lib/huggingface';
 	import { library } from '$lib/library.svelte';
@@ -46,7 +47,8 @@
 		<div class="flex flex-wrap gap-1">
 			{#each library.categories as c (c.id)}
 				{@const col = library.color({ category: c.id })}
-				<button class="rounded-full px-2.5 py-0.5 text-xs text-stone-800 ring-stone-500 data-[active]:ring-1" style:background={col.light} data-active={paper.category === c.id || undefined} onclick={() => save({ category: paper.category === c.id ? null : c.id })}>{c.name}</button>
+				<!-- The category's own shade: light by day, dark by night (text follows). -->
+				<button class="rounded-full bg-(--chip) px-2.5 py-0.5 text-xs text-stone-800 ring-stone-500 outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 data-[active]:ring-1 dark:bg-(--chip-dark) dark:text-stone-200 dark:ring-stone-400" style:--chip={col.light} style:--chip-dark={col.dark} data-active={paper.category === c.id || undefined} aria-pressed={paper.category === c.id} onclick={() => save({ category: paper.category === c.id ? null : c.id })}>{c.name}</button>
 			{/each}
 		</div>
 	</div>
@@ -61,7 +63,7 @@
 				</span>
 			{/each}
 			<Tip label="Add a tag">
-				{#snippet child({ props })}<button {...props} class="grid size-6 place-items-center rounded-full text-stone-400 hover:bg-stone-200 hover:text-stone-700 dark:hover:bg-stone-800" aria-label="Add tag" onclick={() => addTag(paper)}><span class="icon-[lucide--plus] size-3.5"></span></button>{/snippet}
+				{#snippet child({ props })}<button {...props} class={iconButton(6, `${mutedIcon} rounded-full`)} aria-label="Add tag" onclick={() => addTag(paper)}><span class="icon-[lucide--plus] size-3.5"></span></button>{/snippet}
 			</Tip>
 		</div>
 	</div>

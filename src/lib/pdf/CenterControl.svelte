@@ -1,9 +1,9 @@
 <!--
 	Center the page across the scroll direction (shown only when it's off-center):
 	horizontally when pages scroll down, vertically when they scroll sideways.
-	Double-click locks it: the page fits the width (or height), with no scrolling on
-	that axis and no zooming (the reader passes `locked` to Viewer.Root zoomLocked).
-	Click to unlock.
+	Double-click (Alt+click, or Shift+Enter from the keyboard) locks it: the page fits the
+	width (or height), with no scrolling on that axis and no zooming (the reader passes
+	`locked` to Viewer.Root zoomLocked). Click (Enter) to unlock.
 -->
 <script lang="ts">
 	import { fade } from 'svelte/transition';
@@ -52,9 +52,10 @@
 	let holding = $state(false);
 	let holdTimer: ReturnType<typeof setTimeout> | undefined;
 
+	// Double-click, Alt+click or Shift+Enter locks; a click or Enter centers (or unlocks).
 	function click(e: MouseEvent) {
 		clearTimeout(holdTimer);
-		if (e.detail >= 2) {
+		if (e.detail >= 2 || (e.altKey && !locked)) {
 			// Fit first: once locked (Viewer.Root zoomLocked), the zoom can't change.
 			viewer.zoomMode = fitMode;
 			locked = true;
@@ -70,7 +71,7 @@
 
 {#if offCenter || locked || holding}
 	<div class="absolute right-5 bottom-5 z-20" transition:fade={{ duration: 120 }}>
-		<Tip label={locked ? 'Centered & locked: click to unlock' : 'Center the page · double-click to lock'} side="left">
+		<Tip label={locked ? 'Centered & locked: click to unlock' : 'Center the page · double-click (or Shift+Enter) to lock'} side="left">
 			{#snippet child({ props })}
 				<button
 					{...props}
@@ -80,6 +81,11 @@
 					aria-label={locked ? 'Unlock centering' : 'Center the page'}
 					aria-pressed={locked}
 					onclick={click}
+					onkeydown={(e) => {
+						if (e.key !== 'Enter' || !e.shiftKey || locked) return;
+						e.preventDefault();
+						click(new MouseEvent('click', { detail: 2 }));
+					}}
 				>
 					<span class="{locked ? 'icon-[lucide--lock]' : vertical ? 'icon-[lucide--align-center-horizontal]' : 'icon-[lucide--align-center-vertical]'} size-4"></span>
 				</button>

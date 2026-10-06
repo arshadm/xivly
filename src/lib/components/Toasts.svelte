@@ -15,13 +15,16 @@
 </script>
 
 <script lang="ts">
+	import { prefersReducedMotion } from 'svelte/motion';
 	import { fly } from 'svelte/transition';
 </script>
 
-<div class="fixed right-4 bottom-4 z-(--z-toast) flex flex-col items-end gap-2" role="status" aria-live="polite">
+<!-- Each toast is its own live region: errors interrupt (alert), the rest wait (status). -->
+<div class="fixed right-4 bottom-4 z-(--z-toast) flex flex-col items-end gap-2">
 	{#each toasts as t (t.id)}
 		<div
-			transition:fly={{ y: 8, duration: 150 }}
+			role={t.kind === 'error' ? 'alert' : 'status'}
+			transition:fly={{ y: 8, duration: prefersReducedMotion.current ? 0 : 150 }}
 			class={[
 				'flex max-w-sm items-center gap-3 rounded-lg px-3 py-2 text-sm shadow-lg backdrop-blur',
 				t.kind === 'error' ? 'bg-red-50/95 text-red-800 dark:bg-red-950/90 dark:text-red-200' : 'bg-stone-900/90 text-stone-50 dark:bg-stone-100/90 dark:text-stone-900'
