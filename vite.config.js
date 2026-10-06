@@ -42,8 +42,8 @@ export default defineConfig(() => ({
   },
   // Chrome refuses file names starting with "_", which base64 hashes can.
   ...(process.env.XIVLY_EXTENSION === "1" && {
-    build: { rolldownOptions: { output: { hashCharacters: "base36" } } },
-    worker: { rolldownOptions: { output: { hashCharacters: "base36" } } },
+    build: { rolldownOptions: { output: { hashCharacters: /** @type {const} */ ("base36") } } },
+    worker: { rolldownOptions: { output: { hashCharacters: /** @type {const} */ ("base36") } } },
   }),
 
   // Unit tests (bun run test): pure logic and the library folder over an in-memory fs.
