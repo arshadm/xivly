@@ -16,7 +16,9 @@
 	let { onNewCategory }: { onNewCategory: () => void } = $props();
 
 	const accent = (c: CategoryColor) => categoryColor(c).accent;
-	const count = (pred: (p: (typeof library.papers)[number]) => boolean) => library.papers.filter(pred).length;
+	// Counts match the grid: archived papers don't count while they're hidden (the default).
+	const counted = $derived(library.tagFilter[ARCHIVED] === 'out' ? library.papers.filter((p) => !p.tags?.includes(ARCHIVED)) : library.papers);
+	const count = (pred: (p: (typeof library.papers)[number]) => boolean) => counted.filter(pred).length;
 	const isView = (v: View) => JSON.stringify(v) === JSON.stringify(library.view);
 	const fail = (e: unknown) => toast(String(e), 'error');
 
@@ -75,14 +77,14 @@
 	<div class="h-3 shrink-0 lights:h-12" data-tauri-drag-region></div>
 
 	<nav class="min-h-0 flex-1 overflow-y-auto px-2 pb-4">
-		<button class={item} data-active={isView({ kind: 'all' }) || undefined} onclick={() => (library.view = { kind: 'all' })}>
+		<button class={item} data-active={isView({ kind: 'all' }) || undefined} aria-current={isView({ kind: 'all' }) ? 'page' : undefined} onclick={() => (library.view = { kind: 'all' })}>
 			<span class="icon-[lucide--library] size-4 text-stone-500"></span><span class="flex-1">All papers</span>
-			<span class="text-xs text-stone-400 tabular-nums">{library.papers.length}</span>
+			<span class="text-xs text-stone-400 tabular-nums">{counted.length}</span>
 		</button>
-		<button class={item} data-active={isView({ kind: 'recent' }) || undefined} onclick={() => (library.view = isView({ kind: 'recent' }) ? { kind: 'all' } : { kind: 'recent' })}>
+		<button class={item} data-active={isView({ kind: 'recent' }) || undefined} aria-current={isView({ kind: 'recent' }) ? 'page' : undefined} onclick={() => (library.view = isView({ kind: 'recent' }) ? { kind: 'all' } : { kind: 'recent' })}>
 			<span class="icon-[lucide--clock] size-4 text-stone-500"></span><span class="flex-1">Recent</span>
 		</button>
-		<button class={item} data-active={isView({ kind: 'uncategorized' }) || undefined} onclick={() => (library.view = isView({ kind: 'uncategorized' }) ? { kind: 'all' } : { kind: 'uncategorized' })}>
+		<button class={item} data-active={isView({ kind: 'uncategorized' }) || undefined} aria-current={isView({ kind: 'uncategorized' }) ? 'page' : undefined} onclick={() => (library.view = isView({ kind: 'uncategorized' }) ? { kind: 'all' } : { kind: 'uncategorized' })}>
 			<span class="icon-[lucide--inbox] size-4 text-stone-500"></span><span class="flex-1">Uncategorized</span>
 			<span class="text-xs text-stone-400 tabular-nums">{count((p) => !library.category(p.category))}</span>
 		</button>
@@ -94,7 +96,7 @@
 			</Tip>
 		</div>
 		{#each library.categories as c (c.id)}
-			<button class={item} data-active={isView({ kind: 'category', id: c.id }) || undefined} onclick={() => (library.view = isView({ kind: 'category', id: c.id }) ? { kind: 'all' } : { kind: 'category', id: c.id })} {@attach contextMenu(() => categoryMenu(c.id))}>
+			<button class={item} data-active={isView({ kind: 'category', id: c.id }) || undefined} aria-current={isView({ kind: 'category', id: c.id }) ? 'page' : undefined} onclick={() => (library.view = isView({ kind: 'category', id: c.id }) ? { kind: 'all' } : { kind: 'category', id: c.id })} {@attach contextMenu(() => categoryMenu(c.id))}>
 				<span class="size-2.5 rounded-full" style:background={accent(c.color)}></span>
 				<span class="flex-1 truncate">{c.name}</span>
 				<span class="text-xs text-stone-400 tabular-nums">{count((p) => p.category === c.id)}</span>

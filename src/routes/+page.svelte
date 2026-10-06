@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { iconButton } from '$lib/ui/button';
+	import { iconButton, mutedIcon } from '$lib/ui/button';
 	import { flip } from 'svelte/animate';
 	import { cubicOut } from 'svelte/easing';
 	import { fade, scale } from 'svelte/transition';
@@ -21,6 +21,10 @@
 	import type { RecentWindow, SortKey } from '$lib/settings.svelte';
 	import { starter } from '$lib/onboarding/starter.svelte';
 	import ToggleGroup from '$lib/ui/ToggleGroup.svelte';
+	import { disjointViewKey } from '$lib/ui/view-key';
+	import { button } from '$lib/ui/button';
+	import { ARCHIVED } from '$lib/library.svelte';
+	import { prefersReducedMotion } from 'svelte/motion';
 
 	let search = $state<HTMLInputElement>();
 	let searchFocused = $state(false);
@@ -34,19 +38,20 @@
 
 	// The grid is rebuilt (a fade) only when the view changes to papers that share none with
 	// the previous ones (e.g. one category to another): otherwise shared cards move (flip).
-	let shownIds = new Set<string>();
-	let shownView = '';
-	let gridGeneration = 0;
-	const gridKey = $derived.by(() => {
-		const view = JSON.stringify(library.view);
-		const ids = library.filtered.map((p) => p.id);
-		if (view !== shownView) {
-			if (shownView && !ids.some((id) => shownIds.has(id))) gridGeneration++;
-			shownView = view;
-		}
-		shownIds = new Set(ids);
-		return gridGeneration;
-	});
+	const viewKey = disjointViewKey();
+	const gridKey = $derived(viewKey.next(JSON.stringify(library.view), library.filtered.map((p) => p.id)));
+
+	// Motion: none with reduced motion; long lists don't animate at all (flip measures every
+	// card on each change); while typing a search, cards re-flow without easing.
+	let typing = $state(false);
+	let typingTimer: ReturnType<typeof setTimeout> | undefined;
+	function onSearchInput() {
+		typing = true;
+		clearTimeout(typingTimer);
+		typingTimer = setTimeout(() => (typing = false), 400);
+	}
+	const animated = $derived(library.filtered.length <= 150 && !prefersReducedMotion.current);
+	const motion = $derived(animated && !typing ? 1 : 0);
 	const minCard = $derived({ small: 140, medium: 170, large: 220 }[settings.values.cardSize]);
 
 	const newCategory = () => showCategoryDialog();
@@ -85,12 +90,45 @@
 	}
 
 	const sortByOptions: CycleOption<SortKey>[] = sortOptions.map((o) => ({ value: o.value, label: o.label, icon: o.icon }));
+
+	/** What hides papers right now (besides the view), for the empty state. */
+	const activeFilters = $derived.by(() => {
+		const out: string[] = [];
+		if (library.query.trim()) out.push(`matching “${library.query.trim()}”`);
+		const rf = settings.values.readFilter;
+		if (rf !== 'all') out.push(rf === 'unread' ? 'unread only' : 'read only');
+		for (const [t, mode] of Object.entries(library.tagFilter)) {
+			if (t === ARCHIVED && mode === 'out') continue; // the default: mentioned only when it hides something
+			out.push(mode === 'in' ? `only #${t}` : `hiding #${t}`);
+		}
+		return out;
+	});
+	/** Papers of this view before any filter (archived included). */
+	const inView = $derived(
+		library.papers.filter((p) => {
+			const v = library.view;
+			if (v.kind === 'category') return p.category === v.id;
+			if (v.kind === 'uncategorized') return !library.category(p.category);
+			return true;
+		})
+	);
+	const archivedHidden = $derived(library.tagFilter[ARCHIVED] === 'out' && inView.some((p) => p.tags?.includes(ARCHIVED)));
+	const filtering = $derived(activeFilters.length > 0 || archivedHidden);
 	const emptyMessage = $derived.by(() => {
 		if (!library.papers.length) return 'Your library is empty.';
-		if (library.view.kind !== 'recent' || library.query) return 'No papers match.';
-		const label = recentOptions.find((o) => o.value === settings.values.recentWindow)?.label.toLowerCase();
-		return `Nothing opened in the ${label}.`;
+		if (!inView.length) return `Nothing in ${title} yet.`;
+		if (library.view.kind === 'recent' && !activeFilters.length) {
+			const label = recentOptions.find((o) => o.value === settings.values.recentWindow)?.label.toLowerCase();
+			return `Nothing opened in the ${label}.`;
+		}
+		const why = [...activeFilters, ...(archivedHidden ? ['archived papers are hidden'] : [])];
+		return why.length ? `No papers here: ${why.join(', ')}.` : 'No papers match.';
 	});
+	function clearFilters() {
+		library.query = '';
+		settings.set('readFilter', 'all');
+		for (const t of Object.keys(library.tagFilter)) library.setTagFilter(t, null);
+	}
 	const recentOptions: CycleOption<RecentWindow>[] = [
 		{ value: 'day', label: 'Last day', icon: 'icon-[lucide--clock]' },
 		{ value: 'week', label: 'Last 7 days', icon: 'icon-[lucide--calendar-days]' },
@@ -116,29 +154,31 @@
 	<Sidebar onNewCategory={newCategory} />
 
 	<main class="flex min-w-0 flex-1 flex-col">
-		<header class="flex h-12 shrink-0 items-center gap-3 px-6" data-tauri-drag-region>
-			<h1 class="font-serif text-xl" data-tauri-drag-region>{title}</h1>
+		<!-- A container: at narrow widths labels and the read filter fold away (720px windows). -->
+		<header class="@container flex h-12 shrink-0 items-center gap-3 px-6" data-tauri-drag-region>
+			<h1 class="min-w-0 truncate font-serif text-xl" data-tauri-drag-region>{title}</h1>
 			<span class="text-sm text-stone-400 tabular-nums" data-tauri-drag-region>{library.filtered.length}</span>
 			<div class="flex-1" data-tauri-drag-region></div>
 			{#if starter.running}
-				<span class="flex items-center gap-1.5 text-xs text-stone-500" transition:fade><span class="icon-[lucide--loader-circle] size-3.5 animate-spin"></span>Adding example papers {starter.done}/{starter.total || '…'}</span>
+				<span class="flex shrink-0 items-center gap-1.5 text-xs text-stone-500" transition:fade><span class="icon-[lucide--loader-circle] size-3.5 animate-spin"></span><span class="@max-4xl:hidden">Adding example papers</span> {starter.done}/{starter.total || '…'}</span>
 			{:else if library.importing}
-				<span class="flex items-center gap-1.5 text-xs text-stone-500" transition:fade><span class="icon-[lucide--loader-circle] size-3.5 animate-spin"></span>Adding {library.importing}…</span>
+				<span class="flex shrink-0 items-center gap-1.5 text-xs text-stone-500" transition:fade><span class="icon-[lucide--loader-circle] size-3.5 animate-spin"></span><span class="@max-4xl:hidden">Adding {library.importing}…</span></span>
 			{/if}
 			{#if library.view.kind !== 'recent'}
 				<div class="flex items-center">
-					<CycleButton title="Sort by" options={sortByOptions} value={settings.values.sortBy} onchange={(v) => settings.set('sortBy', v)} showLabel class="h-8" />
-					<CycleButton title="Order" options={orderOptions} value={settings.values.sortDesc} onchange={(v) => settings.set('sortDesc', v)} showLabel reserve={orderLabels} class="h-8" />
+					<CycleButton title="Sort by" options={sortByOptions} value={settings.values.sortBy} onchange={(v) => settings.set('sortBy', v)} showLabel labelClass="@max-4xl:hidden" class="h-8" />
+					<CycleButton title="Order" options={orderOptions} value={settings.values.sortDesc} onchange={(v) => settings.set('sortDesc', v)} showLabel reserve={orderLabels} labelClass="@max-4xl:hidden" class="h-8" />
 				</div>
 			{:else}
-				<CycleButton title="Recent" options={recentOptions} value={settings.values.recentWindow} onchange={(v) => settings.set('recentWindow', v)} showLabel class="h-8" />
+				<CycleButton title="Recent" options={recentOptions} value={settings.values.recentWindow} onchange={(v) => settings.set('recentWindow', v)} showLabel labelClass="@max-4xl:hidden" class="h-8" />
 			{/if}
-			<ToggleGroup label="Show papers" value={settings.values.readFilter} onValueChange={(v) => settings.set('readFilter', v)} items={readOptions.map((o) => ({ value: o.value, label: o.value === 'all' ? 'All' : o.label }))} />
-			<label class="flex h-8 w-64 items-center gap-2 rounded-lg bg-stone-200/60 pr-1.5 pl-2.5 ring-blue-500/60 focus-within:bg-white focus-within:ring-2 dark:bg-stone-800/60 dark:focus-within:bg-stone-900">
+			<ToggleGroup class="@max-2xl:hidden" label="Show papers" value={settings.values.readFilter} onValueChange={(v) => settings.set('readFilter', v)} items={readOptions.map((o) => ({ value: o.value, label: o.value === 'all' ? 'All' : o.label }))} />
+			<label class="flex h-8 max-w-64 min-w-28 flex-1 items-center gap-2 rounded-lg bg-stone-200/60 pr-1.5 pl-2.5 ring-blue-500/60 focus-within:bg-white focus-within:ring-2 dark:bg-stone-800/60 dark:focus-within:bg-stone-900">
 				<span class="icon-[lucide--search] size-3.5 shrink-0 text-stone-400"></span>
 				<input
 					bind:this={search}
 					bind:value={library.query}
+					oninput={onSearchInput}
 					onfocus={() => (searchFocused = true)}
 					onblur={() => (searchFocused = false)}
 					placeholder="Search papers"
@@ -146,7 +186,7 @@
 					class="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-stone-400 focus:placeholder:text-transparent"
 				/>
 				{#if library.query}
-					<button class="grid size-5 place-items-center rounded-md text-stone-400 hover:text-stone-700" aria-label="Clear search" onclick={() => ((library.query = ''), search?.focus())}><span class="icon-[lucide--x] size-3.5"></span></button>
+					<button class={iconButton(6, `${mutedIcon} size-5`)} aria-label="Clear search" onclick={() => ((library.query = ''), search?.focus())}><span class="icon-[lucide--x] size-3.5"></span></button>
 				{:else if !searchFocused}
 					<Kbd>{keys.search}</Kbd>
 				{/if}
@@ -166,19 +206,29 @@
 				<!-- Cards move (flip) between views that share papers, and as searching and
 				     tag filters re-flow; a view with none in common swaps the grid (a fade). -->
 				{#key gridKey}
-					<ul class="grid gap-5" style:grid-template-columns="repeat(auto-fill, minmax({minCard}px, 1fr))" in:fade={{ duration: 160 }}>
-						{#each library.filtered as paper (paper.id)}
-							<li animate:flip={{ duration: 260, easing: cubicOut }} in:fade={{ duration: 160 }} out:scale={{ start: 0.96, duration: 120 }}>
-								<PaperCard {paper} />
-							</li>
-						{/each}
+					<ul class="grid gap-5" style:grid-template-columns="repeat(auto-fill, minmax({minCard}px, 1fr))" in:fade={{ duration: 160 * motion }}>
+						{#if animated}
+							{#each library.filtered as paper (paper.id)}
+								<li animate:flip={{ duration: 260 * motion, easing: cubicOut }} in:fade={{ duration: 160 * motion }} out:scale={{ start: 0.96, duration: 120 * motion }}>
+									<PaperCard {paper} />
+								</li>
+							{/each}
+						{:else}
+							{#each library.filtered as paper (paper.id)}
+								<li><PaperCard {paper} /></li>
+							{/each}
+						{/if}
 					</ul>
 				{/key}
 			{:else}
-				<div class="grid h-full place-items-center text-center text-sm text-stone-500" in:fade>
+				<div class="grid h-full place-items-center text-center text-sm text-stone-500" in:fade={{ duration: 160 * motion }}>
 					<div>
 						<p>{emptyMessage}</p>
-						<p class="mt-2 flex items-center justify-center gap-1">Drop PDFs here, press <Kbd>{keys.addPapers}</Kbd>, or paste an arXiv link</p>
+						{#if filtering && inView.length}
+							<button class={button('secondary', 'mt-3')} onclick={clearFilters}>Clear filters</button>
+						{:else if !library.papers.length || !inView.length}
+							<p class="mt-2 flex items-center justify-center gap-1">Drop PDFs here, press <Kbd>{keys.addPapers}</Kbd>, or paste an arXiv link</p>
+						{/if}
 					</div>
 				</div>
 			{/if}

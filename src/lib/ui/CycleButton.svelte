@@ -24,6 +24,7 @@
 		onchange,
 		showLabel = false,
 		reserve = [],
+		labelClass = '',
 		shortcut,
 		class: className = ''
 	}: {
@@ -36,6 +37,8 @@
 		showLabel?: boolean;
 		/** Other labels the button may show (e.g. when its options change): it keeps room for them too. */
 		reserve?: string[];
+		/** Classes for the label (e.g. a container query hiding it when the header is narrow). */
+		labelClass?: string;
 		shortcut?: string;
 		class?: string;
 	} = $props();
@@ -58,7 +61,7 @@
 			<!-- All labels share one grid cell: the button is as wide as the longest, so it
 			     never shifts the layout when the mode changes (clicking again hits it again). -->
 			{#if showLabel}
-				<span class="grid text-left">
+				<span class={cn('grid text-left', labelClass)}>
 					{#each [...new Set([...options.map((o) => o.label), ...reserve])] as l (l)}
 						<span class="col-start-1 row-start-1 whitespace-nowrap {l === current.label ? '' : 'invisible'}" aria-hidden={l !== current.label}>{l}</span>
 					{/each}
