@@ -167,7 +167,7 @@
 		{/if}
 
 		{#if dragDepth > 0 && library.status === 'ready'}
-			<div class="pointer-events-none fixed inset-3 z-50 grid place-items-center rounded-2xl border-2 border-dashed border-stone-400 bg-stone-100/70 backdrop-blur-sm dark:bg-stone-900/70">
+			<div class="pointer-events-none fixed inset-3 z-(--z-overlay) grid place-items-center rounded-2xl border-2 border-dashed border-stone-400 bg-stone-100/70 backdrop-blur-sm dark:bg-stone-900/70">
 				<p class="text-lg text-stone-600 dark:text-stone-300">Drop PDFs to add them</p>
 			</div>
 		{/if}
