@@ -37,6 +37,12 @@ export function exportPdfInWorker(bytes: Uint8Array, annotations: Annotation[], 
 		const timer = setTimeout(() => {
 			pending.delete(id);
 			reject(new Error('export timed out'));
+			// A hung worker would make every later save wait the full timeout too: start afresh.
+			const hung = worker;
+			worker = null;
+			hung?.terminate();
+			for (const p of pending.values()) p.reject(new Error('export restarted'));
+			pending.clear();
 		}, TIMEOUT);
 		const done = <T,>(f: (v: T) => void) => (v: T) => (clearTimeout(timer), f(v));
 		pending.set(id, { resolve: done(resolve), reject: done(reject) });

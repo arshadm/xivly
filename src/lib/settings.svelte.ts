@@ -100,11 +100,29 @@ export type SettingKey = keyof Settings;
 const STORAGE_KEY = 'xivly:settings';
 const EVENT = 'xivly://settings';
 
+/**
+ * Changed keys only: a value, or `undefined` once back to its default (removed
+ * from storage). Two windows changing different settings never undo each other.
+ */
+export type Changes = Partial<Record<SettingKey, unknown>>;
+
 interface Backend {
 	load(): Promise<Partial<Settings>>;
-	save(values: Partial<Settings>): Promise<void>;
-	/** Changes made by other windows / tabs. */
-	watch(apply: (values: Partial<Settings>) => void): void;
+	/** Write these keys; `null` changes clears everything (reset). */
+	save(changes: Changes | null): Promise<void>;
+	/** Changes made by other windows / tabs (`null`: reset). */
+	watch(apply: (changes: Changes | null) => void): void;
+}
+
+/** Stored overrides after `changes` (exported for tests). */
+export function applyChanges(stored: Changes, changes: Changes | null): Changes {
+	if (!changes) return {};
+	const next = { ...stored };
+	for (const [k, v] of Object.entries(changes)) {
+		if (v === undefined) delete next[k as SettingKey];
+		else next[k as SettingKey] = v;
+	}
+	return next;
 }
 
 const webBackend: Backend = {
@@ -115,12 +133,25 @@ const webBackend: Backend = {
 			return {};
 		}
 	},
-	async save(values) {
-		localStorage.setItem(STORAGE_KEY, JSON.stringify(values));
+	async save(changes) {
+		let stored: Changes = {};
+		try {
+			stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}');
+		} catch {
+			// Unreadable: rewritten from these changes.
+		}
+		localStorage.setItem(STORAGE_KEY, JSON.stringify(applyChanges(stored, changes)));
 	},
 	watch(apply) {
+		// The other tabs get the whole stored object: apply it as a reset + changes.
 		addEventListener('storage', (e) => {
-			if (e.key === STORAGE_KEY && e.newValue) apply(JSON.parse(e.newValue));
+			if (e.key !== STORAGE_KEY) return;
+			try {
+				apply(null);
+				apply(e.newValue ? JSON.parse(e.newValue) : {});
+			} catch {
+				// Ignored: a later write fixes it.
+			}
 		});
 	}
 };
@@ -133,19 +164,22 @@ const desktopBackend = (): Backend => {
 		async load() {
 			return Object.fromEntries(await (await store).entries()) as Partial<Settings>;
 		},
-		async save(values) {
+		async save(changes) {
 			const s = await store;
-			await s.clear();
-			for (const [k, v] of Object.entries(values)) await s.set(k, v);
+			if (!changes) await s.clear();
+			for (const [k, v] of Object.entries(changes ?? {})) {
+				if (v === undefined) await s.delete(k);
+				else await s.set(k, v);
+			}
 			await s.save();
 			// Tell the other windows (the store's own events are per webview); `emit`
-			// reaches this one too, which must not re-apply a snapshot it has moved past.
-			await (await event).emit(EVENT, { source: await self, values });
+			// reaches this one too, which must not re-apply what it already has.
+			await (await event).emit(EVENT, { source: await self, changes });
 		},
 		watch(apply) {
 			event.then(({ listen }) =>
-				listen<{ source: string; values: Partial<Settings> }>(EVENT, async ({ payload }) => {
-					if (payload.source !== (await self)) apply(payload.values);
+				listen<{ source: string; changes: Changes | null }>(EVENT, async ({ payload }) => {
+					if (payload.source !== (await self)) apply(payload.changes);
 				})
 			);
 		}
@@ -160,33 +194,54 @@ class SettingsState {
 	async init() {
 		const stored = await this.#backend.load().catch(() => ({}));
 		this.values = { ...defaults, ...pick(stored) };
-		this.#backend.watch((v) => (this.values = { ...defaults, ...pick(v) }));
+		this.#backend.watch((changes) => {
+			if (!changes) return void (this.values = { ...defaults });
+			const known = pick(changes as Partial<Settings>);
+			for (const k of Object.keys(changes) as SettingKey[]) {
+				if (!(k in defaults)) continue;
+				// Back to its default, or a value this version accepts.
+				(this.values as Record<SettingKey, unknown>)[k] = k in known ? known[k] : defaults[k];
+			}
+		});
 		this.ready = true;
 	}
 
 	#saveTimer: ReturnType<typeof setTimeout> | undefined;
+	#dirty = new Set<SettingKey>();
 
 	/** Applies at once; written (and sent to other windows) once a drag settles. */
 	set<K extends SettingKey>(key: K, value: Settings[K]) {
 		this.values[key] = value;
+		this.#dirty.add(key);
 		clearTimeout(this.#saveTimer);
-		this.#saveTimer = setTimeout(() => void this.#backend.save(overrides($state.snapshot(this.values) as Settings)), 300);
+		this.#saveTimer = setTimeout(() => void this.flush(), 300);
+	}
+
+	/** Write what's pending now (a window closing must not drop its last change). */
+	flush() {
+		clearTimeout(this.#saveTimer);
+		if (!this.#dirty.size) return Promise.resolve();
+		const values = $state.snapshot(this.values) as Settings;
+		const changes = Object.fromEntries([...this.#dirty].map((k) => [k, overrideOf(k, values[k])])) as Changes;
+		this.#dirty.clear();
+		return this.#backend.save(changes).catch((e) => console.warn('settings not saved', e));
 	}
 
 	reset() {
 		clearTimeout(this.#saveTimer);
+		this.#dirty.clear();
 		this.values = { ...defaults };
-		void this.#backend.save({});
+		void this.#backend.save(null);
 	}
 }
 
 /** Only what differs from the defaults is stored, so changed defaults reach everyone. */
-function overrides(values: Settings): Partial<Settings> {
-	return Object.fromEntries(Object.entries(values).filter(([k, v]) => v !== defaults[k as SettingKey])) as Partial<Settings>;
+export function overrideOf<K extends SettingKey>(key: K, value: Settings[K]): Settings[K] | undefined {
+	return value === defaults[key] ? undefined : value;
 }
 
 /** Known keys only (old or foreign keys in the store are ignored). */
-function pick(stored: Partial<Settings>): Partial<Settings> {
+export function pick(stored: Partial<Settings>): Partial<Settings> {
 	const known = Object.entries(stored).filter(([k]) => k in defaults);
 	// Choices that no longer exist fall back to the default.
 	const valid = ([k, v]: [string, unknown]) => (k === 'coverStyle' ? coverStyles.some((c) => c.value === v) : k === 'recentWindow' ? typeof v === 'string' && v in recentWindows : true);

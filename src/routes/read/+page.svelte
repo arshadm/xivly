@@ -33,6 +33,9 @@
 	import { exportPdfInWorker } from '$lib/export';
 	import { metadataCache } from '$lib/metadata-cache';
 	import { onFlush } from '$lib/flush';
+	import { onBroadcast } from '$lib/broadcast';
+	import { fileManager, mac } from '$lib/os';
+	import { button } from '$lib/ui/button';
 	import { library } from '$lib/library.svelte';
 	import { platform } from '$lib/platform';
 	import { settings } from '$lib/settings.svelte';
@@ -78,6 +81,9 @@
 	const initialZoom = untrack(() => settings.values.zoomMode);
 
 	let bytes = $state.raw<Uint8Array | null>(null);
+	/** The PDF: being read (a spinner after a moment), there, missing or unreadable. */
+	let load = $state<{ status: 'loading' | 'ready' | 'missing' | 'error'; error?: string }>({ status: 'loading' });
+	let slow = $state(false);
 	let viewer = $state<ViewerState>();
 	let store = $state<AnnotationStore>();
 	let paperState = $state<PaperState>();
@@ -109,14 +115,19 @@
 		const repo = library.repo;
 		untrack(() => {
 			bytes = null;
+			load = { status: 'loading' };
+			slow = false;
+			// Large PDFs (or iCloud downloading one) take a moment: a spinner then, not at once.
+			const spinner = setTimeout(() => (slow = true), 300);
 			repo
 				?.readPdf(current)
 				.then((b) => {
 					if (current !== id) return;
-					if (!b) toast('PDF not found', 'error');
 					bytes = b;
+					load = b ? { status: 'ready' } : { status: 'missing' };
 				})
-				.catch((e) => current === id && toast(`Could not open the PDF: ${e}`, 'error'));
+				.catch((e) => current === id && (load = { status: 'error', error: e instanceof Error ? e.message : String(e) }))
+				.finally(() => clearTimeout(spinner));
 			library.touch(current, { opened: new Date().toISOString() }).catch(() => {});
 			// Hugging Face links (models, datasets, project page…), at most weekly.
 			library.refreshHf(current).catch(() => {});
@@ -178,12 +189,31 @@
 		onFlush({
 			dirty: () => rev !== savedRev,
 			flush: async () => {
-				const choice = settings.values.confirmUnsaved ? await askUnsaved(paper?.title ?? 'this paper') : 'save';
-				if (choice === 'cancel') return false;
-				if (choice === 'save') await save();
-				else savedRev = rev;
-				return rev === savedRev;
+				const title = paper?.title ?? 'this paper';
+				let choice = settings.values.confirmUnsaved ? await askUnsaved(title) : 'save';
+				for (;;) {
+					if (choice === 'cancel') return false;
+					if (choice === 'discard') {
+						savedRev = rev;
+						return true;
+					}
+					await save();
+					if (rev === savedRev) return true;
+					// The save failed (folder offline, paper removed…): always ask, so the
+					// window can still close without saving.
+					choice = await askUnsaved(title);
+				}
 			}
+		})
+	);
+
+	// Removed from the library (another window, Finder…): nothing to save any more, and the
+	// window closes (or says why, on the web where a script can't close every tab).
+	$effect(() =>
+		onBroadcast('paper-removed', ({ id: removed }) => {
+			if (removed !== id) return;
+			savedRev = rev;
+			void library.reloadPaper(id).then(() => closeWindow());
 		})
 	);
 
@@ -354,7 +384,7 @@
 	// V while Select is already on switches its mode (with / without the color menu). Capture
 	// phase: runs before the viewer's own V, which would make Select current either way.
 	function onSelectKey(e: KeyboardEvent) {
-		if (!store || store.tool !== 'select' || e.metaKey || e.ctrlKey || e.altKey || isEditable(e.target)) return;
+		if (!store || store.tool !== 'select' || e.repeat || e.metaKey || e.ctrlKey || e.altKey || isEditable(e.target)) return;
 		if ((store.keymap['tool.select'] ?? []).includes(e.key.toLowerCase())) settings.set('selectionMenu', !s.selectionMenu);
 	}
 
@@ -501,7 +531,7 @@
 																	<span class="{icons.search} size-3.5 text-stone-400"></span>
 																	<Find.Input bind:ref={findInput} captureShortcut={false} onkeydown={onFindKey} class="min-w-0 flex-1 bg-transparent py-1.5 text-[13px] outline-none" placeholder="Find in paper" />
 																	<Find.Count class="text-[11px] whitespace-nowrap text-stone-500 tabular-nums" />
-																	<Tip label="Previous match" shortcut="⇧↵">{#snippet child({ props })}<Find.Prev {...props} class="grid size-6 place-items-center disabled:opacity-30"><span class="{icons.up} size-4"></span></Find.Prev>{/snippet}</Tip>
+																	<Tip label="Previous match" shortcut={mac ? '⇧↵' : 'Shift+Enter'}>{#snippet child({ props })}<Find.Prev {...props} class="grid size-6 place-items-center disabled:opacity-30"><span class="{icons.up} size-4"></span></Find.Prev>{/snippet}</Tip>
 																	<Tip label="Next match" shortcut="↵">{#snippet child({ props })}<Find.Next {...props} class="grid size-6 place-items-center disabled:opacity-30"><span class="{icons.down} size-4"></span></Find.Next>{/snippet}</Tip>
 																</div>
 																<div class="flex items-center gap-1">
@@ -691,8 +721,21 @@
 			</Find.Root>
 		</Viewer.Root>
 	</Document.Root>
+{:else if load.status === 'missing' || load.status === 'error'}
+	<div class="grid h-full place-items-center bg-stone-100 px-6 text-center text-sm text-stone-500 dark:bg-stone-950" data-tauri-drag-region>
+		<div>
+			<p class="text-stone-700 dark:text-stone-300">{load.status === 'missing' ? 'This paper’s PDF is missing from its folder.' : 'The PDF couldn’t be opened.'}</p>
+			{#if load.error}<p class="mt-1 max-w-md text-xs">{load.error}</p>{/if}
+			<div class="mt-4 flex justify-center gap-2">
+				{#if platform.reveal}<button class={button('secondary')} onclick={() => platform.reveal?.(`papers/${id}/paper.json`)}>Show in {fileManager}</button>{/if}
+				<button class={button('primary')} onclick={closeWindow}>Close</button>
+			</div>
+		</div>
+	</div>
 {:else}
-	<div class="h-full bg-stone-100 dark:bg-stone-950" data-tauri-drag-region></div>
+	<div class="grid h-full place-items-center bg-stone-100 dark:bg-stone-950" data-tauri-drag-region>
+		{#if slow}<span class="icon-[lucide--loader-circle] size-5 animate-spin text-stone-400" aria-label="Opening the PDF"></span>{/if}
+	</div>
 {/if}
 
 <style>

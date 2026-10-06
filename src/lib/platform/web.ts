@@ -14,6 +14,7 @@ const saveHandle = (h: Dir) => kv.set('library', h);
 const loadHandle = () => kv.get<Dir>('library');
 
 // ── LibraryFs over a directory handle ───────────────────────────────────────
+const TRASH_DAYS = 30;
 const split = (path: string) => path.split('/').filter((p) => p && p !== '.');
 
 async function dirAt(root: Dir, parts: string[], create = false): Promise<Dir> {
@@ -93,8 +94,22 @@ function dirFs(root: Dir): LibraryFs {
 			const name = split(path).pop()!;
 			await fs.mkdir('.xivly/trash');
 			await move(path, `.xivly/trash/${Date.now()}-${name}`);
+			await pruneTrash().catch((e) => console.warn('trash not pruned', e));
 		}
 	};
+
+	/**
+	 * The browser has no system Trash: `.xivly/trash/` keeps removed papers for
+	 * 30 days (entries are named `<time>-<name>`), then they're deleted for good.
+	 */
+	async function pruneTrash() {
+		const trash = await dirAt(root, ['.xivly', 'trash']);
+		const cutoff = Date.now() - TRASH_DAYS * 864e5;
+		for await (const name of trash.keys()) {
+			const time = Number(name.split('-')[0]);
+			if (Number.isFinite(time) && time < cutoff) await trash.removeEntry(name, { recursive: true });
+		}
+	}
 
 	/** Rename a file or folder; fails if `to` exists. */
 	async function move(from: string, to: string) {

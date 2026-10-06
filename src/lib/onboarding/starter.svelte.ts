@@ -37,7 +37,7 @@ const base = () => (dev ? '/starter/build/' : platform.kind === 'desktop' ? 'htt
 
 export const starter = $state({ running: false, done: 0, total: 0, error: null as string | null });
 
-export const hasStarter = () => library.papers.some((p) => p.tags?.includes(STARTER_TAG));
+export const hasStarter = () => library.papers.some((p) => p.starter === true || p.tags?.includes(STARTER_TAG));
 
 /** Size of the download, for the offer ("about 14 MB"). */
 export async function starterManifest(): Promise<StarterManifest | null> {
@@ -49,48 +49,90 @@ export async function starterManifest(): Promise<StarterManifest | null> {
 	}
 }
 
-/** Download the example papers into the library (skipping papers already there). */
+/** Paper ids (folder names) in a manifest. */
+export const manifestIds = (m: Pick<StarterManifest, 'files'>) => [...new Set(m.files.map((f) => f.path.split('/')[1]))];
+
+/** Throws if a manifest would write anything but paper files (hooks, settings…). */
+export function checkManifest(m: Pick<StarterManifest, 'files'>) {
+	const bad = m.files.find((f) => !STARTER_FILE.test(f.path));
+	if (bad) throw new Error(`Unexpected file in the example library: ${bad.path}`);
+}
+
+const enc = new TextEncoder();
+const dec = new TextDecoder();
+
+/**
+ * Download the example papers into the library, skipping papers already there.
+ * One failure stops every download; what was written stays consistent (a folder
+ * gets its PDF before its paper.json), and the library is reloaded either way.
+ */
 export async function downloadStarter() {
 	const repo = library.repo;
 	if (!repo || starter.running) return;
 	Object.assign(starter, { running: true, done: 0, total: 0, error: null });
+	const abort = new AbortController();
 	try {
 		const manifest = await starterManifest();
 		if (!manifest) throw new Error('The example library is not available right now.');
-		// Only paper files: a manifest must never write elsewhere in the library (hooks, settings).
-		const bad = manifest.files.find((f) => !STARTER_FILE.test(f.path));
-		if (bad) throw new Error(`Unexpected file in the example library: ${bad.path}`);
-		const folders = Map.groupBy(manifest.files, (f) => f.path.split('/').slice(0, 2).join('/'));
-		const todo = [...folders].filter(([dir]) => !library.papers.some((p) => `papers/${p.id}` === dir));
-		starter.total = todo.length;
-		const queue = [...todo];
+		checkManifest(manifest);
+		// Categories first: papers never show up uncategorized, even if a download fails.
+		const missing = manifest.categories.filter((c) => !library.categories.some((x) => x.id === c.id));
+		if (missing.length) await library.saveCategories((cur) => [...cur, ...missing.filter((c) => !cur.some((x) => x.id === c.id))]);
+		const folders = [...Map.groupBy(manifest.files, (f) => f.path.split('/')[1])];
+		starter.total = folders.length;
+		const queue = [...folders];
 		const worker = async () => {
-			for (let item = queue.shift(); item; item = queue.shift()) {
-				const [, files] = item;
-				for (const f of files) {
-					const res = await fetch(`${base()}${f.path}`);
-					if (!res.ok) throw new Error(`${f.path}: HTTP ${res.status}`);
-					const bytes = new Uint8Array(await res.arrayBuffer());
-					if (bytes.length !== f.size) throw new Error(`${f.path}: incomplete download`);
-					await repo.fs.write(f.path, bytes);
+			for (let item = queue.shift(); item && !abort.signal.aborted; item = queue.shift()) {
+				const [id, files] = item;
+				// Reserved under the library's lock: a paper already there (or added meanwhile) is kept as is.
+				if (!(await repo.reserve(id))) {
+					starter.done++;
+					continue;
+				}
+				try {
+					for (const f of files.toSorted((a, b) => Number(a.path.endsWith('.json')) - Number(b.path.endsWith('.json')))) {
+						const res = await fetch(`${base()}${f.path}`, { signal: abort.signal });
+						if (!res.ok) throw new Error(`${f.path}: HTTP ${res.status}`);
+						let bytes = new Uint8Array(await res.arrayBuffer());
+						if (bytes.length !== f.size) throw new Error(`${f.path}: incomplete download`);
+						// Marked as an example: "Remove" in Settings takes these only.
+						if (f.path.endsWith('.json')) bytes = enc.encode(JSON.stringify({ ...JSON.parse(dec.decode(bytes)), starter: true }, null, 2) + '\n');
+						abort.signal.throwIfAborted();
+						await repo.fs.write(f.path, bytes);
+					}
+				} catch (e) {
+					// A half-written example would show as a broken paper.
+					await repo.fs.trash(`papers/${id}`).catch(() => {});
+					throw e;
 				}
 				starter.done++;
 			}
 		};
-		await Promise.all([worker(), worker(), worker()]);
-		const missing = manifest.categories.filter((c) => !library.categories.some((x) => x.id === c.id));
-		if (missing.length) await library.saveCategories([...library.categories, ...missing]);
-		await library.reload();
+		await Promise.all(
+			[worker(), worker(), worker()].map((w) =>
+				w.catch((e) => {
+					abort.abort();
+					throw e;
+				})
+			)
+		);
 	} catch (e) {
 		starter.error = String(e instanceof Error ? e.message : e);
 	} finally {
+		await library.reload();
 		starter.running = false;
 	}
 }
 
-/** Move every example paper to the Trash; drop the example-only categories left empty. */
+/**
+ * Move the example papers to the Trash; drop the example-only categories left
+ * empty. Examples are marked `starter: true` (older downloads: the manifest's
+ * papers with the example tag), so the user's own papers tagged `demo` stay.
+ */
 export async function removeStarter() {
-	for (const p of library.papers.filter((p) => p.tags?.includes(STARTER_TAG))) await library.remove(p.id);
+	const ids = new Set((await starterManifest().then((m) => (m ? manifestIds(m) : []))).filter(Boolean));
+	const examples = library.papers.filter((p) => p.starter === true || (ids.has(p.id) && p.tags?.includes(STARTER_TAG)));
+	for (const p of examples) await library.remove(p.id);
 	for (const id of ['robotics', 'classics'])
 		if (library.category(id) && !library.papers.some((p) => p.category === id)) await library.removeCategory(id);
 }

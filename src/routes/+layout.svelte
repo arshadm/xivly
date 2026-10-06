@@ -69,14 +69,23 @@
 			}),
 			// Closing this window: unsaved work is saved, discarded or the close cancelled.
 			win.onCloseRequested(async (e) => {
+				await settings.flush();
 				if (!hasUnsaved()) return;
 				e.preventDefault();
 				if (await flushAll()) await win.destroy();
 			}),
-			// ⌘Q: every window answers (Rust quits once all agree).
+			// ⌘Q: every window answers (Rust quits once all agree), whatever happens:
+			// an exception must not leave the quit waiting for this window forever.
 			listen('quit-requested', async () => {
-				const ok = !hasUnsaved() || (await flushAll());
-				await invoke('quit_response', { ok });
+				let ok = false;
+				try {
+					await settings.flush();
+					ok = !hasUnsaved() || (await flushAll());
+				} catch (e) {
+					console.error(e);
+				} finally {
+					await invoke('quit_response', { ok });
+				}
 			})
 		];
 		return () => unlisten.forEach((p) => p.then((f) => f()));
@@ -84,6 +93,7 @@
 
 	// Web: the browser asks before leaving with unsaved annotations.
 	function onbeforeunload(e: BeforeUnloadEvent) {
+		void settings.flush();
 		if (hasUnsaved()) e.preventDefault();
 	}
 

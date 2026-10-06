@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { coverUrl } from '$lib/covers';
+	import { coverUrl, whenNear } from '$lib/covers';
+	import { coverVersions } from '$lib/cover-versions.svelte';
 	import { library } from '$lib/library.svelte';
 	import { paperMenu } from '$lib/paper-menu';
 	import { settings } from '$lib/settings.svelte';
@@ -19,21 +20,21 @@
 		paper.authors?.length ? (paper.authors.length > 2 ? `${paper.authors[0]} et al.` : paper.authors.join(', ')) : ''
 	);
 
-	// Page covers render lazily, once the card is near the viewport.
+	// Page covers render lazily, once the card is near the viewport, and again when
+	// the paper is saved (from any window).
 	let cover = $state<string | null>(null);
+	let near = $state(false);
 	function lazyCover(node: HTMLElement) {
 		if (style !== 'page') return;
-		const io = new IntersectionObserver(
-			([e]) => {
-				if (!e.isIntersecting) return;
-				io.disconnect();
-				coverUrl(paper.id).then((u) => (cover = u));
-			},
-			{ rootMargin: '400px' }
-		);
-		io.observe(node);
-		return () => io.disconnect();
+		return whenNear(node, () => (near = true));
 	}
+	$effect(() => {
+		void coverVersions.of(paper.id);
+		if (!near || style !== 'page') return;
+		let live = true;
+		coverUrl(paper.id).then((u) => live && (cover = u));
+		return () => void (live = false);
+	});
 
 	const toggleRead = () => library.toggleRead(paper);
 </script>

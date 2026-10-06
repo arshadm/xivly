@@ -1,6 +1,8 @@
 // First-page covers for the library grid: rendered once with pdf.js, kept as
 // WebP in IndexedDB (per device, never in the library folder), two at a time.
 import { assetUrls, getSharedWorker, loadPdfJs } from 'svelte-pdf-mini';
+import { broadcast, onBroadcast } from './broadcast';
+import { coverVersions } from './cover-versions.svelte';
 import { idb } from './idb';
 import { library } from './library.svelte';
 
@@ -18,16 +20,30 @@ export function coverUrl(id: string): Promise<string | null> {
 	return url;
 }
 
-/** Drop a paper's cover (its PDF changed, or it left the library): the next look renders it again. */
+/**
+ * Drop a paper's cover (its PDF changed, or it left the library): the next look
+ * renders it again, here and in the other windows (the library shows the new one).
+ */
 export function forgetCover(id: string) {
+	drop(id);
+	void store.delete(id);
+	void broadcast('cover-changed', { id });
+}
+
+function drop(id: string) {
 	const url = urls.get(id);
 	urls.delete(id);
 	void url?.then((u) => u && URL.revokeObjectURL(u));
-	void store.delete(id);
+	coverVersions.bump(id);
 }
 
+// Another window saved the paper (or removed it): show the new cover.
+if (typeof window !== 'undefined') onBroadcast('cover-changed', ({ id }) => drop(id));
+
 async function load(id: string) {
-	const blob = (await store.get<Blob>(id)) ?? (await queue(() => render(id)));
+	const cached = await store.get<Blob>(id);
+	if (cached) return URL.createObjectURL(cached);
+	const blob = await queue(() => render(id));
 	if (!blob) return null;
 	void store.set(id, blob);
 	return URL.createObjectURL(blob);
@@ -61,4 +77,30 @@ async function queue<T>(job: () => Promise<T>): Promise<T> {
 		running--;
 		waiting.shift()?.();
 	}
+}
+
+// One observer for every card (a library of 500 papers must not create 500).
+const nearCallbacks = new Map<Element, () => void>();
+let observer: IntersectionObserver | null = null;
+
+/** Call `fn` once `node` comes within 400px of the viewport; returns the cleanup. */
+export function whenNear(node: Element, fn: () => void): () => void {
+	observer ??= new IntersectionObserver(
+		(entries) => {
+			for (const e of entries) {
+				if (!e.isIntersecting) continue;
+				const cb = nearCallbacks.get(e.target);
+				nearCallbacks.delete(e.target);
+				observer?.unobserve(e.target);
+				cb?.();
+			}
+		},
+		{ rootMargin: '400px' }
+	);
+	nearCallbacks.set(node, fn);
+	observer.observe(node);
+	return () => {
+		nearCallbacks.delete(node);
+		observer?.unobserve(node);
+	};
 }
