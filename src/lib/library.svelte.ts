@@ -206,7 +206,7 @@ class Library {
 	 * ids. A few at a time (a drop of 200 PDFs must not load them all at once);
 	 * the ones that fail are listed in one message.
 	 */
-	async import(files: File[], hints: { arxiv?: string; keep?: (file: File, meta: PaperPatch) => Promise<boolean> } = {}): Promise<string[]> {
+	async import(files: File[], hints: { arxiv?: string; keep?: (file: File, meta: PaperPatch) => Promise<boolean>; added?: (file: File, id: string) => void } = {}): Promise<string[]> {
 		const repo = this.repo;
 		if (!repo) return [];
 		const category = this.view.kind === 'category' ? this.view.id : undefined;
@@ -227,7 +227,9 @@ class Library {
 				}
 				// e.g. a paper already in the library, which the user doesn't want twice.
 				if (hints.keep && !(await hints.keep(file, meta))) return;
-				return await repo.add(bytes, { ...meta, category, tags });
+				const paper = await repo.add(bytes, { ...meta, category, tags });
+				hints.added?.(file, paper.id);
+				return paper;
 			} catch (e) {
 				console.error(e);
 				failed.push(`${file.name} (${e instanceof Error ? e.message : e})`);

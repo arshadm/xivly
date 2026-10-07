@@ -58,7 +58,9 @@ export async function addFiles(files: File[]) {
 	const pending = new Map(todo.slice(0, MAX_OPEN).map((f) => [f, openPaperWhenReady()]));
 	/** Files whose tab was closed for a question: opened later, if added after all. */
 	const reopen = new Set<File>();
-	const ids = await library.import(todo, {
+	const ids = new Map<File, string>();
+	await library.import(todo, {
+		added: (file, id) => ids.set(file, id),
 		// The same paper in another file (arXiv id or DOI), found once its metadata is read.
 		keep: async (file, meta) => {
 			const existing = asked.has(file) ? undefined : findDuplicate(library.papers, meta);
@@ -75,14 +77,13 @@ export async function addFiles(files: File[]) {
 			return false;
 		}
 	});
-	// `ids` follows the files that were added, in order.
-	const added = todo.filter((f) => !skipped.has(f));
-	added.forEach((f, i) => {
+	for (const f of todo) {
+		const id = ids.get(f);
 		const p = pending.get(f);
-		if (!ids[i]) p?.cancel();
-		else if (p) void p.open(ids[i], library.get(ids[i])?.title);
-		else if (reopen.has(f)) void openPaper(ids[i], library.get(ids[i])?.title);
-	});
+		if (!id) p?.cancel();
+		else if (p) void p.open(id, library.get(id)?.title);
+		else if (reopen.has(f)) void openPaper(id, library.get(id)?.title);
+	}
 }
 
 /** The file picker, then open what was added. */
