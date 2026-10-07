@@ -6,7 +6,7 @@
 
 	// Starts from each prompt's value; the field edits it.
 	let text = $derived(prompts.current?.value ?? '');
-	const submit = () => prompts.close(prompts.current?.value !== undefined ? text.trim() || null : true);
+	const submit = () => prompts.close(prompts.current?.choices ? prompts.current.choices.at(-1)!.value : prompts.current?.value !== undefined ? text.trim() || null : true);
 </script>
 
 <UiDialog open={!!prompts.current} onOpenChange={(o) => !o && prompts.close(null)} layer="alert" bare form onsubmit={(e) => (e.preventDefault(), submit())} class="w-[min(420px,92vw)] p-5">
@@ -20,7 +20,13 @@
 		{/if}
 		<div class="mt-4 flex justify-end gap-2 text-sm">
 			<button type="button" class={button('secondary')} onclick={() => prompts.close(null)}>Cancel</button>
-			<button type="submit" class={button(p.danger ? 'destructive' : 'primary')}>{p.confirmLabel}</button>
+			{#if p.choices}
+				{#each p.choices as c, i (c.value)}
+					{#if i === p.choices.length - 1}<button type="submit" class={button('primary')}>{c.label}</button>{:else}<button type="button" class={button('secondary')} onclick={() => prompts.close(c.value)}>{c.label}</button>{/if}
+				{/each}
+			{:else}
+				<button type="submit" class={button(p.danger ? 'destructive' : 'primary')}>{p.confirmLabel}</button>
+			{/if}
 		</div>
 	{/if}
 </UiDialog>

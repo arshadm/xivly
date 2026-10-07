@@ -3,6 +3,7 @@ import { broadcast } from './broadcast';
 import { toast } from './components/Toasts.svelte';
 import { forgetCover } from './covers';
 import { parseArxiv } from './arxiv';
+import { sha256 } from './duplicates';
 import { extractMetadata, tidyTitle } from './extract';
 import { filterPapers, type View } from './filter';
 import { fetchHfPaper } from './huggingface';
@@ -201,7 +202,7 @@ class Library {
 	 * ids. A few at a time (a drop of 200 PDFs must not load them all at once);
 	 * the ones that fail are listed in one message.
 	 */
-	async import(files: File[], hints: { arxiv?: string } = {}): Promise<string[]> {
+	async import(files: File[], hints: { arxiv?: string; keep?: (file: File, meta: PaperPatch) => Promise<boolean> } = {}): Promise<string[]> {
 		const repo = this.repo;
 		if (!repo) return [];
 		const category = this.view.kind === 'category' ? this.view.id : undefined;
@@ -212,12 +213,14 @@ class Library {
 		const added = await mapLimited(pdfs, IMPORT_CONCURRENCY, async (file) => {
 			try {
 				const bytes = new Uint8Array(await file.arrayBuffer());
-				let meta: PaperPatch = { title: file.name.replace(/\.pdf$/i, '') };
+				let meta: PaperPatch = { title: file.name.replace(/\.pdf$/i, ''), sha256: await sha256(bytes) };
 				try {
 					meta = { ...meta, ...(await extractMetadata(bytes, { filename: file.name, arxiv: hints.arxiv })) };
 				} catch (e) {
 					console.warn('metadata extraction failed', e);
 				}
+				// e.g. a paper already in the library, which the user doesn't want twice.
+				if (hints.keep && !(await hints.keep(file, meta))) return;
 				return await repo.add(bytes, { ...meta, category, tags });
 			} catch (e) {
 				console.error(e);
