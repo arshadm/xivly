@@ -65,3 +65,9 @@ html.dark {
 [data-part='meta'] {
   display: none;
 }
+
+/* Text boxes in light mode: palette colors are pastels made for highlights; the text
+   gets a darker shade of its color (same hue), so it reads on a light page. */
+:root:not(.dark) [data-pdf-annotation-freetext] {
+  color: oklch(from var(--annotation-color) min(l, 0.55) c h);
+}
