@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { iconButton } from '#lib/ui/button.js';
 	import { page } from '$app/state';
-	import { untrack } from 'svelte';
+	import { tick, untrack } from 'svelte';
 	import { fade, fly, scale, slide } from 'svelte/transition';
 	import {
 		Annotations,
@@ -470,6 +470,13 @@
 	// V while Select is already on switches its mode (with / without the color menu). Capture
 	// phase: runs before the viewer's own V, which would make Select current either way.
 	function onSelectKey(e: KeyboardEvent) {
+		// ⌘S while typing a note: the field keeps its keys, and commits its text when it loses focus.
+		if (matches(e, keys.save) && isEditable(e.target)) {
+			e.preventDefault();
+			e.stopPropagation();
+			e.target.blur();
+			return void tick().then(() => save({ explicit: true }));
+		}
 		if (!store || store.tool !== 'select' || e.repeat || e.metaKey || e.ctrlKey || e.altKey || isEditable(e.target)) return;
 		if ((store.keymap['tool.select'] ?? []).includes(e.key.toLowerCase())) settings.set('selectionMenu', !s.selectionMenu);
 	}

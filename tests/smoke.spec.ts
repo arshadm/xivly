@@ -74,11 +74,9 @@ test('add a paper, annotate, save, reload: the annotation stays', async ({ page,
 	await reader.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.12, { steps: 5 });
 	await reader.mouse.up();
 	await expect(firstPage.locator('[data-pdf-annotation]')).toHaveCount(1);
-	// A new box asks for a note (focused): type one, Enter keeps it.
+	// A new box asks for a note (focused): type one, then save right from the field.
 	await expect(reader.getByRole('dialog', { name: 'Annotation' }).getByRole('textbox', { name: 'Add a note…' })).toBeFocused();
 	await reader.keyboard.type('Checked by the smoke test');
-	await reader.keyboard.press('Enter');
-
 	await expect(reader.getByRole('button', { name: 'Unsaved changes: save now' })).toBeVisible();
 	await reader.keyboard.press('ControlOrMeta+s');
 	await expect(reader.getByRole('button', { name: 'Annotations are saved in the PDF' })).toBeVisible();
