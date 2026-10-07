@@ -1,6 +1,6 @@
 <!-- The active annotation color as one button; the palette opens in a popover. -->
 <script lang="ts">
-	import { iconButton } from '$lib/ui/button';
+	import { iconButton } from '#lib/ui/button.js';
 	import { Popover } from 'bits-ui';
 	import { scale } from 'svelte/transition';
 	import { Annotations, AnnotationsContext } from 'svelte-pdf-mini';

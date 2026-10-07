@@ -82,7 +82,7 @@ On macOS, `tauri dev` runs the app inside a small `Xivly Dev.app` wrapper (`scri
 
 The web app as an extension page (`chrome-extension://<id>/index.html`), from the same code: `bun run build:extension` builds it with `XIVLY_EXTENSION=1`, which
 
-- switches SvelteKit to its hash router (`index.html#/read?id=…`: an extension is plain files, with no fallback page for `/read`) and its app folder to `app/` (Chrome reserves names starting with `_`), in `svelte.config.js`;
+- switches SvelteKit to its hash router (`index.html#/read?id=…`: an extension is plain files, with no fallback page for `/read`) and its app folder to `app/` (Chrome reserves names starting with `_`), in `vite.config.js`;
 - sets `__XIVLY_EXTENSION__` (`vite.config.js`), which gates the extension's own code (`src/lib/extension/`): the web and desktop bundles leave it out;
 - then `scripts/build-extension.ts` moves SvelteKit's inline bootstrap script to `boot.js` (extension pages only run scripts from the package), bundles the service worker, renders the icons from `src-tauri/icons/icon.svg`, writes `manifest.json` from `package.json`'s version and zips it all.
 

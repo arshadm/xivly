@@ -4,8 +4,8 @@
 	Click saves (⌘S).
 -->
 <script lang="ts">
-	import { keys } from '$lib/shortcuts';
-	import Tip from '$lib/ui/Tip.svelte';
+	import { keys } from '#lib/shortcuts.js';
+	import Tip from '#lib/ui/Tip.svelte';
 
 	let { dirty, saving, onsave, class: className = '' }: { dirty: boolean; saving: boolean; onsave: () => void; class?: string } = $props();
 	const state = $derived(saving ? 'saving' : dirty ? 'dirty' : 'saved');

@@ -1,16 +1,16 @@
 <!-- A paper's actions as one row of icons (tooltips say what they do): the Info panel's
      and the Edit details dialog's footer. -->
 <script lang="ts">
-	import { bibtex } from '$lib/cite';
-	import { library } from '$lib/library.svelte';
-	import { fileManager, trashName } from '$lib/os';
-	import { trashPaper } from '$lib/paper-menu';
-	import { platform } from '$lib/platform';
-	import type { Paper } from '$lib/types';
-	import { iconButton, mutedIcon } from '$lib/ui/button';
-	import { clipboard } from '$lib/ui/clipboard';
-	import { cn } from '$lib/ui/cn';
-	import Tip from '$lib/ui/Tip.svelte';
+	import { bibtex } from '#lib/cite.js';
+	import { library } from '#lib/library.svelte.js';
+	import { fileManager, trashName } from '#lib/os.js';
+	import { trashPaper } from '#lib/paper-menu.js';
+	import { platform } from '#lib/platform/index.js';
+	import type { Paper } from '#lib/types.js';
+	import { iconButton, mutedIcon } from '#lib/ui/button.js';
+	import { clipboard } from '#lib/ui/clipboard.js';
+	import { cn } from '#lib/ui/cn.js';
+	import Tip from '#lib/ui/Tip.svelte';
 	import type { Snippet } from 'svelte';
 	import { toast } from './Toasts.svelte';
 

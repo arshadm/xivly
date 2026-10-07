@@ -35,10 +35,10 @@
     "tailwind-merge": "^3.7.0"
   },
   "devDependencies": {
-    "@iconify-json/lucide": "^1.2.139",
+    "@iconify-json/lucide": "^1.2.140",
     "@iconify/tailwind4": "^1.2.3",
-    "@sveltejs/adapter-static": "^3.0.10",
-    "@sveltejs/kit": "^2.65.1",
+    "@sveltejs/adapter-static": "^4.0.0",
+    "@sveltejs/kit": "^3.0.1",
     "@sveltejs/vite-plugin-svelte": "^7.1.2",
     "@tailwindcss/vite": "^4.3.3",
     "@tauri-apps/cli": "^2",
@@ -46,11 +46,14 @@
     "@types/wicg-file-system-access": "^2023.10.7",
     "fflate": "^0.8.3",
     "pdfjs-dist": "^6.4.299",
-    "svelte": "^5.57.1",
-    "svelte-check": "^4.6.0",
+    "svelte": "^5.57.2",
+    "svelte-check": "^4.7.5",
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.3",
-    "vite": "^8.0.16",
+    "vite": "^8.3.3",
     "vitest": "^5"
+  },
+  "imports": {
+    "#lib/*": "./src/lib/*"
   }
 }

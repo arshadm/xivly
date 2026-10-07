@@ -3,12 +3,12 @@
 	Shown once, when the library is empty; Settings › Library can add it later.
 -->
 <script lang="ts">
-	import { button } from '$lib/ui/button';
+	import { button } from '#lib/ui/button.js';
 	import { AlertDialog } from 'bits-ui';
-	import Dialog from '$lib/ui/Dialog.svelte';
-	import { library } from '$lib/library.svelte';
-	import { downloadStarter, starterManifest } from '$lib/onboarding/starter.svelte';
-	import { settings } from '$lib/settings.svelte';
+	import Dialog from '#lib/ui/Dialog.svelte';
+	import { library } from '#lib/library.svelte.js';
+	import { downloadStarter, starterManifest } from '#lib/onboarding/starter.svelte.js';
+	import { settings } from '#lib/settings.svelte.js';
 
 	const open = $derived(settings.ready && library.status === 'ready' && !settings.values.starterOffered && library.papers.length === 0);
 	let size = $state<string | null>(null);

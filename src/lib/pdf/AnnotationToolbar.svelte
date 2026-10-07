@@ -4,11 +4,11 @@
 	shortcut. Composition: Tip → Toolbar.Button → our part, each through `child`.
 -->
 <script lang="ts">
-	import { iconButton } from '$lib/ui/button';
-	import Separator from '$lib/ui/Separator.svelte';
+	import { iconButton } from '#lib/ui/button.js';
+	import Separator from '#lib/ui/Separator.svelte';
 	import { Toolbar } from 'bits-ui';
 	import { Annotations, AnnotationsContext, comboLabel, type AnnotationTool, type KeymapAction } from 'svelte-pdf-mini';
-	import { settings } from '$lib/settings.svelte';
+	import { settings } from '#lib/settings.svelte.js';
 	import Tip from '../ui/Tip.svelte';
 	import CompactColor from './CompactColor.svelte';
 	import { cn } from '../ui/cn';

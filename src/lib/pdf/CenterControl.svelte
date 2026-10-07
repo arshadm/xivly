@@ -8,7 +8,7 @@
 <script lang="ts">
 	import { fade } from 'svelte/transition';
 	import { ViewerContext } from 'svelte-pdf-mini';
-	import Tip from '$lib/ui/Tip.svelte';
+	import Tip from '#lib/ui/Tip.svelte';
 
 	let { locked = $bindable(false) }: { locked?: boolean } = $props();
 	const viewer = ViewerContext.get();

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { button } from '$lib/ui/button';
+	import { button } from '#lib/ui/button.js';
 	import { Dialog } from 'bits-ui';
 	import UiDialog from './Dialog.svelte';
 	import { prompts } from './prompt.svelte';
