@@ -147,6 +147,10 @@
 	let rev = $state(0);
 	let savedRev = $state(0);
 	let saving = $state(false);
+	/** Why the last save failed, until one succeeds (the save button shows it). */
+	let saveError = $state<string | null>(null);
+	/** The edits whose save failed: autosave doesn't retry them (⌘S or a new edit does). */
+	let failedRev = -1;
 	let chain: Promise<void> = Promise.resolve();
 	const dirty = $derived(rev !== savedRev);
 
@@ -155,7 +159,8 @@
 		if (ops.length) rev++;
 	}
 
-	function save(): Promise<void> {
+	/** `explicit`: asked for (⌘S, the save button), so a failure is shown again. */
+	function save({ explicit = false } = {}): Promise<void> {
 		const target = { id, store, viewer, repo: library.repo };
 		chain = chain.then(async () => {
 			const r = rev;
@@ -167,8 +172,14 @@
 				await target.repo.savePdf(target.id, out);
 				forgetCover(target.id);
 				savedRev = Math.max(savedRev, r);
+				saveError = null;
 			} catch (e) {
-				toast(`Could not save: ${e}`, 'error');
+				// From the export worker, an error may arrive as text ("Error: …").
+				const error = (e instanceof Error ? e.message : String(e)).replace(/^Error: /, '');
+				failedRev = r;
+				// Once per problem: an autosave failing again every 30 s says nothing new.
+				if (explicit || error !== saveError) toast(`Couldn’t save the annotations: ${error}`, 'error');
+				saveError = error;
 			} finally {
 				saving = false;
 			}
@@ -180,7 +191,7 @@
 	$effect(() => {
 		const seconds = s.autosaveSeconds;
 		if (!seconds) return;
-		const timer = setInterval(() => rev !== savedRev && save(), seconds * 1000);
+		const timer = setInterval(() => rev !== savedRev && rev !== failedRev && save(), seconds * 1000);
 		return () => clearInterval(timer);
 	});
 
@@ -199,9 +210,9 @@
 					}
 					await save();
 					if (rev === savedRev) return true;
-					// The save failed (folder offline, paper removed…): always ask, so the
-					// window can still close without saving.
-					choice = await askUnsaved(title);
+					// The save failed (folder offline, paper removed, a PDF that can't be
+					// written…): always ask, so the window can still close without saving.
+					choice = await askUnsaved(title, saveError ?? undefined);
 				}
 			}
 		})
@@ -355,7 +366,7 @@
 	// Right-click on the chrome (header, panel): app actions for this paper.
 	$effect(() =>
 		setFallbackMenu(() => [
-			{ label: 'Save annotations', icon: 'icon-[lucide--save]', shortcut: keys.save, disabled: !dirty, onSelect: save },
+			{ label: 'Save annotations', icon: 'icon-[lucide--save]', shortcut: keys.save, disabled: !dirty, onSelect: () => save({ explicit: true }) },
 			{ label: 'Find in paper', icon: icons.search, shortcut: keys.find, onSelect: () => openPanel('search') },
 			{ label: 'View', icon: icons.eye, separatorBefore: true, items: viewItems() },
 			{ label: 'Layout', icon: icons.columns, items: layoutItems() },
@@ -366,7 +377,7 @@
 	);
 
 	function onkeydown(e: KeyboardEvent) {
-		if (matches(e, keys.save)) (e.preventDefault(), void save());
+		if (matches(e, keys.save)) (e.preventDefault(), void save({ explicit: true }));
 		else if (matches(e, keys.find)) (e.preventDefault(), openPanel('search'));
 		else if (matches(e, keys.panel) || matches(e, keys.panelAlt)) (e.preventDefault(), (panelOpen = !panelOpen));
 		else if (matches(e, keys.closeWindow)) (e.preventDefault(), closeWindow());
@@ -588,7 +599,7 @@
 													</button>
 												{/snippet}
 											</Tip>
-											<SaveStatus {dirty} {saving} onsave={save} />
+											<SaveStatus {dirty} {saving} error={dirty ? saveError : null} onsave={() => save({ explicit: true })} />
 											<Tip label="Find in paper" shortcut={keys.find}>
 												{#snippet child({ props })}<button {...props} class={iconBtn} aria-label="Find" data-active={(panelOpen && panel === 'search') || undefined} onclick={() => (panelOpen && panel === 'search' ? (panelOpen = false) : openPanel('search'))}><span class="{icons.search} size-4"></span></button>{/snippet}
 											</Tip>

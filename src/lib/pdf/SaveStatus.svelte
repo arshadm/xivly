@@ -1,15 +1,21 @@
 <!--
 	Save state as one animated icon: an amber dot while there are unsaved
-	changes, a spinning arc while saving, then a check that draws itself in.
-	Click saves (⌘S).
+	changes (red once a save failed), a spinning arc while saving, then a check
+	that draws itself in. Click saves (⌘S).
 -->
 <script lang="ts">
 	import { keys } from '$lib/shortcuts';
 	import Tip from '$lib/ui/Tip.svelte';
 
-	let { dirty, saving, onsave, class: className = '' }: { dirty: boolean; saving: boolean; onsave: () => void; class?: string } = $props();
-	const state = $derived(saving ? 'saving' : dirty ? 'dirty' : 'saved');
-	const label = $derived({ saving: 'Saving…', dirty: 'Unsaved changes: save now', saved: 'Annotations are saved in the PDF' }[state]);
+	let {
+		dirty,
+		saving,
+		error = null,
+		onsave,
+		class: className = ''
+	}: { dirty: boolean; saving: boolean; /** Why the last save failed. */ error?: string | null; onsave: () => void; class?: string } = $props();
+	const state = $derived(saving ? 'saving' : error ? 'error' : dirty ? 'dirty' : 'saved');
+	const label = $derived({ saving: 'Saving…', error: `Couldn’t save (${error}): click to try again`, dirty: 'Unsaved changes: save now', saved: 'Annotations are saved in the PDF' }[state]);
 </script>
 
 <Tip {label} shortcut={keys.save}>
@@ -79,6 +85,14 @@
 	[data-state='dirty'] .dot {
 		transform: scale(1);
 		animation: breathe 2.4s ease-in-out infinite;
+	}
+	[data-state='error'] .dot {
+		fill: var(--color-red-500);
+		transform: scale(1);
+	}
+	[data-state='error'] .ring {
+		stroke: var(--color-red-500);
+		opacity: 0.6;
 	}
 	[data-state='saving'] .ring {
 		opacity: 0.2;

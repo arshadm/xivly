@@ -103,10 +103,14 @@ export async function setWindowTitle(title: string) {
 	await getCurrentWindow().setTitle(title);
 }
 
-/** Native Save / Don't Save / Cancel (desktop: the web asks through beforeunload). */
-export async function askUnsaved(title: string): Promise<'save' | 'discard' | 'cancel'> {
+/**
+ * Native Save / Don't Save / Cancel (desktop: the web asks through beforeunload);
+ * `error`: why the last save failed.
+ */
+export async function askUnsaved(title: string, error?: string): Promise<'save' | 'discard' | 'cancel'> {
 	const { message } = await import('@tauri-apps/plugin-dialog');
-	const r = await message(`Your annotations in “${title}” haven’t been saved yet.`, {
+	const text = error ? `Your annotations in “${title}” couldn’t be saved: ${error}` : `Your annotations in “${title}” haven’t been saved yet.`;
+	const r = await message(text, {
 		title: 'Save changes?',
 		kind: 'warning',
 		buttons: { yes: 'Save', no: 'Don’t Save', cancel: 'Cancel' }
