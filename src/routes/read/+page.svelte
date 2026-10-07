@@ -729,7 +729,7 @@
 										{#if open}
 											<div {...props} transition:fly|global={{ y: 6, duration: 140 }} class="overflow-hidden rounded-xl border border-stone-200 bg-white shadow-2xl ring-1 ring-black/5 dark:border-stone-700 dark:bg-stone-900">
 												{#if url}
-													<button type="button" class="flex w-full items-center gap-2 p-3 text-left text-sm hover:bg-stone-50 dark:hover:bg-stone-800" onclick={() => url && platform.openUrl(url)}>
+													<button type="button" class="flex w-full cursor-pointer items-center gap-2 p-3 text-left text-sm hover:bg-stone-50 dark:hover:bg-stone-800" onclick={() => url && platform.openUrl(url)}>
 														<span class="{icons.external} size-4 shrink-0 text-stone-400"></span><span class="truncate text-sky-700 underline-offset-2 hover:underline dark:text-sky-400">{url}</span>
 													</button>
 												{:else}
