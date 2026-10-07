@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { MemoryFs } from './onboarding/memory-fs';
 import type { Platform } from './platform';
-import { merge, normalizeLibrary, normalizePaper, RemovedError, Repo, slugify } from './repo';
+import { filterPapers } from './filter';
+import { isPdf, merge, normalizeLibrary, normalizePaper, RemovedError, Repo, slugify } from './repo';
 
 const enc = new TextEncoder();
 const dec = new TextDecoder();
@@ -46,6 +47,42 @@ describe('normalizePaper', () => {
 		expect(p.tags).toEqual(['a', 'b']);
 		expect(p.category).toBeUndefined();
 		expect((p as unknown as Record<string, unknown>).extra).toEqual({ k: 1 });
+	});
+});
+
+describe('normalizePaper: fields written with the wrong type', () => {
+	it('reads dates, years and timestamps', () => {
+		expect(normalizePaper('x', { date: 2017, year: '2017', opened: 5, added: 3, position: '4' })).toMatchObject({ date: '2017', year: 2017, opened: undefined, added: '', position: undefined });
+		expect(normalizePaper('x', { date: { y: 1 }, year: 2017.5 })).toMatchObject({ date: undefined, year: undefined });
+		expect(normalizePaper('x', { read: true }).read).toBeTruthy();
+		expect(normalizePaper('x', { read: false }).read).toBeUndefined();
+	});
+	it('reads links: a single URL as a list, keeps unknown kinds', () => {
+		const p = normalizePaper('x', { links: { github: 'https://github.com/a/b', huggingface: [1, 'https://huggingface.co/m'], project: ['no'], mine: 'kept' } });
+		expect(p.links).toEqual({ github: ['https://github.com/a/b'], huggingface: ['https://huggingface.co/m'], mine: 'kept' });
+		expect(normalizePaper('x', { links: 'https://a.example' }).links).toBeUndefined();
+		expect(normalizePaper('x', { links: ['https://a.example'] }).links).toBeUndefined();
+	});
+	it('reads Hugging Face data', () => {
+		const p = normalizePaper('x', { hf: { page: 1, upvotes: '3', models: { total: 2, top: 'a' }, datasets: { top: [] }, spaces: { total: 1, top: ['s', 2] } } });
+		expect(p.hf).toEqual({ spaces: { total: 1, top: ['s'] }, models: { total: 2, top: [] } });
+		expect(normalizePaper('x', { hf: 'nope' }).hf).toBeUndefined();
+	});
+	it('keeps the library sortable', () => {
+		const papers = [normalizePaper('a', { date: 2017 }), normalizePaper('b', { date: '2020-01-01' }), normalizePaper('c', { year: '1999' })];
+		const o = { view: { kind: 'all' } as const, tagFilter: {}, readFilter: 'all' as const, recentSince: 0, query: '1999', sortDesc: true, isCategory: () => false };
+		expect(filterPapers(papers, { ...o, query: '', sortBy: 'published' }).map((p) => p.id)).toEqual(['b', 'a', 'c']);
+		expect(filterPapers(papers, { ...o, sortBy: 'opened' }).map((p) => p.id)).toEqual(['c']);
+	});
+});
+
+describe('isPdf', () => {
+	it('finds the header within the first KB only', () => {
+		expect(isPdf(enc.encode('%PDF-1.7'))).toBe(true);
+		expect(isPdf(enc.encode(' '.repeat(1000) + '%PDF-1.4'))).toBe(true);
+		expect(isPdf(enc.encode(' '.repeat(1100) + '%PDF-1.4'))).toBe(false);
+		expect(isPdf(enc.encode('<!doctype html>'))).toBe(false);
+		expect(isPdf(new Uint8Array())).toBe(false);
 	});
 });
 
@@ -151,6 +188,8 @@ describe('Repo', () => {
 		const { r } = await repo();
 		const p = await r.add(PDF, { title: 'T' });
 		await expect(r.savePdf(p.id, enc.encode('<html>'))).rejects.toThrow(/not a PDF/);
+		// Some junk before the header is fine (PDF readers allow up to 1 KB).
+		await r.savePdf(p.id, enc.encode('\r\n%PDF-1.7 saved'));
 	});
 
 	it('reserves a folder once', async () => {

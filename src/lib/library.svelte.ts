@@ -275,18 +275,17 @@ class Library {
 		if (!p?.arxiv) return;
 		if (!force && p.hf?.checked && Date.now() - Date.parse(p.hf.checked) < HF_REFRESH_MS) return;
 		const hf = await fetchHfPaper(p.arxiv);
-		const links = { ...p.links };
-		if (hf?.project && !links.project) links.project = hf.project;
 		const gh = hf?.github?.replace(/\/+$/, '');
-		if (gh && !links.github?.some((u) => u.replace(/\/+$/, '').toLowerCase() === gh.toLowerCase())) links.github = [gh, ...(links.github ?? [])];
+		const found = { project: hf?.project, github: gh ? [gh] : undefined };
 		// Kept on the paper itself (title, authors); the rest under `hf`.
 		const { title, authors, ...rest } = hf ?? {};
 		const checked = new Date().toISOString();
-		const patch = { links, title: betterTitle(p.title, title), authors: betterAuthors(p.authors, authors) };
+		// Applied to the paper as it is on disk (under its lock): links added meanwhile stay.
+		const patch = (cur: Paper) => ({ links: mergeLinks(cur.links, found), title: betterTitle(cur.title, title), authors: betterAuthors(cur.authors, authors) });
 		const { checked: _, ...before } = p.hf ?? {};
 		// Nothing new: just the date of the lookup (no `paper-updated` hook).
-		if (hfUnchanged(p, patch, rest, before)) await this.touch(id, { hf: { ...rest, checked } });
-		else await this.update(id, { ...patch, hf: { ...rest, checked } });
+		if (hfUnchanged(p, patch(p), rest, before)) await this.touch(id, { hf: { ...rest, checked } });
+		else await this.update(id, (cur) => ({ ...patch(cur), hf: { ...rest, checked } }));
 	}
 
 	/**
@@ -352,7 +351,9 @@ class Library {
 	async refreshMetadata(id: string) {
 		const bytes = await this.repo!.readPdf(id);
 		if (!bytes) throw new Error('PDF not found');
-		await this.update(id, await extractMetadata(bytes, { arxiv: this.get(id)?.arxiv }));
+		const meta = await extractMetadata(bytes, { arxiv: this.get(id)?.arxiv });
+		// The links found in the PDF are added to the paper's, never replace them.
+		await this.update(id, (cur) => ({ ...meta, links: mergeLinks(cur.links, meta.links ?? undefined) }));
 		await this.refreshHf(id, { force: true });
 	}
 

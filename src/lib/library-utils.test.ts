@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { betterAuthors, betterTitle, categoryColor, hfUnchanged, mapLimited, mix } from './library-utils';
+import { betterAuthors, betterTitle, categoryColor, hfUnchanged, mapLimited, mergeLinks, mix } from './library-utils';
 
 describe('colors', () => {
 	it('mixes hex colors', () => {
@@ -55,5 +55,24 @@ describe('mapLimited', () => {
 		});
 		expect(out).toEqual([50, 10, 40, 20, 30]);
 		expect(peak).toBe(2);
+	});
+});
+
+describe('mergeLinks', () => {
+	it('adds new links first, keeps every existing one', () => {
+		const current = { github: ['https://github.com/a/b'], other: ['https://o.example'], project: 'https://mine.example' };
+		expect(mergeLinks(current, { github: ['https://github.com/c/d', 'https://GitHub.com/a/b/'], project: 'https://theirs.example', huggingface: ['https://huggingface.co/m'] })).toEqual({
+			github: ['https://github.com/c/d', 'https://github.com/a/b'],
+			other: ['https://o.example'],
+			project: 'https://mine.example',
+			huggingface: ['https://huggingface.co/m']
+		});
+	});
+	it('returns the same object when nothing is new', () => {
+		const current = { github: ['https://github.com/a/b'] };
+		expect(mergeLinks(current, { github: ['https://github.com/a/b/'] })).toBe(current);
+		expect(mergeLinks(current, undefined)).toBe(current);
+		expect(mergeLinks(undefined, undefined)).toBeUndefined();
+		expect(mergeLinks(undefined, { project: 'https://p.example' })).toEqual({ project: 'https://p.example' });
 	});
 });

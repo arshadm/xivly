@@ -1,6 +1,6 @@
 // The library's pure helpers (colors, metadata choices, a concurrency limit), testable on their own.
 import { paperColors, type PaperColor } from 'svelte-pdf-mini/core';
-import type { CategoryColor, Paper } from './types';
+import type { CategoryColor, Paper, PaperLinks } from './types';
 
 const stone = paperColors.find((c) => c.name === 'stone')!;
 
@@ -27,6 +27,29 @@ export async function mapLimited<T, R>(items: T[], limit: number, fn: (item: T) 
 		}
 	};
 	await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+	return out;
+}
+
+/** The same URL, give or take case and a trailing slash. */
+const sameUrl = (a: string, b: string) => a.replace(/\/+$/, '').toLowerCase() === b.replace(/\/+$/, '').toLowerCase();
+
+/**
+ * `found` links added to a paper's links (as on disk), never replacing them:
+ * the project page only when there is none, new URLs first in each list. The
+ * extension, the user or an agent may have added links the lookup doesn't know.
+ * `current` itself (same object) when nothing is new.
+ */
+export function mergeLinks(current: PaperLinks | undefined, found: PaperLinks | undefined): PaperLinks | undefined {
+	let out = current;
+	for (const [key, value] of Object.entries(found ?? {}) as [keyof PaperLinks, PaperLinks[keyof PaperLinks]][]) {
+		if (key === 'project') {
+			if (typeof value === 'string' && value && !out?.project) out = { ...out, project: value };
+			continue;
+		}
+		const list = (out?.[key] ?? []) as string[];
+		const fresh = (Array.isArray(value) ? value : []).filter((u, i, all) => typeof u === 'string' && u && !list.some((x) => sameUrl(x, u)) && all.findIndex((x) => sameUrl(x, u)) === i);
+		if (fresh.length) out = { ...out, [key]: [...fresh, ...list] };
+	}
 	return out;
 }
 
