@@ -101,6 +101,15 @@ export function normalizeLibrary(raw: Json): LibraryFile {
 	return { ...raw, version: typeof raw.version === 'number' ? raw.version : 1, categories, tags: strs(raw.tags) ?? [] } as LibraryFile;
 }
 
+/**
+ * Whether these bytes are a PDF: `%PDF-` within the first 1 KB (PDF readers
+ * allow some junk before the header). An HTML page saved as `.pdf` (a paywall,
+ * a login page) isn't.
+ */
+export function isPdf(bytes: Uint8Array) {
+	return new TextDecoder('latin1').decode(bytes.subarray(0, 1024)).includes('%PDF-');
+}
+
 /** A change to a JSON file: a patch, or a function of the current content (applied under the file's lock). */
 export type Patch<T> = Json | ((current: T) => Json);
 
@@ -315,7 +324,7 @@ export class Repo {
 	}
 
 	async savePdf(id: string, bytes: Uint8Array) {
-		if (dec.decode(bytes.subarray(0, 4)) !== '%PDF') throw new Error('Refusing to save: not a PDF');
+		if (!isPdf(bytes)) throw new Error('Refusing to save: not a PDF');
 		await this.#lock(`papers/${id}/paper.pdf`, async () => {
 			await this.#present(id);
 			await this.fs.write(`papers/${id}/paper.pdf`, bytes);

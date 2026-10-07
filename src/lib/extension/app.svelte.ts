@@ -9,6 +9,7 @@ import { page } from '$app/state';
 import { parseArxiv } from '$lib/arxiv';
 import { toast } from '$lib/components/Toasts.svelte';
 import { library } from '$lib/library.svelte';
+import { isPdf } from '$lib/repo';
 import { prompts } from '$lib/ui/prompt.svelte';
 import { searchParams } from '$lib/windows';
 import type { ExtensionMessage } from './messages';
@@ -71,8 +72,7 @@ async function importPdf(url: string): Promise<string | undefined> {
 	const res = await download(url);
 	if (!res) return;
 	const bytes = new Uint8Array(await res.arrayBuffer());
-	// The header may follow some junk (up to 1 KB, as PDF readers allow).
-	if (!new TextDecoder('latin1').decode(bytes.subarray(0, 1024)).includes('%PDF-')) throw new Error('That isn’t a PDF');
+	if (!isPdf(bytes)) throw new Error('That isn’t a PDF');
 	const name = decodeURIComponent(new URL(res.url).pathname.split('/').pop() ?? '').replace(/\.pdf$/i, '') || 'paper';
 	const [id] = await library.import([new File([bytes], `${name}.pdf`, { type: 'application/pdf' })]);
 	if (id) await library.update(id, (cur) => ({ links: { ...cur.links, other: [...(cur.links?.other ?? []), url] } }));

@@ -7,9 +7,9 @@ import { extractMetadata, tidyTitle } from './extract';
 import { filterPapers, type View } from './filter';
 import { fetchHfPaper } from './huggingface';
 import { platform } from './platform';
-import { merge, Repo, slugify, type Patch } from './repo';
+import { isPdf, merge, Repo, slugify, type Patch } from './repo';
 import { recentWindows, settings } from './settings.svelte';
-import { betterAuthors, betterTitle, categoryColor, hfUnchanged, mapLimited } from './library-utils';
+import { betterAuthors, betterTitle, categoryColor, hfUnchanged, mapLimited, mergeLinks } from './library-utils';
 import type { Category, CategoryColor, LibraryFile, Paper, PaperPatch } from './types';
 
 export { betterAuthors, betterTitle, categoryColor } from './library-utils';
@@ -212,6 +212,8 @@ class Library {
 		const added = await mapLimited(pdfs, IMPORT_CONCURRENCY, async (file) => {
 			try {
 				const bytes = new Uint8Array(await file.arrayBuffer());
+				// e.g. a paywall or login page downloaded under a .pdf name.
+				if (!isPdf(bytes)) throw new Error('it isn’t a PDF, maybe a web page saved as .pdf');
 				let meta: PaperPatch = { title: file.name.replace(/\.pdf$/i, '') };
 				try {
 					meta = { ...meta, ...(await extractMetadata(bytes, { filename: file.name, arxiv: hints.arxiv })) };
