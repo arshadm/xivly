@@ -17,7 +17,11 @@
 #   chrome-web-store  uploads the published zip to the Chrome Web Store and
 #             submits it for review (stable releases only; a no-op until set up,
 #             see RELEASING.md).
-# Updates are delivered by `brew upgrade` only (no in-app updater).
+#   winget    opens the winget-pkgs pull request for the NSIS setup (stable
+#             releases only; a no-op until set up, see RELEASING.md).
+#   aur       pushes xivly-bin (the .deb, repackaged) to the AUR (stable
+#             releases only; a no-op until set up, see RELEASING.md).
+# Updates are delivered by `brew upgrade`, winget and AUR helpers (no in-app updater).
 #
 # Rust builds restore the cache warmed on main by cache.yml (tags can read
 # main's caches, not each other's), so a release doesn't start cold.
@@ -37,6 +41,9 @@
 #   CWS_REFRESH_TOKEN (OAuth, see         } runs only when all of these exist
 #   RELEASING.md), vars.CWS_PUBLISHER_ID, }
 #   vars.CWS_EXTENSION_ID                 }
+#   WINGET_TOKEN          optional: classic PAT (public_repo, workflow) of the
+#                         account that owns a winget-pkgs fork
+#   AUR_SSH_PRIVATE_KEY   optional: the SSH key of the AUR account that maintains xivly-bin
 # The Apple credentials are only given to the steps that sign or notarize.
 name: release
 
@@ -570,3 +577,181 @@ jobs:
           fi
           curl -sSf -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
             -X POST "$API/v2/$ITEM:publish" -d '{"publishType":"DEFAULT_PUBLISH"}' | jq .
+
+  # winget (microsoft/winget-pkgs), with Komac (github.com/russellbanks/Komac),
+  # the tool behind the winget-releaser action, run directly: the NSIS setup
+  # only, a pinned and checksummed binary, and a first submission it can't make.
+  # Every version is a pull request that Microsoft's bots validate and a
+  # moderator merges (usually within a day or two, longer for a new package).
+  winget:
+    needs: [prepare, publish]
+    if: needs.prepare.outputs.prerelease != 'true'
+    runs-on: ubuntu-latest
+    # One submission at a time, whatever the tag.
+    concurrency:
+      group: winget
+      cancel-in-progress: false
+    env:
+      WINGET: ${{ secrets.WINGET_TOKEN != '' }}
+      VERSION: ${{ needs.prepare.outputs.version }}
+      PACKAGE: JulienBlanchon.Xivly
+      KOMAC_VERSION: 2.16.0
+      KOMAC_SHA256: 7d2707fa6210f2789a3702de49fbd150b736dbf426ee0b9bc8e098736f9fd82d
+    steps:
+      - name: Not set up
+        if: env.WINGET != 'true'
+        run: echo "::notice::winget publishing is not set up (see RELEASING.md), skipped."
+
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        if: env.WINGET == 'true'
+        with:
+          ref: ${{ env.TAG }}
+
+      - name: Install Komac
+        if: env.WINGET == 'true'
+        run: |
+          TGZ="komac-$KOMAC_VERSION-x86_64-unknown-linux-gnu.tar.gz"
+          curl -sSfL -o "$RUNNER_TEMP/$TGZ" "https://github.com/russellbanks/Komac/releases/download/v$KOMAC_VERSION/$TGZ"
+          echo "$KOMAC_SHA256  $RUNNER_TEMP/$TGZ" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/$TGZ" -C "$RUNNER_TEMP" komac
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+
+      # From the published release: winget gets exactly what users download.
+      - name: Submit to winget-pkgs
+        if: env.WINGET == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          # Komac's token (classic PAT, public_repo + workflow): it pushes a branch
+          # to the account's winget-pkgs fork and opens the pull request.
+          GITHUB_TOKEN: ${{ secrets.WINGET_TOKEN }}
+        run: |
+          URL="https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/Xivly_${VERSION}_x64-setup.exe"
+          NOTES="https://github.com/$GITHUB_REPOSITORY/releases/tag/$TAG"
+          # The versions winget-pkgs has (a 404: the package isn't there yet).
+          if LISTING=$(gh api "repos/microsoft/winget-pkgs/contents/manifests/j/JulienBlanchon/Xivly" \
+              --jq '.[] | select(.type == "dir") | .name' 2>&1); then
+            if echo "$LISTING" | grep -qxF "$VERSION"; then
+              echo "$PACKAGE $VERSION is already in winget-pkgs."
+              exit 0
+            fi
+            # Never add a version older than the newest one (a re-run of an old tag).
+            NEWEST=$(printf '%s\n%s\n' "$LISTING" "$VERSION" | sort -V | tail -1)
+            if [ "$NEWEST" != "$VERSION" ]; then
+              echo "winget-pkgs has $NEWEST, newer than $VERSION: left as is."
+              exit 0
+            fi
+            # Komac carries the previous version's manifests forward and re-analyzes
+            # the installer. In CI it stops (exit 0) when a pull request for this
+            # version already exists, so re-runs are a no-op.
+            komac update "$PACKAGE" --version "$VERSION" --urls "$URL" --release-notes-url "$NOTES" --submit
+          elif echo "$LISTING" | grep -q 'HTTP 404'; then
+            # First submission (a new package): manifests from scripts/winget.sh.
+            # While it waits for review, later releases don't open another one.
+            OPEN=$(gh api -X GET search/issues \
+              -f q="repo:microsoft/winget-pkgs is:pr is:open in:title \"$PACKAGE\"" \
+              --jq '.items[0].html_url // empty')
+            if [ -n "$OPEN" ]; then
+              echo "::notice::$PACKAGE is waiting for review in $OPEN: re-run this job once it is merged."
+              exit 0
+            fi
+            gh release download "$TAG" -R "$GITHUB_REPOSITORY" --pattern '*_x64-setup.exe' --dir "$RUNNER_TEMP/setup"
+            SHA=$(sha256sum "$RUNNER_TEMP"/setup/*_x64-setup.exe | cut -d' ' -f1)
+            ./scripts/winget.sh "$VERSION" "$SHA" "$RUNNER_TEMP/manifests"
+            komac submit "$RUNNER_TEMP/manifests" --yes
+          else
+            echo "$LISTING"
+            exit 1
+          fi
+
+  # AUR (aur.archlinux.org/packages/xivly-bin): the published .deb, repackaged
+  # by makepkg. Plain git over SSH, in an Arch container for makepkg (an official
+  # image of a rolling distribution: not pinned, it is upgraded first anyway).
+  # The first push to a new package name creates it.
+  aur:
+    needs: [prepare, publish]
+    if: needs.prepare.outputs.prerelease != 'true'
+    runs-on: ubuntu-latest
+    container: archlinux:base
+    # One AUR writer at a time, whatever the tag.
+    concurrency:
+      group: aur
+      cancel-in-progress: false
+    env:
+      AUR: ${{ secrets.AUR_SSH_PRIVATE_KEY != '' }}
+      VERSION: ${{ needs.prepare.outputs.version }}
+    steps:
+      - name: Not set up
+        if: env.AUR != 'true'
+        run: echo "::notice::AUR publishing is not set up (see RELEASING.md), skipped."
+
+      - name: Tools
+        if: env.AUR == 'true'
+        run: |
+          pacman -Syu --noconfirm --needed git openssh
+          # makepkg refuses to run as root.
+          useradd --create-home builder
+
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        if: env.AUR == 'true'
+        with:
+          ref: ${{ env.TAG }}
+
+      # From the published release, so the sha256 is the one users download.
+      - name: Push xivly-bin
+        if: env.AUR == 'true'
+        env:
+          AUR_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+        run: |
+          # The AUR account's SSH key: push access to its packages only.
+          KEY="$RUNNER_TEMP/aur_key"
+          (umask 077 && echo "$AUR_KEY" > "$KEY")
+          export GIT_SSH_COMMAND="ssh -i $KEY -o StrictHostKeyChecking=accept-new"
+          # A new package's clone is empty (git warns), which is fine.
+          git clone ssh://aur@aur.archlinux.org/xivly-bin.git aur
+          CURRENT=$(sed -n 's/^\tpkgver = //p' aur/.SRCINFO 2>/dev/null || true)
+          CURRENT_REL=$(sed -n 's/^\tpkgrel = //p' aur/.SRCINFO 2>/dev/null || true)
+          # Never move the package back to an older version (a re-run of an old tag).
+          if [ -n "$CURRENT" ] && [ "$(vercmp "$CURRENT" "$VERSION")" -gt 0 ]; then
+            echo "The AUR has $CURRENT, newer than $VERSION: left as is."
+            exit 0
+          fi
+
+          # makepkg finds the .deb here instead of downloading it again.
+          SRC=/home/builder/src && mkdir -p "$SRC"
+          curl -sSfL -o "$SRC/Xivly_${VERSION}_amd64.deb" \
+            "https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/Xivly_${VERSION}_amd64.deb"
+          SHA=$(sha256sum "$SRC/Xivly_${VERSION}_amd64.deb" | cut -d' ' -f1)
+          render() {
+            ./scripts/aur.sh "$VERSION" "$SHA" "$1" > aur/PKGBUILD
+          }
+          # Same version: keep its pkgrel, unless the package changes (a rebuilt
+          # release, or a fix to scripts/aur.sh), which then needs the next one.
+          REL=1
+          if [ "$CURRENT" = "$VERSION" ]; then
+            REL=$CURRENT_REL
+            render "$REL"
+            if ! git -C aur diff --quiet -- PKGBUILD; then REL=$((CURRENT_REL + 1)); fi
+          fi
+          render "$REL"
+
+          # Check the sources' checksums and write .SRCINFO, as the builder user.
+          BUILD=/home/builder/build && mkdir -p "$BUILD"
+          cp aur/PKGBUILD "$BUILD/"
+          chown -R builder: /home/builder
+          su builder -c "cd $BUILD && SRCDEST=$SRC makepkg --verifysource && makepkg --printsrcinfo > .SRCINFO"
+          cp "$BUILD/.SRCINFO" aur/.SRCINFO
+
+          cd aur
+          git config user.name "Julien Blanchon"
+          git config user.email "julien@blanchon.cc"
+          git add PKGBUILD .SRCINFO
+          # Re-runs of the same release are a no-op.
+          git diff --cached --quiet && exit 0
+          git commit -m "xivly-bin $VERSION-$REL"
+          for attempt in 1 2 3; do
+            git push origin HEAD:master && exit 0
+            echo "Push failed (attempt $attempt), retrying."
+            sleep 5
+            git pull --rebase origin master || true
+          done
+          exit 1

@@ -1,6 +1,6 @@
 # Releasing Xivly
 
-A release is triggered by pushing a tag `vX.Y.Z`. `.github/workflows/release.yml` builds the desktop app for macOS, Linux and Windows and the Chrome extension, uploads everything to one GitHub release (kept as a draft until all platforms succeed), publishes it, then bumps the Homebrew cask and (once set up) submits the extension to the Chrome Web Store.
+A release is triggered by pushing a tag `vX.Y.Z`. `.github/workflows/release.yml` builds the desktop app for macOS, Linux and Windows and the Chrome extension, uploads everything to one GitHub release (kept as a draft until all platforms succeed), publishes it, then bumps the Homebrew cask and (once set up) submits the extension to the Chrome Web Store, the Windows installer to winget and the Linux package to the AUR.
 
 ## Ordering: svelte-pdf-mini first
 
@@ -61,6 +61,10 @@ Prereleases: `bun run release 0.2.0-rc.1` → tag `v0.2.0-rc.1`. The GitHub rele
 3. **publish** (after all builds): fails if any expected asset is missing, otherwise publishes the draft. It is marked **Latest** only if it is the newest stable version, so re-running an old tag never takes "Latest" from a newer one. A failed build leaves the release as a draft, invisible to users and to Homebrew.
 4. **homebrew** (stable versions only, after publish; one run at a time across tags): downloads the published `*_universal.dmg`, computes its sha256, renders `Casks/xivly.rb` with `scripts/cask.sh` and pushes it to `julien-blanchon/homebrew-tap` (rebase + retry on a race). It never moves the cask to an older version than the one in the tap, and is a no-op when unchanged.
 5. **chrome-web-store** (stable versions only, after publish): uploads the published `*_chrome.zip` with the [Chrome Web Store API](https://developer.chrome.com/docs/webstore/using-api) (v2, plain `curl`) and submits it for review; Google reviews it before users get it (from hours to a few days). A no-op with a notice until set up (below), and when the store already has that version. Prereleases never go to the store: Chrome versions are numbers only, so `0.4.0-rc.1` is `0.4.0` there and the final `0.4.0` could not be uploaded after it.
+6. **winget** (stable versions only, after publish; one run at a time across tags): opens a pull request to [`microsoft/winget-pkgs`](https://github.com/microsoft/winget-pkgs) for `JulienBlanchon.Xivly`, with [Komac](https://github.com/russellbanks/Komac) (a pinned release, its sha256 checked). Only the NSIS setup (`*_x64-setup.exe`): Tauri's per-user install (`%LocalAppData%\Xivly`, no UAC prompt), silent with winget's default `/S`, like the other Tauri apps in winget. The first time (no `JulienBlanchon.Xivly` in winget-pkgs yet), it writes the manifests with `scripts/winget.sh` and submits them as a new package (`komac submit`); after that, `komac update` adds each version, carrying the metadata forward. It does nothing when winget-pkgs already has that version or a newer one, when a pull request for that version exists (re-runs), or while the first submission is still in review (a notice links it: re-run the job once it is merged). Microsoft's bots validate each pull request (installs it in a VM, scans it) and a moderator merges it: usually within a day or two, longer for the first one. A no-op with a notice until set up (below).
+7. **aur** (stable versions only, after publish; one run at a time across tags; in an `archlinux` container): renders the PKGBUILD of [`xivly-bin`](https://aur.archlinux.org/packages/xivly-bin) with `scripts/aur.sh` (the published `.deb` and its sha256; the repository's `LICENSE`), checks the sources with `makepkg --verifysource`, writes `.SRCINFO` with `makepkg --printsrcinfo` and pushes both to `ssh://aur@aur.archlinux.org/xivly-bin.git` (plain git over SSH). It never moves the package to an older version, is a no-op when unchanged, and bumps `pkgrel` when the same version's package changes (a forced rebuild, a fix in `scripts/aur.sh`). A no-op with a notice until set up (below).
+
+`install.sh` (the one-line Linux installer in the README) needs no change per release: it asks the GitHub API for the latest stable release and checks each download against the sha256 GitHub publishes for the asset. It relies on the asset names (`Xivly_X.Y.Z_amd64.deb`, `Xivly-X.Y.Z-1.x86_64.rpm`, `Xivly_X.Y.Z_amd64.AppImage`): keep them, or update it.
 
 ### Chrome Web Store (one-time setup)
 
@@ -83,6 +87,45 @@ Costs: a **one-time US$5** developer registration fee. The Google Cloud project 
    ```
 
 From then on every stable release is uploaded and submitted for review. If the job fails with `invalid_grant`, the refresh token was revoked or expired: get a new one (step 3).
+
+### winget (one-time setup)
+
+Free. Everything goes through pull requests to `microsoft/winget-pkgs` from a GitHub account (yours, or a bot account).
+
+1. **Fork** [microsoft/winget-pkgs](https://github.com/microsoft/winget-pkgs/fork) into that account (keep the name `winget-pkgs`). Komac pushes its branches there and never creates the fork itself.
+2. **Token**: a *classic* personal access token of that account (*Settings → Developer settings → Personal access tokens → Tokens (classic) → Generate new token (classic)*), scopes **`public_repo`** and **`workflow`** (Komac branches from upstream's latest commit, which may change files under `.github/workflows` in the fork). No expiration, or a reminder to renew it. Fine-grained tokens can't open pull requests to a repository you don't own.
+3. **GitHub**:
+   ```sh
+   gh secret set WINGET_TOKEN -R julien-blanchon/xivly
+   ```
+4. **The first submission** is the next stable release (or re-run the *winget* job of the latest one: `gh run rerun <run id> --job <job id>`, or *Re-run job* in the Actions UI). The package is new, so the job submits the manifests of `scripts/winget.sh` (publisher, MIT license, description, tags, moniker `xivly`, release notes URL). Preview them with `scripts/winget.sh 0.4.0 <sha256 of the setup.exe> /tmp/winget`. Watch the pull request: a moderator may ask for changes (answer there; edit `scripts/winget.sh` too, so it stays the reference). New packages often take a few days.
+
+From then on every stable release opens its own pull request. Installers are not required to be signed, but an unsigned one can be flagged by Defender or SmartScreen during validation; SignPath signing (below) removes that risk. Komac and its checksum are pinned in the job (`KOMAC_VERSION`, `KOMAC_SHA256`, from the release's `SHA256SUMS`): bump them deliberately.
+
+### AUR (one-time setup)
+
+Free. **AUR account registration is paused at the moment** (the registration page answers 503): do this once it reopens; until then the job is a no-op.
+
+1. **Account**: register at [aur.archlinux.org/register](https://aur.archlinux.org/register).
+2. **SSH key** for the AUR only:
+   ```sh
+   ssh-keygen -t ed25519 -C "xivly AUR (GitHub Actions)" -N "" -f ~/.ssh/aur_xivly
+   cat ~/.ssh/aur_xivly.pub   # paste into the AUR: My Account → SSH Public Key, then Update (with your password)
+   ```
+   Check it: `ssh -i ~/.ssh/aur_xivly aur@aur.archlinux.org help` lists the AUR's commands.
+3. **GitHub** (then delete the local private key, or keep it to push by hand):
+   ```sh
+   gh secret set AUR_SSH_PRIVATE_KEY -R julien-blanchon/xivly < ~/.ssh/aur_xivly
+   ```
+4. **The first push** creates `xivly-bin` on the AUR (it is owned by the account whose key pushed it): the next stable release, or re-run the *aur* job of the latest one.
+
+The commits are authored as the maintainer in the PKGBUILD. Preview the package on any machine with Docker:
+
+```sh
+scripts/aur.sh 0.4.0 <sha256 of the .deb> > /tmp/xivly-bin/PKGBUILD
+docker run --rm --platform linux/amd64 -v /tmp/xivly-bin:/p archlinux:base-devel sh -c \
+  'useradd -m b && cp /p/PKGBUILD /home/b && cd /home/b && chown b . PKGBUILD && su b -c "makepkg --nodeps && makepkg --printsrcinfo"'
+```
 
 ### Windows code signing (SignPath Foundation)
 
@@ -150,6 +193,12 @@ xcrun stapler validate Xivly_0.2.0_universal.dmg          # the DMG itself is no
 spctl -a -t open --context context:primary-signature -v Xivly_0.2.0_universal.dmg
 ```
 
+```sh
+winget show JulienBlanchon.Xivly                          # Windows, once the pull request is merged (the source refreshes within hours)
+yay -Si xivly-bin                                         # Arch; or https://aur.archlinux.org/packages/xivly-bin
+curl -fsSL https://raw.githubusercontent.com/julien-blanchon/xivly/main/install.sh | sh   # installs the new version
+```
+
 On Linux: `chmod +x Xivly_*.AppImage && ./Xivly_*.AppImage`, `sudo apt install ./Xivly_*_amd64.deb`, or `sudo dnf install ./Xivly-*.x86_64.rpm`. On Windows: run the setup `.exe` or the `.msi`.
 
 ## If something fails
@@ -158,4 +207,6 @@ On Linux: `chmod +x Xivly_*.AppImage && ./Xivly_*.AppImage`, `sudo apt install .
 - **svelte-pdf-mini not on npm**: release it first (see above), then re-run the workflow.
 - **One platform fails**: the release stays a draft. Fix, then either re-run the failed jobs or delete the draft and tag a new patch version. Delete stale drafts with `gh release delete vX.Y.Z --yes` (keeps the tag).
 - **Notarization fails**: check the Apple secrets and that the certificate is a *Developer ID Application* certificate that hasn't expired. For the DMG step, `xcrun notarytool log <submission-id> --apple-id … --team-id …` shows why.
+- **winget fails**: `Bad credentials` is an expired or revoked `WINGET_TOKEN`; a failure creating the branch is a missing fork (or one not named `winget-pkgs`). Fix, then re-run the job. Komac skips a version that already has a pull request in any state, so after a closed (rejected) update, resubmit by hand: `komac update JulienBlanchon.Xivly --version X.Y.Z --urls <setup.exe URL> --skip-pr-check --submit` (a closed *first* submission is retried by the job).
+- **AUR push fails**: `Permission denied (publickey)` means the key in `AUR_SSH_PRIVATE_KEY` isn't the one in the AUR account. The AUR also rejects a push whose `.SRCINFO` doesn't match, which the job always regenerates.
 - **Already published**: the *prepare* job refuses to rebuild it; re-run manually with **force** only if replacing its assets is intended.
