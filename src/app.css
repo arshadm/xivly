@@ -29,6 +29,7 @@
   --color-muted: oklch(0.5 0.013 58);
   /* Control edges (switch tracks when off, input borders, slider thumbs): 3:1. */
   --color-edge: oklch(0.62 0.012 58);
+  --font-emoji: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
 }
 
 html.dark {

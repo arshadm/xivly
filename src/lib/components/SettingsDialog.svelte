@@ -24,6 +24,7 @@
 		if (await prompts.confirm(`Move the ${n} example papers to the ${trashName}?`, { confirmLabel: `Move to ${trashName}`, danger: true })) await removeStarter().catch((e) => toast(String(e), 'error'));
 	}
 	import Kbd from '#lib/ui/Kbd.svelte';
+	import NoteEmojiSettings from './NoteEmojiSettings.svelte';
 	import Select from '#lib/ui/Select.svelte';
 	import Slider from '#lib/ui/Slider.svelte';
 	import Switch from '#lib/ui/Switch.svelte';
@@ -126,6 +127,7 @@
 								{#snippet inkCtl()}<Select label="Pen style" value={s.inkSmoothing} onValueChange={set('inkSmoothing')} items={[{ value: 'steady', label: 'Steady (exponential smoothing)' }, { value: 'smooth', label: 'Smooth (keeps sharp corners)' }, { value: 'pen', label: 'Pen (variable width)' }, { value: 'raw', label: 'Raw' }]} />{/snippet}
 								{@render row('Pen style', 'How strokes are smoothed: Steady is calm, Smooth keeps sharp corners', inkCtl)}
 								{@render toggle('boxFill', 'Fill boxes', 'Boxes get a translucent fill (off: outline only)')}
+								<NoteEmojiSettings />
 								{#snippet selCtl()}<ToggleGroup label="Select annotations with" value={s.selectOn} onValueChange={set('selectOn')} items={[{ value: 'click', label: 'Click' }, { value: 'dblclick', label: 'Double-click' }]} />{/snippet}
 								{@render row('Select annotations with', '', selCtl)}
 								{#snippet foreignCtl()}<ToggleGroup label="Other apps’ annotations" value={s.foreignAnnotations} onValueChange={set('foreignAnnotations')} items={[{ value: 'readonly', label: 'Read-only' }, { value: 'editable', label: 'Editable' }, { value: 'hidden', label: 'Hidden' }]} />{/snippet}

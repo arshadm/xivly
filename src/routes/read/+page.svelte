@@ -555,6 +555,7 @@
 							editOnCreate={s.editOnCreate}
 							inkSmoothing={s.inkSmoothing}
 							foreign={s.foreignAnnotations}
+							noteEmojis={s.noteEmojis}
 							{onAnnotationsChange}
 						>
 							<!--
@@ -617,11 +618,11 @@
 															</Paper.References>
 														{:else if tab === 'notes'}
 															<Annotations.List class="space-y-2 pt-1">
-																{#snippet item({ annotation, quote, pageLabel, go, color })}
+																{#snippet item({ annotation, quote, pageLabel, go, color, emoji })}
 																	{@const preview = hasPreview(annotation)}
 																	<button class="block w-full rounded-md border-l-4 bg-white/80 px-2.5 py-2 text-left shadow-sm hover:shadow dark:bg-stone-800/80" style:border-color={color} onclick={go}>
 																		<span class="flex items-center gap-1.5 text-[11px] text-muted">
-																			<span class="{kindIcons[annotation.kind]} size-3.5 shrink-0"></span>{kindLabels[annotation.kind]}
+																			{#if emoji}<span class="w-3.5 shrink-0 text-center font-emoji text-[13px] leading-none">{emoji}</span>{:else}<span class="{kindIcons[annotation.kind]} size-3.5 shrink-0"></span>{/if}{kindLabels[annotation.kind]}
 																			<span class="ml-auto tabular-nums">p. {pageLabel}</span>
 																		</span>
 																		{#if annotation.label}<span class="block font-medium">{annotation.label}</span>{/if}

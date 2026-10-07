@@ -1,6 +1,6 @@
 // App settings: one typed object, persisted per platform (Tauri store on
 // desktop, localStorage on web) and live-synced across windows / tabs.
-import type { InkSmoothing, MinimapVariant, ScrollMode, ZoomMode } from 'svelte-pdf-mini';
+import { defaultNoteEmojis, isSingleEmoji, type InkSmoothing, type MinimapVariant, type ScrollMode, type ZoomMode } from 'svelte-pdf-mini';
 import { platform } from './platform';
 
 /** Days covered by each "Recent" window. */
@@ -66,6 +66,8 @@ const defaults = {
 	selectionMenu: true,
 	editOnCreate: true,
 	foreignAnnotations: 'readonly' as 'editable' | 'readonly' | 'hidden',
+	/** The 8 emoji a note can show, picked with keys 1–8 while the note tool is active. */
+	noteEmojis: defaultNoteEmojis as readonly string[],
 
 	// Saving
 	/** Seconds between autosaves of unsaved annotations; 0 = only on ⌘S / close. */
@@ -237,14 +239,22 @@ class SettingsState {
 
 /** Only what differs from the defaults is stored, so changed defaults reach everyone. */
 export function overrideOf<K extends SettingKey>(key: K, value: Settings[K]): Settings[K] | undefined {
-	return value === defaults[key] ? undefined : value;
+	const same = Array.isArray(value) ? JSON.stringify(value) === JSON.stringify(defaults[key]) : value === defaults[key];
+	return same ? undefined : value;
 }
+
+/** Settings with a closed set of values: anything else falls back to the default. */
+const validators: Partial<Record<string, (v: unknown) => boolean>> = {
+	coverStyle: (v) => coverStyles.some((c) => c.value === v),
+	recentWindow: (v) => typeof v === 'string' && v in recentWindows,
+	noteEmojis: (v) => Array.isArray(v) && v.length === defaultNoteEmojis.length && v.every((e) => typeof e === 'string' && isSingleEmoji(e))
+};
 
 /** Known keys only (old or foreign keys in the store are ignored). */
 export function pick(stored: Partial<Settings>): Partial<Settings> {
 	const known = Object.entries(stored).filter(([k]) => k in defaults);
 	// Choices that no longer exist fall back to the default.
-	const valid = ([k, v]: [string, unknown]) => (k === 'coverStyle' ? coverStyles.some((c) => c.value === v) : k === 'recentWindow' ? typeof v === 'string' && v in recentWindows : true);
+	const valid = ([k, v]: [string, unknown]) => validators[k]?.(v) ?? true;
 	return Object.fromEntries(known.filter(valid)) as Partial<Settings>;
 }
 
