@@ -54,8 +54,11 @@
 		if (!modern) {
 			// Nothing to save here, but ⌘Q waits for every window's answer.
 			if (platform.kind !== 'desktop') return;
-			const unlisten = listen('quit-requested', () => invoke('quit_response', { ok: true }));
-			return () => void unlisten.then((f) => f());
+			const unlisten = [
+				listen('quit-requested', () => invoke('quit_response', { ok: true })),
+				listen('library-change-requested', () => invoke('library_change_response', { ok: true }))
+			];
+			return () => unlisten.forEach((p) => p.then((f) => f()));
 		}
 		settings.init().then(() => library.init());
 		if (__XIVLY_EXTENSION__) void import('$lib/extension/app.svelte').then((m) => m.startExtension());
@@ -87,6 +90,31 @@
 				} finally {
 					await invoke('quit_response', { ok });
 				}
+			}),
+			// Settings › Library › Change… (from any window): every window saves its
+			// work (or the user cancels the change) before the library changes.
+			listen('library-change-requested', async () => {
+				let ok = false;
+				try {
+					await settings.flush();
+					ok = !hasUnsaved() || (await flushAll());
+				} catch (e) {
+					console.error(e);
+				} finally {
+					// Until every window answered (or one hangs): no new edit that the change would lose.
+					document.body.inert = ok;
+					if (ok) setTimeout(() => (document.body.inert = false), 15_000);
+					await invoke('library_change_response', { ok });
+				}
+			}),
+			// Changed: the library window opens the new library, readers (of the old one) close.
+			// Closing still asks about work left unsaved, which can't go into the new library.
+			listen<boolean>('library-change-finished', async ({ payload: changed }) => {
+				document.body.inert = false;
+				if (!changed) return;
+				if (win.label === 'main') return library.init();
+				await showLibrary();
+				await win.close();
 			})
 		];
 		return () => unlisten.forEach((p) => p.then((f) => f()));

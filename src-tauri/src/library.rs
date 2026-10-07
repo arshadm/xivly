@@ -6,12 +6,16 @@
 //! File System Access API (`src/lib/platform/web.ts`).
 //!
 //! Every path is relative to the library root and checked so it can't
-//! escape it. Commands are `async` so file IO (PDFs are MBs) never blocks
-//! the main thread.
+//! escape it. Every command also names the library root its window opened:
+//! a window left open across a library change can't touch the new one.
+//! Commands are `async` so file IO (PDFs are MBs) never blocks the main thread.
 
+use std::collections::HashSet;
 use std::path::{Component, Path, PathBuf};
+use std::sync::Mutex;
+use std::time::{Duration, Instant};
 
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::config::{self, AppConfig};
 use crate::error::Result;
@@ -23,15 +27,21 @@ pub struct AppState {
     pub config_error: std::sync::Mutex<Option<String>>,
 }
 
-fn root(state: &State<AppState>) -> Result<PathBuf> {
-    state
-        .config
-        .lock()
-        .unwrap()
-        .library
-        .clone()
-        .ok_or_else(|| "No library selected".into())
+/// The library root, if it is still `expected`, the one the calling window
+/// opened. After a library change, a window still open (it should have
+/// closed) must never read or write a same-named file of the new library.
+fn root(state: &State<AppState>, expected: &Path) -> Result<PathBuf> {
+    same_root(state.config.lock().unwrap().library.as_deref(), expected)
 }
+
+fn same_root(current: Option<&Path>, expected: &Path) -> Result<PathBuf> {
+    match current {
+        Some(current) if current == expected => Ok(current.to_path_buf()),
+        Some(_) => Err("The library folder was changed: this window can't use the new one (reopen the paper)".into()),
+        None => Err("No library selected".into()),
+    }
+}
+
 
 /// Join a relative path onto the root, rejecting `..`, absolute paths, etc.
 fn resolve(root: &Path, rel: &str) -> Result<PathBuf> {
@@ -100,20 +110,82 @@ fn library_path(app: &AppHandle) -> Result<PathBuf> {
     Ok(path)
 }
 
-/// Ask for a library folder (the native picker, here rather than in JS: the
-/// library root is what every fs command trusts, so only the user sets it).
+/// A library change in progress: like a quit, every window saves its work (or
+/// the user cancels) before the library changes under it. The windows that
+/// still have to answer, the folder picked, and when it was asked.
+struct Change {
+    windows: HashSet<String>,
+    library: PathBuf,
+    at: Instant,
+}
+
+static CHANGE: Mutex<Option<Change>> = Mutex::new(None);
+/// A change still unanswered after this long is stale (a window that hung):
+/// choosing a folder again starts over instead of waiting forever.
+const STALE_CHANGE: Duration = Duration::from_secs(15);
+
+/// Ask for a new library folder (the native picker, here rather than in JS:
+/// the library root is what every fs command trusts, so only the user sets
+/// it). The change itself waits for every window: `library-change-requested`,
+/// answered by `library_change_response`, then `library-change-finished`
+/// (`true` once changed: the library window reopens it, readers close).
 #[tauri::command]
-pub async fn pick_library(app: AppHandle, state: State<'_, AppState>) -> Result<Option<PathBuf>> {
+pub async fn change_library(app: AppHandle) -> Result<()> {
     use tauri_plugin_dialog::DialogExt;
     let picked = app.dialog().file().set_title("Choose a folder for your Xivly library").blocking_pick_folder();
-    let Some(path) = picked.and_then(|p| p.into_path().ok()) else {
-        return Ok(None);
+    let Some(library) = picked.and_then(|p| p.into_path().ok()) else {
+        return Ok(());
     };
+    let windows: HashSet<String> = app.webview_windows().into_keys().collect();
+    let mut change = CHANGE.lock().unwrap_or_else(|e| e.into_inner());
+    if change.as_ref().is_some_and(|c| c.at.elapsed() < STALE_CHANGE) {
+        return Err("The library folder is already being changed".into());
+    }
+    *change = Some(Change { windows, library, at: Instant::now() });
+    app.emit("library-change-requested", ())?;
+    finish_change_if_done(&app, &mut change)
+}
+
+/// A window's answer to `library-change-requested`: `true` once its work is
+/// saved (or discarded), `false` if the user cancelled, which cancels the change.
+#[tauri::command]
+pub fn library_change_response(app: AppHandle, window: tauri::Window, ok: bool) -> Result<()> {
+    let mut change = CHANGE.lock().unwrap_or_else(|e| e.into_inner());
+    if !ok {
+        if change.take().is_some() {
+            app.emit("library-change-finished", false)?;
+        }
+        return Ok(());
+    }
+    if let Some(c) = change.as_mut() {
+        c.windows.remove(window.label());
+    }
+    finish_change_if_done(&app, &mut change)
+}
+
+/// A window closed during a change has nothing left to answer.
+pub fn window_gone(app: &AppHandle, label: &str) {
+    let mut change = CHANGE.lock().unwrap_or_else(|e| e.into_inner());
+    if let Some(c) = change.as_mut() {
+        c.windows.remove(label);
+    }
+    let _ = finish_change_if_done(app, &mut change);
+}
+
+/// Every window answered: switch the library (from now on, only windows that
+/// open the new one can use it) and tell them.
+fn finish_change_if_done(app: &AppHandle, change: &mut Option<Change>) -> Result<()> {
+    if !change.as_ref().is_some_and(|c| c.windows.is_empty()) {
+        return Ok(());
+    }
+    let Some(Change { library, .. }) = change.take() else { return Ok(()) };
+    let state = app.state::<AppState>();
     let mut cfg = state.config.lock().unwrap();
-    cfg.library = Some(path.clone());
-    config::save(&app, &cfg)?;
+    cfg.library = Some(library);
+    config::save(app, &cfg)?;
     *state.config_error.lock().unwrap() = None;
-    Ok(Some(path))
+    app.emit("library-change-finished", true)?;
+    Ok(())
 }
 
 /// Hook scripts run with the user's rights, so the app itself never writes
@@ -135,8 +207,8 @@ fn refuse_hook(rel: &str) -> Result<()> {
 
 /// Raw bytes (an `ArrayBuffer` in JS), or `null`-equivalent error if missing.
 #[tauri::command]
-pub async fn fs_read(state: State<'_, AppState>, path: String) -> Result<tauri::ipc::Response> {
-    let p = resolve(&root(&state)?, &path)?;
+pub async fn fs_read(state: State<'_, AppState>, root_dir: PathBuf, path: String) -> Result<tauri::ipc::Response> {
+    let p = resolve(&root(&state, &root_dir)?, &path)?;
     match blocking(move || Ok(std::fs::read(&p))).await? {
         Ok(bytes) => Ok(tauri::ipc::Response::new(bytes)),
         // The frontend maps this prefix to "missing" (vs. a real IO error).
@@ -145,21 +217,25 @@ pub async fn fs_read(state: State<'_, AppState>, path: String) -> Result<tauri::
     }
 }
 
-/// Body = raw bytes, `x-path` header = relative path. Written via a temp file
-/// + rename so sync clients never see a half-written file.
+/// Body = raw bytes, `x-path` header = relative path, `x-root` = the
+/// window's library root. Written via a temp file + rename so sync clients
+/// never see a half-written file.
 #[tauri::command]
 pub async fn fs_write(state: State<'_, AppState>, request: tauri::ipc::Request<'_>) -> Result<()> {
     let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else {
         return Err("Expected raw bytes".into());
     };
-    let rel = request
-        .headers()
-        .get("x-path")
-        .and_then(|v| v.to_str().ok())
-        .ok_or("Missing x-path header")?;
-    let rel = percent_decode(rel);
+    let header = |name: &str| {
+        request
+            .headers()
+            .get(name)
+            .and_then(|v| v.to_str().ok())
+            .map(percent_decode)
+            .ok_or_else(|| format!("Missing {name} header"))
+    };
+    let (root_dir, rel) = (PathBuf::from(header("x-root")?), header("x-path")?);
     refuse_hook(&rel)?;
-    let p = resolve_entry(&root(&state)?, &rel)?;
+    let p = resolve_entry(&root(&state, &root_dir)?, &rel)?;
     let bytes = bytes.clone();
     blocking(move || write_atomic(&p, &bytes)).await
 }
@@ -224,8 +300,8 @@ pub struct Entry {
 }
 
 #[tauri::command]
-pub async fn fs_list(state: State<'_, AppState>, path: String) -> Result<Vec<Entry>> {
-    let p = resolve(&root(&state)?, &path)?;
+pub async fn fs_list(state: State<'_, AppState>, root_dir: PathBuf, path: String) -> Result<Vec<Entry>> {
+    let p = resolve(&root(&state, &root_dir)?, &path)?;
     blocking(move || {
         let entries = match std::fs::read_dir(p) {
             Ok(entries) => entries,
@@ -246,22 +322,22 @@ pub async fn fs_list(state: State<'_, AppState>, path: String) -> Result<Vec<Ent
 }
 
 #[tauri::command]
-pub async fn fs_exists(state: State<'_, AppState>, path: String) -> Result<bool> {
-    let p = resolve(&root(&state)?, &path)?;
+pub async fn fs_exists(state: State<'_, AppState>, root_dir: PathBuf, path: String) -> Result<bool> {
+    let p = resolve(&root(&state, &root_dir)?, &path)?;
     blocking(move || Ok(p.try_exists()?)).await
 }
 
 #[tauri::command]
-pub async fn fs_mkdir(state: State<'_, AppState>, path: String) -> Result<()> {
-    let p = resolve_entry(&root(&state)?, &path)?;
+pub async fn fs_mkdir(state: State<'_, AppState>, root_dir: PathBuf, path: String) -> Result<()> {
+    let p = resolve_entry(&root(&state, &root_dir)?, &path)?;
     blocking(move || Ok(std::fs::create_dir_all(p)?)).await
 }
 
 /// Moves to the macOS Trash (recoverable). Uses NSFileManager rather than
 /// scripting Finder, which a hardened-runtime app may not do.
 #[tauri::command]
-pub async fn fs_trash(state: State<'_, AppState>, path: String) -> Result<()> {
-    let p = resolve_entry(&root(&state)?, &path)?;
+pub async fn fs_trash(state: State<'_, AppState>, root_dir: PathBuf, path: String) -> Result<()> {
+    let p = resolve_entry(&root(&state, &root_dir)?, &path)?;
     blocking(move || {
         #[cfg(target_os = "macos")]
         let ctx = {
@@ -280,19 +356,19 @@ pub async fn fs_trash(state: State<'_, AppState>, path: String) -> Result<()> {
 
 /// Absolute path, for "Show in Finder".
 #[tauri::command]
-pub async fn fs_abs(state: State<'_, AppState>, path: String) -> Result<PathBuf> {
-    resolve(&root(&state)?, &path)
+pub async fn fs_abs(state: State<'_, AppState>, root_dir: PathBuf, path: String) -> Result<PathBuf> {
+    resolve(&root(&state, &root_dir)?, &path)
 }
 
 /// `paper-removed` waits for its hooks (they need the folder, which is
 /// trashed right after); other events run in the background.
 #[tauri::command]
-pub async fn run_hook(app: AppHandle, state: State<'_, AppState>, event: String, paper_id: String) -> Result<()> {
+pub async fn run_hook(app: AppHandle, state: State<'_, AppState>, root_dir: PathBuf, event: String, paper_id: String) -> Result<()> {
     // Only the events Xivly fires (an empty name would match every dotfile in hooks/).
     if !hooks::EVENTS.contains(&event.as_str()) {
         return Err(format!("Unknown hook event: {event:?}").into());
     }
-    let r = root(&state)?;
+    let r = root(&state, &root_dir)?;
     let dir = resolve_entry(&r, &format!("papers/{paper_id}"))?;
     if event == "paper-removed" {
         tauri::async_runtime::spawn_blocking(move || hooks::run_blocking(&app, &r, &event, &paper_id, &dir))
@@ -331,6 +407,14 @@ mod tests {
         assert!(refuse_hook(".XIVLY/Hooks/paper-added").is_err());
         assert!(refuse_hook("./.xivly/./hooks/paper-added").is_err());
         assert!(refuse_hook(".xivly/hooks/sub/x.sample").is_err());
+    }
+
+    #[test]
+    fn only_the_window_s_own_library() {
+        let (a, b) = (Path::new("/libraries/a"), Path::new("/libraries/b"));
+        assert_eq!(same_root(Some(a), a).unwrap(), a);
+        assert!(same_root(Some(b), a).is_err());
+        assert!(same_root(None, a).is_err());
     }
 
     #[test]

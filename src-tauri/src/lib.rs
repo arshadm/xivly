@@ -97,7 +97,8 @@ pub fn run() {
             quit_response,
             request_quit,
             library::get_library_path,
-            library::pick_library,
+            library::change_library,
+            library::library_change_response,
             library::fs_read,
             library::fs_write,
             library::fs_list,
@@ -117,8 +118,9 @@ pub fn run() {
                     api.prevent_exit();
                 }
             }
-            // A window closed mid-quit has nothing left to answer.
+            // A window closed mid-quit (or mid library change) has nothing left to answer.
             tauri::RunEvent::WindowEvent { label, event: tauri::WindowEvent::Destroyed, .. } => {
+                library::window_gone(app, &label);
                 let mut pending = PENDING.lock().unwrap_or_else(|e| e.into_inner());
                 if let Some((set, _)) = pending.as_mut() {
                     set.remove(&label);

@@ -2,36 +2,55 @@ import { invoke } from '@tauri-apps/api/core';
 import { openUrl, revealItemInDir } from '@tauri-apps/plugin-opener';
 import type { LibraryFs, Platform } from './types';
 
-const fs: LibraryFs = {
-	async read(path) {
-		try {
-			return new Uint8Array(await invoke<ArrayBuffer>('fs_read', { path }));
-		} catch (e) {
-			if (String(e).startsWith('ENOENT')) return null;
-			throw new Error(String(e));
-		}
-	},
-	write: (path, data) => invoke('fs_write', data, { headers: { 'x-path': encodeURIComponent(path).replaceAll('%2F', '/') } }),
-	list: (path) => invoke('fs_list', { path }),
-	exists: (path) => invoke('fs_exists', { path }),
-	mkdir: (path) => invoke('fs_mkdir', { path }),
-	trash: (path) => invoke('fs_trash', { path })
-};
+/** Headers are ASCII-only. */
+const header = (s: string) => encodeURIComponent(s).replaceAll('%2F', '/');
 
-const named = (path: string) => ({ fs, name: path.split(/[\\/]/).pop() ?? path });
+/**
+ * The library at `rootDir`. Every fs command names it, and Rust refuses it
+ * once the library was changed: a window left open across a change (or a
+ * task still running for the old library) can never write into the new one,
+ * where a paper may have the same id.
+ */
+function libraryFs(rootDir: string): LibraryFs {
+	return {
+		async read(path) {
+			try {
+				return new Uint8Array(await invoke<ArrayBuffer>('fs_read', { rootDir, path }));
+			} catch (e) {
+				if (String(e).startsWith('ENOENT')) return null;
+				throw new Error(String(e));
+			}
+		},
+		write: (path, data) => invoke('fs_write', data, { headers: { 'x-root': header(rootDir), 'x-path': header(path) } }),
+		list: (path) => invoke('fs_list', { rootDir, path }),
+		exists: (path) => invoke('fs_exists', { rootDir, path }),
+		mkdir: (path) => invoke('fs_mkdir', { rootDir, path }),
+		trash: (path) => invoke('fs_trash', { rootDir, path })
+	};
+}
+
+/** The library this window opened last (Show in Finder, hooks). */
+let rootDir = '';
+
+function opened(path: string) {
+	rootDir = path;
+	return { fs: libraryFs(path), name: path.split(/[\\/]/).pop() ?? path };
+}
 
 export const tauriPlatform: Platform = {
 	kind: 'desktop',
 	onDisk: true,
 	// Always a library: the default one (iCloud Drive/Xivly) is created on first launch.
-	restore: async () => named(await invoke<string>('get_library_path')),
+	restore: async () => opened(await invoke<string>('get_library_path')),
 	reconnect: async () => null,
 	async pick() {
-		// The native picker runs in Rust, which also stores the choice.
-		const dir = await invoke<string | null>('pick_library');
-		return dir ? named(dir) : null;
+		// The native picker runs in Rust, which changes the library once every
+		// window saved its work; then this window reopens it or closes
+		// (`library-change-finished`, +layout.svelte).
+		await invoke('change_library');
+		return null;
 	},
 	openUrl: (url) => openUrl(url),
-	reveal: async (path) => revealItemInDir(await invoke<string>('fs_abs', { path })),
-	runHook: (event, paperId) => invoke('run_hook', { event, paperId })
+	reveal: async (path) => revealItemInDir(await invoke<string>('fs_abs', { rootDir, path })),
+	runHook: (event, paperId) => invoke('run_hook', { rootDir, event, paperId })
 };

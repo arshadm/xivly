@@ -112,6 +112,8 @@ class Library {
 		await repo.init();
 		this.repo = repo;
 		this.name = name;
+		// Another library (desktop: Settings › Library › Change…): nothing of the old one is kept.
+		this.papers = [];
 		this.view = { kind: 'all' };
 		this.tagFilter = { [ARCHIVED]: 'out' };
 		await this.reload();
