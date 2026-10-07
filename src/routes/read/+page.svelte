@@ -123,6 +123,7 @@
 				?.readPdf(current)
 				.then((b) => {
 					if (current !== id) return;
+					restoring = !!resumeAt();
 					bytes = b;
 					load = b ? { status: 'ready' } : { status: 'missing' };
 				})
@@ -224,10 +225,30 @@
 		const target = id;
 		clearTimeout(posTimer);
 		posTimer = setTimeout(() => {
-			if (viewer?.document.status === 'ready' && library.get(target)) library.touch(target, { position: Number(viewer.position.toFixed(2)) }).catch(() => {});
+			if (!restoring && viewer?.document.status === 'ready' && library.get(target)) library.touch(target, { position: Number(viewer.position.toFixed(2)) }).catch(() => {});
 		}, 1500);
 		return () => clearTimeout(posTimer);
 	});
+
+	// Reopen where you left off: the pages stay hidden until they're there (no jump from page 1).
+	const resumeAt = () => (s.resumePosition && paper?.position && paper.position >= 1.01 ? paper.position : undefined);
+	let restoring = $state(false);
+	async function restorePosition() {
+		const position = resumeAt();
+		// Shown anyway if the restore hangs (a page that never loads).
+		const reveal = setTimeout(() => (restoring = false), 2000);
+		try {
+			if (position) {
+				await new Promise(requestAnimationFrame);
+				await viewer?.restorePosition(position);
+			}
+		} catch {
+			// Opens at the top instead.
+		} finally {
+			clearTimeout(reveal);
+			restoring = false;
+		}
+	}
 
 	// ── Panels, find, menus ──────────────────────────────────────────────
 	/** Where ⌘F came from: Esc in the search field goes back there (or closes the panel). */
@@ -417,7 +438,7 @@
 		</div>
 	</div>
 {:else if bytes}
-	<Document.Root src={bytes} onLoad={() => s.resumePosition && paper.position && requestAnimationFrame(() => viewer?.restorePosition(paper.position!))}>
+	<Document.Root src={bytes} onLoad={restorePosition}>
 		<Viewer.Root
 			bind:viewer
 			{pageTheme}
@@ -629,7 +650,7 @@
 											<PdfContextMenu onOpenReference={openReference} {saveFile}>
 												{#snippet trigger({ props })}
 													<Viewer.Viewport {...props} style={s.pageFrame === 'none' ? `background:${swatch}` : undefined} class="h-full bg-stone-100 transition-colors dark:bg-stone-950 [--pdf-page-gap:22px] [--pdf-pages-padding:28px] {s.sideNotes ? '[--pdf-pages-aside:252px]' : ''}">
-														<Viewer.Pages>
+														<Viewer.Pages class={restoring ? 'opacity-0' : 'transition-opacity duration-150'}>
 															{#snippet children({ pageNumber })}
 																<Viewer.Page {pageNumber}>
 																	<Viewer.Canvas />
