@@ -36,7 +36,6 @@
 	import { broadcast, onBroadcast } from '#lib/broadcast.js';
 	import { fileManager, mac } from '#lib/os.js';
 	import { button } from '#lib/ui/button.js';
-	import { paperInk } from '#lib/library-utils.js';
 	import { library } from '#lib/library.svelte.js';
 	import { platform } from '#lib/platform/index.js';
 	import { ReaderLock } from '#lib/reader-lock.svelte.js';
@@ -58,7 +57,7 @@
 	import { icons } from '#lib/pdf/icons.js';
 	import { emptyText, kindIcons, kindLabels } from '#lib/pdf/annotation-kinds.js';
 	import AnnotationPreview, { hasPreview } from '#lib/pdf/AnnotationPreview.svelte';
-	import { paperHex } from 'svelte-pdf-mini';
+	import { paperHex, paperInk } from 'svelte-pdf-mini';
 	import Kbd from '#lib/ui/Kbd.svelte';
 	import CycleButton, { type CycleOption } from '#lib/ui/CycleButton.svelte';
 	import Separator from '#lib/ui/Separator.svelte';

@@ -16,11 +16,6 @@ export function categoryColor(color: CategoryColor | undefined): PaperColor {
 	return paperColors.find((c) => c.name === color) ?? stone;
 }
 
-/** A palette color's accent as text: same hue and chroma, lightness at most 0.5 by day and at least 0.75 by night (4.5:1). */
-export function paperInk(color: PaperColor, dark = false) {
-	return `oklch(from ${color.accent} ${dark ? 'max(l, 0.75)' : 'min(l, 0.5)'} c h)`;
-}
-
 /** `fn` over `items`, at most `limit` at a time; results in order. */
 export async function mapLimited<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
 	const out: R[] = new Array(items.length);

@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { coverUrl, whenNear } from '#lib/covers.js';
 	import { coverVersions } from '#lib/cover-versions.svelte.js';
-	import { paperInk } from '#lib/library-utils.js';
 	import { library } from '#lib/library.svelte.js';
 	import { paperMenu } from '#lib/paper-menu.js';
 	import { settings } from '#lib/settings.svelte.js';
@@ -10,6 +9,7 @@
 	import { contextMenu } from '#lib/ui/context-menu.svelte.js';
 	import Tip from '#lib/ui/Tip.svelte';
 	import { openPaper } from '#lib/windows.js';
+	import { paperInk } from 'svelte-pdf-mini';
 
 	let { paper }: { paper: Paper } = $props();
 

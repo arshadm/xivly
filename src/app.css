@@ -87,13 +87,3 @@ html.dark {
 [data-part='meta'] {
   display: none;
 }
-
-/* Text boxes: palette colors are fills made for highlights; the text gets an ink
-   shade of its color (same hue), darker by day and lighter by night, so it reads
-   on the page. */
-[data-pdf-annotation-freetext] {
-  color: oklch(from var(--annotation-color) min(l, 0.5) c h);
-}
-.dark [data-pdf-annotation-freetext] {
-  color: oklch(from var(--annotation-color) max(l, 0.75) c h);
-}
