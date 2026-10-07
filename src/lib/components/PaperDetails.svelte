@@ -3,6 +3,7 @@
 	import { iconButton, mutedIcon } from '$lib/ui/button';
 	import { paperLinks } from '$lib/cite';
 	import { hfListUrl } from '$lib/huggingface';
+	import { onFlush } from '$lib/flush';
 	import { library } from '$lib/library.svelte';
 	import { addTag } from '$lib/paper-menu';
 	import type { Snippet } from 'svelte';
@@ -18,28 +19,81 @@
 	 */
 	let { paper, actions, footer = true }: { paper: Paper; actions?: Snippet<[{ btn: string }]>; footer?: boolean } = $props();
 
-	const save = (patch: PaperPatch) => library.update(paper.id, patch).catch((e) => toast(String(e), 'error'));
+	const save = (patch: PaperPatch, id = paper.id) => library.update(id, patch).catch((e) => toast(String(e), 'error'));
+
+	// Title, authors and year save as you type (debounced), and right away on
+	// blur, when the details close (Esc) and when the window closes or quits.
+	// While a field is being edited it shows the text typed, not the saved value
+	// (trimmed, tidied), so a save never rewrites what is being typed.
+	type Text = 'title' | 'authors' | 'year';
+	let draft = $state<Partial<Record<Text, string>>>({});
+	/** The paper being edited, typed changes not saved yet, saves not written yet. */
+	let draftOf = '';
+	let pending = false;
+	let writing = 0;
+	let timer: ReturnType<typeof setTimeout> | undefined;
+
+	function edit(key: Text, value: string) {
+		if (draftOf !== paper.id) void flush('all');
+		draftOf = paper.id;
+		draft[key] = value;
+		pending = true;
+		clearTimeout(timer);
+		timer = setTimeout(() => void flush(), 500);
+	}
+
+	/** Save what was typed; the `done` field (or all) shows the saved value again. */
+	async function flush(done?: Text | 'all') {
+		clearTimeout(timer);
+		const patch: PaperPatch = {};
+		// A paper always has a title.
+		if (draft.title?.trim()) patch.title = draft.title.trim();
+		if (draft.authors !== undefined) patch.authors = draft.authors.split(',').map((a) => a.trim()).filter(Boolean);
+		if (draft.year !== undefined) patch.year = Number(draft.year) || null;
+		if (done === 'all') draft = {};
+		else if (done) delete draft[done];
+		if (!pending || !Object.keys(patch).length) return;
+		pending = false;
+		writing++;
+		await save(patch, draftOf).finally(() => writing--);
+	}
+
+	$effect(() => onFlush({ dirty: () => pending || writing > 0, flush: async () => (await flush(), true) }));
+	// Another paper (the details dialog reused) or closing (Esc): the edits go to the paper they were made on.
+	// (`paperId`, not `paper`: each save gives the paper a new object, same id.)
+	const paperId = $derived(paper.id);
+	$effect(() => {
+		void paperId;
+		return () => void flush('all');
+	});
+
 	const links = $derived(paperLinks(paper));
 	const field = 'w-full rounded-md bg-transparent px-1 -mx-1 outline-none hover:bg-stone-200/50 focus:bg-white dark:hover:bg-stone-800/60 dark:focus:bg-stone-900';
 	const label = 'mb-1.5 block text-[11px] font-medium tracking-wide text-stone-400 uppercase';
 </script>
 
+<!-- Closing the tab (web): the save starts while the browser asks to leave. -->
+<svelte:window onbeforeunload={() => void flush()} />
+
 <div class="flex min-h-full flex-col gap-5 text-[13px]">
 	<div>
-		<textarea class="{field} field-sizing-content resize-none font-serif text-lg leading-snug" value={paper.title} aria-label="Title" onchange={(e) => {
-				const title = e.currentTarget.value.trim();
-				if (title) save({ title });
-				else e.currentTarget.value = paper.title; // a paper always has a title
-			}}></textarea>
+		<textarea
+			class="{field} field-sizing-content resize-none font-serif text-lg leading-snug"
+			value={draft.title ?? paper.title}
+			aria-label="Title"
+			oninput={(e) => edit('title', e.currentTarget.value)}
+			onblur={() => flush('title')}
+		></textarea>
 		<!-- Wraps (papers can have 70+ authors), scrolls past a few lines. -->
 		<textarea
 			class="{field} field-sizing-content max-h-24 resize-none overflow-y-auto text-stone-600 dark:text-stone-400"
-			value={paper.authors?.join(', ') ?? ''}
+			value={draft.authors ?? paper.authors?.join(', ') ?? ''}
 			placeholder="Authors"
 			aria-label="Authors"
-			onchange={(e) => save({ authors: e.currentTarget.value.split(',').map((a) => a.trim()).filter(Boolean) })}
+			oninput={(e) => edit('authors', e.currentTarget.value)}
+			onblur={() => flush('authors')}
 		></textarea>
-		<input class="{field} w-20 text-stone-600 dark:text-stone-400" value={paper.year ?? ''} placeholder="Year" aria-label="Year" inputmode="numeric" onchange={(e) => save({ year: Number(e.currentTarget.value) || null })} />
+		<input class="{field} w-20 text-stone-600 dark:text-stone-400" value={draft.year ?? paper.year ?? ''} placeholder="Year" aria-label="Year" inputmode="numeric" oninput={(e) => edit('year', e.currentTarget.value)} onblur={() => flush('year')} />
 	</div>
 
 	<div>
