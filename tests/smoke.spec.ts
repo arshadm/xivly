@@ -87,6 +87,35 @@ test('add a paper, annotate, save, reload: the annotation stays', async ({ page,
 	expect(errs).toEqual([]);
 });
 
+test('a note keeps its emoji: key 4 with the note tool, save, reload', async ({ page, context }) => {
+	await startLibrary(page);
+	await page.getByRole('button', { name: 'Add papers' }).click();
+	const chooser = page.waitForEvent('filechooser');
+	await page.getByRole('button', { name: /Drop PDF files/ }).click();
+	await (await chooser).setFiles(`${test.info().project.testDir}/fixtures/paper.pdf`);
+	await page.getByRole('button', { name: new RegExp(title) }).click();
+	const reader = await readerTab(context);
+	const errs = errors(reader);
+	const firstPage = reader.locator('[data-pdf-page]').first();
+	await expect(firstPage.locator('[data-pdf-canvas]')).toBeVisible();
+
+	// With the note tool, 4 picks 🤯 (not the 4th color); the new note shows it.
+	await reader.getByRole('button', { name: 'Note', exact: true }).click();
+	await reader.keyboard.press('4');
+	const box = (await firstPage.boundingBox())!;
+	await reader.mouse.click(box.x + box.width * 0.8, box.y + box.height * 0.2);
+	const marker = firstPage.locator('[data-pdf-annotation-note] [data-part=emoji]');
+	await expect(marker).toHaveText('🤯');
+	await reader.keyboard.type('Big if true');
+	await reader.keyboard.press('Enter');
+	await reader.keyboard.press('ControlOrMeta+s');
+	await expect(reader.getByRole('button', { name: 'Annotations are saved in the PDF' })).toBeVisible();
+
+	await reader.reload();
+	await expect(reader.locator('[data-pdf-page]').first().locator('[data-pdf-annotation-note] [data-part=emoji]')).toHaveText('🤯');
+	expect(errs).toEqual([]);
+});
+
 test('one reader per paper: a second tab takes it over, annotations kept', async ({ page, context }) => {
 	await startLibrary(page);
 	await page.getByRole('button', { name: 'Add papers' }).click();

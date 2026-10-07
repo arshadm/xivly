@@ -13,6 +13,7 @@
 	import CompactColor from './CompactColor.svelte';
 	import { cn } from '../ui/cn';
 	import { icons, toolIcons } from './icons';
+	import { emojiChip, noteEmojiLabel } from './note-emoji';
 
 	let {
 		tools = ['select', 'hand', 'highlight', 'underline', 'area', 'note', 'ink', 'arrow', 'rect', 'freetext', 'eraser'] as AnnotationTool[],
@@ -57,24 +58,39 @@
 		<Separator class="mx-1" />
 		<!-- Narrow windows: one color button with a popover (the toolbar row is a @container). -->
 		<CompactColor class="@4xl:hidden" />
-		<!-- Colors: one roving group; the selected chip's ring stays inside the gap (gap 6px, ring 1.5 + 1.5px). -->
-		<div class="hidden shrink-0 items-center gap-1.5 px-1 @4xl:flex" role="group" aria-label="Color">
-			{#each store.palette.slice(0, 9) as c, i (c.key)}
-				<Tip label={c.label} shortcut={String(i + 1)}>
-					{#snippet child({ props: tip })}
-						<Toolbar.Button {...tip}>
-							{#snippet child({ props })}
-								<Annotations.Color
-									color={c.key}
-									{...props}
-									class="size-5 rounded-full bg-(--swatch) shadow-[inset_0_0_0_1px_rgb(0_0_0/0.14)] outline-none ring-offset-[1.5px] ring-offset-white focus-visible:ring-[1.5px] focus-visible:ring-blue-500 data-[active]:ring-[1.5px] data-[active]:ring-stone-800 dark:ring-offset-stone-900 dark:data-[active]:ring-stone-100"
-								/>
-							{/snippet}
-						</Toolbar.Button>
-					{/snippet}
-				</Tip>
-			{/each}
-		</div>
+		{#if store.pickingNoteEmoji}
+			<!-- Note tool (or notes selected): keys 1–8 pick the note's emoji, so the chips are emoji. -->
+			<div class="hidden shrink-0 items-center gap-0.5 px-1 @4xl:flex" role="group" aria-label="Note emoji">
+				{#each store.noteEmojis.slice(0, 8) as emoji, i (i)}
+					<Tip label={noteEmojiLabel(emoji)} shortcut={String(i + 1)}>
+						{#snippet child({ props: tip })}
+							<Toolbar.Button {...tip}>
+								{#snippet child({ props })}<Annotations.NoteEmoji {emoji} {...props} class={emojiChip} />{/snippet}
+							</Toolbar.Button>
+						{/snippet}
+					</Tip>
+				{/each}
+			</div>
+		{:else}
+			<!-- Colors: one roving group; the selected chip's ring stays inside the gap (gap 6px, ring 1.5 + 1.5px). -->
+			<div class="hidden shrink-0 items-center gap-1.5 px-1 @4xl:flex" role="group" aria-label="Color">
+				{#each store.palette.slice(0, 9) as c, i (c.key)}
+					<Tip label={c.label} shortcut={String(i + 1)}>
+						{#snippet child({ props: tip })}
+							<Toolbar.Button {...tip}>
+								{#snippet child({ props })}
+									<Annotations.Color
+										color={c.key}
+										{...props}
+										class="size-5 rounded-full bg-(--swatch) shadow-[inset_0_0_0_1px_rgb(0_0_0/0.14)] outline-none ring-offset-[1.5px] ring-offset-white focus-visible:ring-[1.5px] focus-visible:ring-blue-500 data-[active]:ring-[1.5px] data-[active]:ring-stone-800 dark:ring-offset-stone-900 dark:data-[active]:ring-stone-100"
+									/>
+								{/snippet}
+							</Toolbar.Button>
+						{/snippet}
+					</Tip>
+				{/each}
+			</div>
+		{/if}
 	{/if}
 	{#if history}
 		<Separator class="mx-1" />

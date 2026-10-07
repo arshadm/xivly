@@ -25,6 +25,7 @@
 @theme {
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
   --font-serif: "New York", "Iowan Old Style", Georgia, serif;
+  --font-emoji: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
 }
 
 /* The app shell never scrolls: only its panels and the PDF viewport do. A

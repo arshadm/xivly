@@ -9,6 +9,14 @@ describe('settings storage', () => {
 	it('stores only what differs from the defaults', () => {
 		expect(overrideOf('recentWindow', 'week')).toBeUndefined();
 		expect(overrideOf('recentWindow', 'day')).toBe('day');
+		expect(overrideOf('noteEmojis', ['💬', '🤔', '💡', '🤯', '🧐', '🤨', '😍', '📌'])).toBeUndefined();
+		expect(overrideOf('noteEmojis', ['🔥', '🤔', '💡', '🤯', '🧐', '🤨', '😍', '📌'])).toEqual(['🔥', '🤔', '💡', '🤯', '🧐', '🤨', '😍', '📌']);
+	});
+	it('keeps a note emoji set of 8 single emoji only', () => {
+		const ok = ['🔥', '🤔', '💡', '🤯', '😵‍💫', '🤨', '😍', '📌'];
+		expect(pick({ noteEmojis: ok })).toEqual({ noteEmojis: ok });
+		expect(pick({ noteEmojis: ok.slice(0, 7) })).toEqual({});
+		expect(pick({ noteEmojis: [...ok.slice(0, 7), 'ab'] })).toEqual({});
 	});
 	it('merges changed keys into what another window stored', () => {
 		const stored = { coverStyle: 'stack', recentWindow: 'day' } as const;
