@@ -1,14 +1,14 @@
 <script lang="ts">
-	import { coverUrl, whenNear } from '$lib/covers';
-	import { coverVersions } from '$lib/cover-versions.svelte';
-	import { library } from '$lib/library.svelte';
-	import { paperMenu } from '$lib/paper-menu';
-	import { settings } from '$lib/settings.svelte';
-	import { theme } from '$lib/theme.svelte';
-	import type { Paper } from '$lib/types';
-	import { contextMenu } from '$lib/ui/context-menu.svelte';
-	import Tip from '$lib/ui/Tip.svelte';
-	import { openPaper } from '$lib/windows';
+	import { coverUrl, whenNear } from '#lib/covers.js';
+	import { coverVersions } from '#lib/cover-versions.svelte.js';
+	import { library } from '#lib/library.svelte.js';
+	import { paperMenu } from '#lib/paper-menu.js';
+	import { settings } from '#lib/settings.svelte.js';
+	import { theme } from '#lib/theme.svelte.js';
+	import type { Paper } from '#lib/types.js';
+	import { contextMenu } from '#lib/ui/context-menu.svelte.js';
+	import Tip from '#lib/ui/Tip.svelte';
+	import { openPaper } from '#lib/windows.js';
 
 	let { paper }: { paper: Paper } = $props();
 

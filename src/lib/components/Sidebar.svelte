@@ -1,14 +1,14 @@
 <script lang="ts">
-	import { iconButton, mutedIcon } from '$lib/ui/button';
+	import { iconButton, mutedIcon } from '#lib/ui/button.js';
 	import { paperColors } from 'svelte-pdf-mini';
-	import { ARCHIVED, categoryColor, library, type View } from '$lib/library.svelte';
-	import { platform } from '$lib/platform';
-	import { keys } from '$lib/shortcuts';
-	import { fileManager } from '$lib/os';
-	import type { CategoryColor, ColorName } from '$lib/types';
-	import Tip from '$lib/ui/Tip.svelte';
-	import { contextMenu, type MenuItem } from '$lib/ui/context-menu.svelte';
-	import { prompts } from '$lib/ui/prompt.svelte';
+	import { ARCHIVED, categoryColor, library, type View } from '#lib/library.svelte.js';
+	import { platform } from '#lib/platform/index.js';
+	import { keys } from '#lib/shortcuts.js';
+	import { fileManager } from '#lib/os.js';
+	import type { CategoryColor, ColorName } from '#lib/types.js';
+	import Tip from '#lib/ui/Tip.svelte';
+	import { contextMenu, type MenuItem } from '#lib/ui/context-menu.svelte.js';
+	import { prompts } from '#lib/ui/prompt.svelte.js';
 	import { showCategoryDialog } from './CategoryDialog.svelte';
 	import { settingsDialog } from './SettingsDialog.svelte';
 	import { toast } from './Toasts.svelte';

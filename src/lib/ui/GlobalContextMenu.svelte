@@ -2,7 +2,7 @@
 <script lang="ts">
 	import { DropdownMenu } from 'bits-ui';
 	import { scale } from 'svelte/transition';
-	import { toast } from '$lib/components/Toasts.svelte';
+	import { toast } from '#lib/components/Toasts.svelte';
 	import Kbd from './Kbd.svelte';
 	import { contextMenuState as menu, type MenuItem } from './context-menu.svelte';
 

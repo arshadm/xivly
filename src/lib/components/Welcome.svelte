@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { button } from '$lib/ui/button';
-	import { library } from '$lib/library.svelte';
-	import { mac } from '$lib/os';
-	import { platform } from '$lib/platform';
-	import Wordmark from '$lib/ui/Wordmark.svelte';
+	import { button } from '#lib/ui/button.js';
+	import { library } from '#lib/library.svelte.js';
+	import { mac } from '#lib/os.js';
+	import { platform } from '#lib/platform/index.js';
+	import Wordmark from '#lib/ui/Wordmark.svelte';
 
 	// The one call to action: the app's primary button, a size up.
 	const btn = button('primary', 'h-9 px-4 text-sm');

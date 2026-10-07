@@ -1,0 +1,47 @@
+%PDF-1.7
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /Contents 6 0 R >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+6 0 obj
+<< /Length 525 >>
+stream
+BT /F2 18 Tf 72 720 Td (A Tiny Paper for End-to-End Tests) Tj ET
+BT /F1 11 Tf 72 696 Td (Ada Lovelace, Alan Turing) Tj ET
+BT /F2 12 Tf 72 660 Td (Abstract) Tj ET
+BT /F1 11 Tf 72 642 Td (This one-page paper exists so the Xivly smoke test has something to open,) Tj ET
+BT /F1 11 Tf 72 628 Td (annotate, save and reload. It has a title, authors and a few lines of text.) Tj ET
+BT /F2 12 Tf 72 596 Td (1 Introduction) Tj ET
+BT /F1 11 Tf 72 578 Td (Reading papers should be calm. Annotations are saved inside the PDF file.) Tj ET
+endstream
+endobj
+7 0 obj
+<< /Title (A Tiny Paper for End-to-End Tests) /Author (Ada Lovelace, Alan Turing) >>
+endobj
+xref
+0 8
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000121 00000 n 
+0000000257 00000 n 
+0000000327 00000 n 
+0000000402 00000 n 
+0000000977 00000 n 
+trailer
+<< /Size 8 /Root 1 0 R /Info 7 0 R >>
+startxref
+1077
+%%EOF

@@ -5,29 +5,29 @@
 </script>
 
 <script lang="ts">
-	import { button, iconButton, mutedIcon } from '$lib/ui/button';
+	import { button, iconButton, mutedIcon } from '#lib/ui/button.js';
 	import { Dialog } from 'bits-ui';
 	import type { Snippet } from 'svelte';
-	import UiDialog from '$lib/ui/Dialog.svelte';
-	import { library } from '$lib/library.svelte';
-	import { platform } from '$lib/platform';
-	import { coverStyles, settings, type SettingKey, type Settings } from '$lib/settings.svelte';
-	import { keys, shortcuts } from '$lib/shortcuts';
-	import { mac, trashName } from '$lib/os';
-	import { sortOptions } from '$lib/sort-menu';
-	import { downloadStarter, hasStarter, removeStarter, starter, STARTER_TAG } from '$lib/onboarding/starter.svelte';
-	import { prompts } from '$lib/ui/prompt.svelte';
+	import UiDialog from '#lib/ui/Dialog.svelte';
+	import { library } from '#lib/library.svelte.js';
+	import { platform } from '#lib/platform/index.js';
+	import { coverStyles, settings, type SettingKey, type Settings } from '#lib/settings.svelte.js';
+	import { keys, shortcuts } from '#lib/shortcuts.js';
+	import { mac, trashName } from '#lib/os.js';
+	import { sortOptions } from '#lib/sort-menu.js';
+	import { downloadStarter, hasStarter, removeStarter, starter, STARTER_TAG } from '#lib/onboarding/starter.svelte.js';
+	import { prompts } from '#lib/ui/prompt.svelte.js';
 	import { toast } from './Toasts.svelte';
 
 	async function removeExamples() {
 		const n = library.papers.filter((p) => p.tags?.includes(STARTER_TAG)).length;
 		if (await prompts.confirm(`Move the ${n} example papers to the ${trashName}?`, { confirmLabel: `Move to ${trashName}`, danger: true })) await removeStarter().catch((e) => toast(String(e), 'error'));
 	}
-	import Kbd from '$lib/ui/Kbd.svelte';
-	import Select from '$lib/ui/Select.svelte';
-	import Slider from '$lib/ui/Slider.svelte';
-	import Switch from '$lib/ui/Switch.svelte';
-	import ToggleGroup from '$lib/ui/ToggleGroup.svelte';
+	import Kbd from '#lib/ui/Kbd.svelte';
+	import Select from '#lib/ui/Select.svelte';
+	import Slider from '#lib/ui/Slider.svelte';
+	import Switch from '#lib/ui/Switch.svelte';
+	import ToggleGroup from '#lib/ui/ToggleGroup.svelte';
 
 	const s = $derived(settings.values);
 	const set = <K extends SettingKey>(k: K) => (v: Settings[K]) => settings.set(k, v);

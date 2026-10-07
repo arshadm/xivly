@@ -1,6 +1,6 @@
 // An in-memory library folder (LibraryFs), so the starter builder can use the
 // app's own Repo and produce exactly what the app would write on disk.
-import type { LibraryFs } from '$lib/platform';
+import type { LibraryFs } from '#lib/platform/index.js';
 
 export class MemoryFs implements LibraryFs {
 	files = new Map<string, Uint8Array>();

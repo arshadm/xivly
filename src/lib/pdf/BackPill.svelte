@@ -5,7 +5,7 @@
 <script lang="ts">
 	import { fly } from 'svelte/transition';
 	import { comboLabel, ViewerContext } from 'svelte-pdf-mini';
-	import Kbd from '$lib/ui/Kbd.svelte';
+	import Kbd from '#lib/ui/Kbd.svelte';
 
 	const viewer = ViewerContext.get();
 	const to = $derived(viewer.history.back.at(-1) ?? null);

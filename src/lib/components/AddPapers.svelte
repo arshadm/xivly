@@ -10,14 +10,14 @@
 <script lang="ts">
 	import { Popover } from 'bits-ui';
 	import { scale } from 'svelte/transition';
-	import { addFromArxiv, pickFiles } from '$lib/add-paper';
-	import { parseArxiv } from '$lib/arxiv';
-	import { searchHfPapers, type HfSearchResult } from '$lib/huggingface';
-	import { library } from '$lib/library.svelte';
-	import { keys } from '$lib/shortcuts';
-	import Kbd from '$lib/ui/Kbd.svelte';
-	import Tip from '$lib/ui/Tip.svelte';
-	import { button, iconButton } from '$lib/ui/button';
+	import { addFromArxiv, pickFiles } from '#lib/add-paper.js';
+	import { parseArxiv } from '#lib/arxiv.js';
+	import { searchHfPapers, type HfSearchResult } from '#lib/huggingface.js';
+	import { library } from '#lib/library.svelte.js';
+	import { keys } from '#lib/shortcuts.js';
+	import Kbd from '#lib/ui/Kbd.svelte';
+	import Tip from '#lib/ui/Tip.svelte';
+	import { button, iconButton } from '#lib/ui/button.js';
 
 	let { class: className = '' }: { class?: string } = $props();
 	let link = $state('');

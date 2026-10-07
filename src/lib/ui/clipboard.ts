@@ -3,7 +3,7 @@
 // behind a paste prompt, and clipboard managers like Paste miss some of its
 // writes). The PDF viewer's copies (⌘C, menus) are routed here as well.
 import { setClipboard } from 'svelte-pdf-mini';
-import { platform } from '$lib/platform';
+import { platform } from '#lib/platform/index.js';
 
 const native = () => import('@tauri-apps/plugin-clipboard-manager');
 

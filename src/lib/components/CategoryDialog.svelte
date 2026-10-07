@@ -12,12 +12,12 @@
 	import { Dialog } from 'bits-ui';
 	import { paperColors } from 'svelte-pdf-mini';
 	import { untrack } from 'svelte';
-	import { categoryColor, library } from '$lib/library.svelte';
-	import type { CategoryColor } from '$lib/types';
-	import { button, iconButton, mutedIcon } from '$lib/ui/button';
-	import { cn } from '$lib/ui/cn';
-	import UiDialog from '$lib/ui/Dialog.svelte';
-	import Tip from '$lib/ui/Tip.svelte';
+	import { categoryColor, library } from '#lib/library.svelte.js';
+	import type { CategoryColor } from '#lib/types.js';
+	import { button, iconButton, mutedIcon } from '#lib/ui/button.js';
+	import { cn } from '#lib/ui/cn.js';
+	import UiDialog from '#lib/ui/Dialog.svelte';
+	import Tip from '#lib/ui/Tip.svelte';
 	import { toast } from './Toasts.svelte';
 
 	const editing = $derived(categoryDialog.id ? library.category(categoryDialog.id) : undefined);
