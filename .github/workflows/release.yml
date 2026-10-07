@@ -148,7 +148,9 @@ jobs:
 
           **Windows** (10 and 11, x64): \`Xivly_${VERSION}_x64-setup.exe\` or the \`.msi\`. ${WINDOWS_SIGNING}
 
-          **Chrome extension** (Chrome, Edge, Brave, Arc): \`Xivly_${VERSION}_chrome.zip\`. Unzip it, then "Load unpacked" at \`chrome://extensions\` (Developer mode).
+          **Chrome extension** (Chrome, Edge, Brave, Arc): from the [Chrome Web Store](https://chromewebstore.google.com/detail/xivly/ckcfikoohhefehgbgngopbbiidnhalpi) (updates arrive after the store's review), or \`Xivly_${VERSION}_chrome.zip\` loaded unpacked at \`chrome://extensions\` (Developer mode).
+
+          **Linux, in one line**: \`curl -fsSL https://raw.githubusercontent.com/julien-blanchon/xivly/main/install.sh | sh\`
 
           NOTES
             set -- "$TAG" --draft --verify-tag --title "Xivly $TAG" \

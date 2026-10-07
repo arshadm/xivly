@@ -6,16 +6,15 @@
 Read, annotate and organize research papers. A desktop app (Tauri: macOS, Windows, Linux) **and** a static web app (GitHub Pages) from the same codebase, built on [svelte-pdf-mini](https://github.com/julien-blanchon/svelte-pdf-mini).
 
 - **macOS** (26.2 or later): `brew install --cask julien-blanchon/tap/xivly` (update with `brew upgrade --cask xivly`), or the `.dmg` from [Releases](https://github.com/julien-blanchon/xivly/releases). Signed and notarized.
-- **Windows**: `winget install JulienBlanchon.Xivly` (update with `winget upgrade JulienBlanchon.Xivly`), or the `.exe` (or `.msi`) installer from [Releases](https://github.com/julien-blanchon/xivly/releases). Not code-signed yet (SmartScreen asks once): signing is pending approval by the SignPath Foundation. Once it lands: free code signing provided by [SignPath.io](https://about.signpath.io), certificate by [SignPath Foundation](https://signpath.org) ([code signing policy](CODE_SIGNING.md)).
+- **Windows**: the `.exe` (or `.msi`) installer from [Releases](https://github.com/julien-blanchon/xivly/releases). Not code-signed yet (SmartScreen asks once): signing is pending approval by the SignPath Foundation. Once it lands: free code signing provided by [SignPath.io](https://about.signpath.io), certificate by [SignPath Foundation](https://signpath.org) ([code signing policy](CODE_SIGNING.md)).
 - **Linux** (x86_64, glibc 2.39+: Ubuntu 24.04, Debian 13, Fedora 40 or newer): the `.AppImage`, `.deb` or `.rpm` from [Releases](https://github.com/julien-blanchon/xivly/releases). The `.deb` and `.rpm` use your system's WebKitGTK, which must be recent enough to run the PDF engine (Xivly says so on start if it isn't); the AppImage bundles its own. Or, in one line (picks the `.deb`, `.rpm` or AppImage for your system and checks its sha256; run it again to update):
   ```sh
   curl -fsSL https://raw.githubusercontent.com/julien-blanchon/xivly/main/install.sh | sh
   ```
-  On Arch Linux: `yay -S xivly-bin` (AUR).
 - **Web**: [julien-blanchon.github.io/xivly](https://julien-blanchon.github.io/xivly), in a recent Chrome, Edge, Arc or Safari 26.2.
-- **Chrome extension** (Chrome, Edge, Brave, Arc; version 145+): the web app, installed, plus *Open in Xivly* on arXiv pages and PDF links. The `_chrome.zip` from [Releases](https://github.com/julien-blanchon/xivly/releases): unzip it, turn on *Developer mode* at `chrome://extensions` and *Load unpacked*. See [Chrome extension](#chrome-extension).
+- **Chrome extension** (Chrome, Edge, Brave, Arc; version 145+): the web app, installed, plus *Open in Xivly* on arXiv pages and PDF links. Install it from the [Chrome Web Store](https://chromewebstore.google.com/detail/xivly/ckcfikoohhefehgbgngopbbiidnhalpi) (or load the `_chrome.zip` from [Releases](https://github.com/julien-blanchon/xivly/releases) unpacked). See [Chrome extension](#chrome-extension).
 
-There is no auto-update: Homebrew, winget and AUR helpers update the app; elsewhere, re-run the install line or download the new release.
+There is no auto-update: Homebrew updates the Mac app; on Linux, re-run the install line; elsewhere, download the new release.
 
 ## Your library is a folder
 
