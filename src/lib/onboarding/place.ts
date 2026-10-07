@@ -23,7 +23,7 @@ import {
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 
 /** The app's default free-text font (what the Text tool creates). */
-const TEXT_FONT = { family: 'Helvetica', size: 12 } as const;
+const TEXT_FONT = { family: 'Handwritten', size: 12 } as const;
 
 type Color = 'yellow' | 'blue' | 'green' | 'pink' | 'purple' | 'orange' | 'red';
 export type Target = { quote: string } | { figure: string } | { table: string } | { equation: string };

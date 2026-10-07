@@ -18,6 +18,11 @@ describe('settings storage', () => {
 		expect(pick({ noteEmojis: ok.slice(0, 7) })).toEqual({});
 		expect(pick({ noteEmojis: [...ok.slice(0, 7), 'ab'] })).toEqual({});
 	});
+	it('keeps a known text box font only', () => {
+		expect(pick({ freetextFont: 'Courier' })).toEqual({ freetextFont: 'Courier' });
+		expect(pick({ freetextFont: 'Comic' } as never)).toEqual({});
+		expect(overrideOf('freetextFont', 'Handwritten')).toBeUndefined();
+	});
 	it('merges changed keys into what another window stored', () => {
 		const stored = { coverStyle: 'stack', recentWindow: 'day' } as const;
 		expect(applyChanges(stored, { recentWindow: undefined, sortDesc: false })).toEqual({ coverStyle: 'stack', sortDesc: false });

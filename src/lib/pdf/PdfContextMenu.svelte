@@ -63,7 +63,8 @@
 	{:else}
 		<ContextMenu.Item class="{item} {action.danger ? 'text-red-600 data-[highlighted]:bg-red-50! dark:text-red-400 dark:data-[highlighted]:bg-red-950/50!' : ''}" disabled={action.disabled} onSelect={() => run(action)}>
 			{#if action.color}<span class="swatch size-3.5 rounded-full" style:--swatch={action.color}></span>{/if}
-			<span class="flex-1">{action.label}</span>
+			<!-- Font entries show their label in their own font. -->
+			<span class="flex-1" style:font-family={action.font}>{action.label}</span>
 			{#if action.keys}<Kbd>{action.keys}</Kbd>{/if}
 			<!-- Check marks share the last column, after any shortcut, so they line up. -->
 			{#if checkable}<span class="size-3.5 shrink-0 {action.checked ? 'icon-[lucide--check]' : ''}"></span>{/if}

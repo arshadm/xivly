@@ -1,6 +1,6 @@
 // App settings: one typed object, persisted per platform (Tauri store on
 // desktop, localStorage on web) and live-synced across windows / tabs.
-import { defaultNoteEmojis, isSingleEmoji, type InkSmoothing, type MinimapVariant, type ScrollMode, type ZoomMode } from 'svelte-pdf-mini';
+import { defaultNoteEmojis, FREETEXT_FONT_FAMILIES, isSingleEmoji, type FreeTextFontFamily, type InkSmoothing, type MinimapVariant, type ScrollMode, type ZoomMode } from 'svelte-pdf-mini';
 import { platform } from './platform';
 
 /** Days covered by each "Recent" window. */
@@ -68,6 +68,8 @@ const defaults = {
 	foreignAnnotations: 'readonly' as 'editable' | 'readonly' | 'hidden',
 	/** The 8 emoji a note can show, picked with keys 1–8 while the note tool is active. */
 	noteEmojis: defaultNoteEmojis as readonly string[],
+	/** Font of new text boxes (existing ones keep theirs). */
+	freetextFont: 'Handwritten' as FreeTextFontFamily,
 
 	// Saving
 	/** Seconds between autosaves of unsaved annotations; 0 = only on ⌘S / close. */
@@ -247,6 +249,7 @@ export function overrideOf<K extends SettingKey>(key: K, value: Settings[K]): Se
 const validators: Partial<Record<string, (v: unknown) => boolean>> = {
 	coverStyle: (v) => coverStyles.some((c) => c.value === v),
 	recentWindow: (v) => typeof v === 'string' && v in recentWindows,
+	freetextFont: (v) => FREETEXT_FONT_FAMILIES.includes(v as FreeTextFontFamily),
 	noteEmojis: (v) => Array.isArray(v) && v.length === defaultNoteEmojis.length && v.every((e) => typeof e === 'string' && isSingleEmoji(e))
 };
 

@@ -22,6 +22,50 @@
 	--z-toast: 110;
 }
 
+/* Text box fonts, bundled so they work offline (desktop, web, extension). OFL 1.1, see
+   static/fonts/<family>/OFL.txt. Subset to Latin, Latin Extended, Greek, punctuation,
+   arrows and math operators, weights 400–700 kept variable:
+   - Shantell Sans 1.011 (github.com/arrowtype/shantell-sans), Informal, Bounce and
+     Spacing axes pinned at 0 (the calm, regular letterforms);
+   - Atkinson Hyperlegible Next 2.001 (github.com/googlefonts/atkinson-hyperlegible-next). */
+@font-face {
+  font-family: "Shantell Sans";
+  src: url("/fonts/shantell-sans/ShantellSans.woff2") format("woff2");
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Shantell Sans";
+  src: url("/fonts/shantell-sans/ShantellSans-Italic.woff2") format("woff2");
+  font-weight: 400 700;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Atkinson Hyperlegible Next";
+  src: url("/fonts/atkinson-hyperlegible-next/AtkinsonHyperlegibleNext.woff2") format("woff2");
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Atkinson Hyperlegible Next";
+  src: url("/fonts/atkinson-hyperlegible-next/AtkinsonHyperlegibleNext-Italic.woff2") format("woff2");
+  font-weight: 400 700;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* The faces text boxes use (svelte-pdf-mini reads these), unlike the paper's own Times or
+   Computer Modern so notes stand apart. In the PDF they map to Helvetica, Times, Courier. */
+:root {
+  --pdf-font-handwritten: "Shantell Sans", "Chalkboard SE", "Segoe Print", sans-serif;
+  --pdf-font-sans: "Atkinson Hyperlegible Next", -apple-system, system-ui, sans-serif;
+  --pdf-font-serif: "Iowan Old Style", Charter, "Sitka Text", Cambria, Georgia, serif;
+  --pdf-font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+}
+
 @theme {
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
   --font-serif: "New York", "Iowan Old Style", Georgia, serif;

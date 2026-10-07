@@ -25,6 +25,7 @@
 	}
 	import Kbd from '#lib/ui/Kbd.svelte';
 	import NoteEmojiSettings from './NoteEmojiSettings.svelte';
+	import TextBoxFontSettings from './TextBoxFontSettings.svelte';
 	import Select from '#lib/ui/Select.svelte';
 	import Slider from '#lib/ui/Slider.svelte';
 	import Switch from '#lib/ui/Switch.svelte';
@@ -128,6 +129,7 @@
 								{@render row('Pen style', 'How strokes are smoothed: Steady is calm, Smooth keeps sharp corners', inkCtl)}
 								{@render toggle('boxFill', 'Fill boxes', 'Boxes get a translucent fill (off: outline only)')}
 								<NoteEmojiSettings />
+								<TextBoxFontSettings />
 								{#snippet selCtl()}<ToggleGroup label="Select annotations with" value={s.selectOn} onValueChange={set('selectOn')} items={[{ value: 'click', label: 'Click' }, { value: 'dblclick', label: 'Double-click' }]} />{/snippet}
 								{@render row('Select annotations with', '', selCtl)}
 								{#snippet foreignCtl()}<ToggleGroup label="Other apps’ annotations" value={s.foreignAnnotations} onValueChange={set('foreignAnnotations')} items={[{ value: 'readonly', label: 'Read-only' }, { value: 'editable', label: 'Editable' }, { value: 'hidden', label: 'Hidden' }]} />{/snippet}

@@ -555,6 +555,7 @@
 							inkSmoothing={s.inkSmoothing}
 							foreign={s.foreignAnnotations}
 							noteEmojis={s.noteEmojis}
+							freetextFont={s.freetextFont}
 							{onAnnotationsChange}
 						>
 							<!--

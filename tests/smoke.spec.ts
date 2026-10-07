@@ -116,6 +116,37 @@ test('a note keeps its emoji: key 4 with the note tool, save, reload', async ({ 
 	expect(errs).toEqual([]);
 });
 
+test('a text box is handwritten by default, and stays so after save and reload', async ({ page, context }) => {
+	await startLibrary(page);
+	await page.getByRole('button', { name: 'Add papers' }).click();
+	const chooser = page.waitForEvent('filechooser');
+	await page.getByRole('button', { name: /Drop PDF files/ }).click();
+	await (await chooser).setFiles(`${test.info().project.testDir}/fixtures/paper.pdf`);
+	await page.getByRole('button', { name: new RegExp(title) }).click();
+	const reader = await readerTab(context);
+	const errs = errors(reader);
+	const firstPage = reader.locator('[data-pdf-page]').first();
+	await expect(firstPage.locator('[data-pdf-canvas]')).toBeVisible();
+
+	await reader.getByRole('button', { name: 'Text', exact: true }).click();
+	const box = (await firstPage.boundingBox())!;
+	await reader.mouse.click(box.x + box.width * 0.6, box.y + box.height * 0.3);
+	await reader.keyboard.type('Why does this work?');
+	await reader.keyboard.press('ControlOrMeta+Enter');
+	await reader.keyboard.press('ControlOrMeta+s');
+	await expect(reader.getByRole('button', { name: 'Annotations are saved in the PDF' })).toBeVisible();
+
+	await reader.reload();
+	const text = reader.locator('[data-pdf-page]').first().locator('[data-pdf-annotation-freetext]');
+	await expect(text).toHaveText('Why does this work?');
+	await expect(text).toHaveAttribute('data-font', 'Handwritten');
+	expect(await text.evaluate((el) => getComputedStyle(el).fontFamily)).toMatch(/^"Shantell Sans"/);
+	// The bundled file is served (under the base path) and used.
+	const loaded = () => reader.evaluate(() => [...document.fonts].some((f) => f.family.replaceAll('"', '') === 'Shantell Sans' && f.status === 'loaded'));
+	await expect.poll(loaded).toBe(true);
+	expect(errs).toEqual([]);
+});
+
 test('one reader per paper: a second tab takes it over, annotations kept', async ({ page, context }) => {
 	await startLibrary(page);
 	await page.getByRole('button', { name: 'Add papers' }).click();
