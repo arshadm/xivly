@@ -57,7 +57,7 @@
 	import { icons } from '#lib/pdf/icons.js';
 	import { emptyText, kindIcons, kindLabels } from '#lib/pdf/annotation-kinds.js';
 	import AnnotationPreview, { hasPreview } from '#lib/pdf/AnnotationPreview.svelte';
-	import { paperHex } from '#lib/pdf/reading-theme.js';
+	import { paperHex } from 'svelte-pdf-mini';
 	import Kbd from '#lib/ui/Kbd.svelte';
 	import CycleButton, { type CycleOption } from '#lib/ui/CycleButton.svelte';
 	import Separator from '#lib/ui/Separator.svelte';
@@ -204,6 +204,11 @@
 	let saving = $state(false);
 	/** Why the last save failed, until one succeeds (the save button shows it). */
 	let saveError = $state<string | null>(null);
+	// A PDF that needs a password to open can't be saved into: said once, before any annotating.
+	$effect(() => {
+		if (store?.saveSupport?.canSave !== false) return;
+		untrack(() => toast('This PDF is password-protected: annotations can’t be saved into it (export them as Markdown instead).', 'info'));
+	});
 	/** The edits whose save failed: autosave doesn't retry them (⌘S or a new edit does). */
 	let failedRev = -1;
 	let chain: Promise<void> = Promise.resolve();
@@ -223,7 +228,7 @@
 			saving = true;
 			try {
 				const data = await target.viewer.document.getData();
-				const out = await exportPdfInWorker(data, $state.snapshot(target.store.annotations) as Annotation[], { producer: 'Xivly' });
+				const out = await exportPdfInWorker(data, $state.snapshot(target.store.annotations) as Annotation[], { producer: 'Xivly', remove: [...target.store.removedForeign] });
 				await target.repo.savePdf(target.id, out);
 				forgetCover(target.id);
 				savedRev = Math.max(savedRev, r);
@@ -385,7 +390,7 @@
 	async function exportAnnotatedPdf() {
 		if (!store || !viewer) return;
 		try {
-			const out = await exportPdfInWorker(await viewer.document.getData(), $state.snapshot(store.annotations) as Annotation[], { producer: 'Xivly' });
+			const out = await exportPdfInWorker(await viewer.document.getData(), $state.snapshot(store.annotations) as Annotation[], { producer: 'Xivly', remove: [...store.removedForeign] });
 			await saveFile(new Blob([out as Uint8Array<ArrayBuffer>], { type: 'application/pdf' }), `${id}.pdf`);
 		} catch (e) {
 			toast(`Export failed: ${e}`, 'error');

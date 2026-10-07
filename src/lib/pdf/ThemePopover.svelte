@@ -8,7 +8,7 @@
 	import Slider from '#lib/ui/Slider.svelte';
 	import Tip from '#lib/ui/Tip.svelte';
 	import ToggleGroup from '#lib/ui/ToggleGroup.svelte';
-	import { paperSwatches } from './reading-theme';
+	import { paperSwatches } from 'svelte-pdf-mini';
 
 	let { swatch, class: className }: { swatch: string; class?: string } = $props();
 	const s = $derived(settings.values);
