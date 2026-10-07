@@ -1,8 +1,8 @@
 # Release: push a tag `vX.Y.Z` (see `bun run release X.Y.Z` and RELEASING.md).
 #
 #   prepare   versions agree with the tag, svelte-pdf-mini is on npm, type
-#             check, then a DRAFT GitHub release is created (or a draft reused;
-#             a published one only with the manual `force` input).
+#             check and unit tests, then a DRAFT GitHub release is created (or a
+#             draft reused; a published one only with the manual `force` input).
 #   build     matrix:
 #               macOS   universal .dmg (+ .app.tar.gz): app signed + notarized,
 #                       then the DMG itself notarized and stapled, uploaded here
@@ -114,6 +114,8 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
           PRERELEASE: ${{ steps.version.outputs.prerelease }}
           FORCE: ${{ inputs.force || false }}
+          # Same guard as the build job's Windows signing.
+          SIGNPATH: ${{ secrets.SIGNPATH_API_TOKEN != '' && vars.SIGNPATH_ORGANIZATION_ID != '' && vars.SIGNPATH_PROJECT_SLUG != '' && vars.SIGNPATH_SIGNING_POLICY_SLUG != '' }}
         run: |
           # Every release (drafts included, which the by-tag endpoint doesn't return), all pages.
           find_release() {
@@ -122,6 +124,11 @@ jobs:
           }
           FOUND=$(find_release)
           if [ -z "$FOUND" ]; then
+            if [ "$SIGNPATH" = "true" ]; then
+              WINDOWS_SIGNING="Signed: free code signing provided by [SignPath.io](https://about.signpath.io), certificate by [SignPath Foundation](https://signpath.org)."
+            else
+              WINDOWS_SIGNING="Not code-signed yet: SmartScreen asks once (More info → Run anyway)."
+            fi
             cat > "$RUNNER_TEMP/notes.md" <<NOTES
           **macOS** (Apple silicon + Intel, macOS 26.2+): install or update with Homebrew
           \`\`\`
@@ -132,7 +139,7 @@ jobs:
 
           **Linux** (x86_64, glibc 2.39+: Ubuntu 24.04, Debian 13, Fedora 40 or newer): \`Xivly_${VERSION}_amd64.AppImage\`, \`Xivly_${VERSION}_amd64.deb\` or the \`.rpm\`.
 
-          **Windows** (10 and 11, x64): \`Xivly_${VERSION}_x64-setup.exe\` or the \`.msi\`. Not code-signed yet: SmartScreen asks once (More info → Run anyway).
+          **Windows** (10 and 11, x64): \`Xivly_${VERSION}_x64-setup.exe\` or the \`.msi\`. ${WINDOWS_SIGNING}
 
           **Chrome extension** (Chrome, Edge, Brave, Arc): \`Xivly_${VERSION}_chrome.zip\`. Unzip it, then "Load unpacked" at \`chrome://extensions\` (Developer mode).
 

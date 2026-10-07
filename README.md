@@ -69,10 +69,15 @@ bun install
 bun run tauri dev        # desktop
 bun run dev              # web, http://localhost:1420
 bun run check            # svelte-check
+bun run test             # unit tests (Vitest)
+bun run test:e2e         # end-to-end smoke test: the web build in Chromium (Playwright)
+cargo test --manifest-path src-tauri/Cargo.toml   # Rust tests
 bun run build:web        # static build for Pages (BASE_PATH=/xivly)
 bun run build:extension  # Chrome extension: build-extension/ (unpacked) + dist/Xivly_<version>_chrome.zip
 bun run dev:extension    # the same, unpacked, rebuilt on every change (live reload)
 ```
+
+The e2e test (`tests/`) runs in Playwright's Chromium (`bunx playwright install chromium` once), or in another Chromium 145+ given by `XIVLY_E2E_BROWSER`, e.g. `XIVLY_E2E_BROWSER="/Applications/Brave Browser.app/Contents/MacOS/Brave Browser"`. The Rust side embeds the built frontend: `cargo test` and `cargo clippy` need a `build/` (`bun run build`).
 
 To hack on svelte-pdf-mini at the same time: `cd ../svelte-pdf-mini/packages/svelte-pdf-mini && bun link`, then `bun link svelte-pdf-mini` here. Vite caches dependencies in memory: restart the dev server after rebuilding the library.
 
