@@ -4,7 +4,7 @@
 import type { HookEvent, LibraryFs, Platform } from './platform';
 import agentsMd from './templates/AGENTS.md?raw';
 import sampleHook from './templates/paper-added.sample?raw';
-import type { LibraryFile, Paper, PaperPatch } from './types';
+import type { HfLinks, LibraryFile, Paper, PaperLinks, PaperPatch } from './types';
 
 const enc = new TextEncoder();
 const dec = new TextDecoder();
@@ -24,10 +24,71 @@ type Json = Record<string, unknown>;
 
 const str = (v: unknown) => (typeof v === 'string' ? v : undefined);
 const strs = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : undefined);
+const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : undefined);
+const isObject = (v: unknown): v is Json => !!v && typeof v === 'object' && !Array.isArray(v);
+/** A list of URLs; a single one written as a string counts too. */
+const urls = (v: unknown) => (typeof v === 'string' ? [v] : strs(v));
 
-/** paper.json is edited by people and agents: keep the fields the app relies on well-typed. */
+/** `year`: a number, or a year written as text ("2017"). */
+function year(v: unknown) {
+	const n = typeof v === 'string' && /^\s*\d{4}\s*$/.test(v) ? Number(v) : num(v);
+	return n !== undefined && Number.isInteger(n) ? n : undefined;
+}
+
+function links(v: unknown): PaperLinks | undefined {
+	if (!isObject(v)) return undefined;
+	return { ...v, project: str(v.project), github: urls(v.github), huggingface: urls(v.huggingface), other: urls(v.other) };
+}
+
+/** Hugging Face counts (`{ total, top }`), shown in the paper details. */
+function repoCounts(v: unknown) {
+	return isObject(v) && num(v.total) !== undefined ? { total: v.total as number, top: strs(v.top) ?? [] } : undefined;
+}
+
+function hf(v: unknown): HfLinks | undefined {
+	if (!isObject(v)) return undefined;
+	return {
+		...v,
+		page: str(v.page),
+		title: str(v.title),
+		authors: strs(v.authors),
+		upvotes: num(v.upvotes),
+		project: str(v.project),
+		github: str(v.github),
+		githubStars: num(v.githubStars),
+		models: repoCounts(v.models),
+		datasets: repoCounts(v.datasets),
+		spaces: repoCounts(v.spaces),
+		checked: str(v.checked)
+	};
+}
+
+/**
+ * paper.json is edited by people and agents: keep the fields the app relies on
+ * well-typed (a wrong type reads as absent; unknown fields are kept as they are).
+ */
 export function normalizePaper(id: string, meta: Json): Paper {
-	return { ...meta, id, title: str(meta.title)?.trim() || id, added: str(meta.added) ?? '', authors: strs(meta.authors), tags: strs(meta.tags), category: str(meta.category) } as Paper;
+	return {
+		...meta,
+		id,
+		title: str(meta.title)?.trim() || id,
+		added: str(meta.added) ?? '',
+		authors: strs(meta.authors),
+		tags: strs(meta.tags),
+		category: str(meta.category),
+		year: year(meta.year),
+		// A date written as a bare year (`"date": 2017`) still sorts.
+		date: str(meta.date) ?? (year(meta.date) !== undefined ? String(meta.date) : undefined),
+		opened: str(meta.opened),
+		// Read: a timestamp; any other truthy value still counts as read.
+		read: str(meta.read) ?? (meta.read ? String(meta.read) : undefined),
+		position: num(meta.position),
+		abstract: str(meta.abstract),
+		doi: str(meta.doi),
+		arxiv: str(meta.arxiv),
+		links: links(meta.links),
+		hf: hf(meta.hf)
+	} as Paper;
 }
 
 const isColor = (v: unknown) => typeof v === 'string' && v.length > 0;
@@ -234,16 +295,19 @@ export class Repo {
 		});
 	}
 
-	/** Merge into paper.json (a function gets the current content, under the lock). Refused once the paper is gone. */
+	/**
+	 * Merge into paper.json (a function gets the current content, normalized, under
+	 * the lock). Refused once the paper is gone.
+	 */
 	async update(id: string, patch: Patch<Paper>): Promise<Paper> {
-		const next = await this.#patchJson<Paper>(`papers/${id}/paper.json`, withoutId(patch), () => this.#present(id));
+		const next = await this.#patchJson<Paper>(`papers/${id}/paper.json`, prepare(id, patch), () => this.#present(id));
 		this.#hook('paper-updated', id);
-		return { ...next, id } as Paper;
+		return normalizePaper(id, next);
 	}
 
 	/** Like `update`, without firing a hook (reading position, last opened). */
 	async touch(id: string, patch: Patch<Paper>) {
-		await this.#patchJson<Paper>(`papers/${id}/paper.json`, withoutId(patch), () => this.#present(id));
+		await this.#patchJson<Paper>(`papers/${id}/paper.json`, prepare(id, patch), () => this.#present(id));
 	}
 
 	readPdf(id: string) {
@@ -269,7 +333,10 @@ export class Repo {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** Never write a paper's id into its own paper.json (it's the folder name). */
-function withoutId(patch: Patch<Paper>): Patch<Paper> {
-	return typeof patch === 'function' ? (cur) => ({ ...patch(cur), id: undefined }) : { ...patch, id: undefined };
+/**
+ * A function patch sees the paper normalized (as the app shows it), and the
+ * paper's id is never written into its own paper.json (it's the folder name).
+ */
+function prepare(id: string, patch: Patch<Paper>): Patch<Paper> {
+	return typeof patch === 'function' ? (cur) => ({ ...patch(normalizePaper(id, cur)), id: undefined }) : { ...patch, id: undefined };
 }
