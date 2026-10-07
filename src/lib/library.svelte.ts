@@ -3,18 +3,20 @@ import { broadcast } from './broadcast';
 import { toast } from './components/Toasts.svelte';
 import { forgetCover } from './covers';
 import { parseArxiv } from './arxiv';
-import { extractMetadata, tidyTitle } from './extract';
 import { filterPapers, type View } from './filter';
 import { fetchHfPaper } from './huggingface';
 import { platform } from './platform';
 import { merge, Repo, slugify, type Patch } from './repo';
 import { recentWindows, settings } from './settings.svelte';
-import { betterAuthors, betterTitle, categoryColor, hfUnchanged, mapLimited } from './library-utils';
+import { betterAuthors, betterTitle, categoryColor, hfUnchanged, mapLimited, tidyTitle } from './library-utils';
 import type { Category, CategoryColor, LibraryFile, Paper, PaperPatch } from './types';
 
 export { betterAuthors, betterTitle, categoryColor } from './library-utils';
 
 export type { View };
+
+/** Metadata extraction (pdf.js paper analysis), loaded on first use rather than with the library. */
+const extractMetadata = async (...args: Parameters<typeof import('./extract').extractMetadata>) => (await import('./extract')).extractMetadata(...args);
 
 /** Always listed; hidden by default, so tagging a paper `archived` archives it. */
 export const ARCHIVED = 'archived';
