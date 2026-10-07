@@ -47,6 +47,7 @@
     "@types/chrome": "^0.3.4",
     "@types/wicg-file-system-access": "^2023.10.7",
     "fflate": "^0.8.3",
+    "knip": "^6.40.0",
     "pdfjs-dist": "^6.4.299",
     "svelte": "^5.57.2",
     "svelte-check": "^4.7.5",
