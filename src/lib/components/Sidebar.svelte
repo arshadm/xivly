@@ -67,6 +67,14 @@
 		];
 	}
 
+	/** What a tag chip does now, and what a click does next (none → only these → hide these → none). */
+	function tagTip(tag: string, mode: 'in' | 'out' | undefined) {
+		const papers = tag === ARCHIVED ? 'archived papers' : `papers tagged #${tag}`;
+		if (mode === 'in') return `Showing only ${papers}. Click to hide them`;
+		if (mode === 'out') return `Hiding ${papers}. Click to show them too`;
+		return `Click to show only ${papers}`;
+	}
+
 	const item = 'flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-[13px] hover:bg-stone-200/60 data-[active]:bg-stone-200 dark:hover:bg-stone-800/60 dark:data-[active]:bg-stone-800';
 	const iconBtn = iconButton(6, mutedIcon);
 </script>
@@ -103,24 +111,30 @@
 		{/each}
 
 		<div class="mt-5 mb-1 px-2 text-[11px] font-medium tracking-wide text-stone-400 uppercase">Tags</div>
-		<!-- Click: only papers with the tag; again: hide them (red); again: no filter. -->
+		<!-- Click: only papers with the tag (filled, ✓); again: hide them (dashed, eye off); again: no filter. -->
 		<div class="flex flex-wrap gap-1 px-2">
 			{#each library.allTags as tag (tag)}
 				{@const mode = library.tagFilter[tag]}
-				<button
-					class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-colors outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60
-						data-[mode=in]:border-stone-700 data-[mode=in]:bg-stone-700 data-[mode=in]:text-white data-[mode=in]:hover:bg-stone-600
-						data-[mode=out]:border-red-300 data-[mode=out]:bg-red-50 data-[mode=out]:text-red-700 data-[mode=out]:line-through data-[mode=out]:hover:bg-red-100
-						dark:data-[mode=in]:border-stone-200 dark:data-[mode=in]:bg-stone-200 dark:data-[mode=in]:text-stone-900 dark:data-[mode=in]:hover:bg-stone-300
-						dark:data-[mode=out]:border-red-900 dark:data-[mode=out]:bg-red-950/60 dark:data-[mode=out]:text-red-300 dark:data-[mode=out]:hover:bg-red-950
-						{mode ? '' : 'border-stone-300 text-stone-600 hover:border-stone-400 hover:bg-stone-200/70 hover:text-stone-800 dark:border-stone-700 dark:text-stone-400 dark:hover:border-stone-600 dark:hover:bg-stone-800 dark:hover:text-stone-200'}"
-					data-mode={mode}
-					aria-label={mode === 'in' ? `Only #${tag}` : mode === 'out' ? `Hiding #${tag}` : `#${tag}`}
-					onclick={() => library.cycleTag(tag)}
-					{@attach contextMenu(() => tagMenu(tag))}
-				>
-					{#if tag === ARCHIVED}<span class="icon-[lucide--archive] size-3"></span>{tag}{:else}#{tag}{/if}
-				</button>
+				<Tip label={tagTip(tag, mode)}>
+					{#snippet child({ props })}
+						<button
+							{...props}
+							class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-colors outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60
+								data-[mode=in]:border-stone-700 data-[mode=in]:bg-stone-700 data-[mode=in]:text-white data-[mode=in]:hover:bg-stone-600
+								data-[mode=out]:border-dashed data-[mode=out]:border-stone-400 data-[mode=out]:text-stone-500 data-[mode=out]:hover:bg-stone-200/70
+								dark:data-[mode=in]:border-stone-200 dark:data-[mode=in]:bg-stone-200 dark:data-[mode=in]:text-stone-900 dark:data-[mode=in]:hover:bg-stone-300
+								dark:data-[mode=out]:border-stone-600 dark:data-[mode=out]:text-stone-400 dark:data-[mode=out]:hover:bg-stone-800
+								{mode ? '' : 'border-stone-300 text-stone-600 hover:border-stone-400 hover:bg-stone-200/70 hover:text-stone-800 dark:border-stone-700 dark:text-stone-400 dark:hover:border-stone-600 dark:hover:bg-stone-800 dark:hover:text-stone-200'}"
+							data-mode={mode}
+							aria-label={tagTip(tag, mode)}
+							onclick={() => library.cycleTag(tag)}
+							{@attach contextMenu(() => tagMenu(tag))}
+						>
+							{#if tag === ARCHIVED}<span class="icon-[lucide--archive] size-3"></span>{tag}{:else}#{tag}{/if}
+							{#if mode === 'in'}<span class="icon-[lucide--check] size-3"></span>{:else if mode === 'out'}<span class="icon-[lucide--eye-off] size-3"></span>{/if}
+						</button>
+					{/snippet}
+				</Tip>
 			{/each}
 		</div>
 	</nav>

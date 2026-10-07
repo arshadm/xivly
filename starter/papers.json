@@ -252,8 +252,7 @@
 		"category": "Classics",
 		"tags": [
 			"diffusion",
-			"to-reread",
-			"archived"
+			"to-reread"
 		],
 		"read": true,
 		"annotations": [
@@ -464,8 +463,7 @@
 		"category": "Classics",
 		"tags": [
 			"fine-tuning",
-			"efficiency",
-			"archived"
+			"efficiency"
 		],
 		"read": true,
 		"annotations": [
@@ -683,8 +681,7 @@
 			"diffusion",
 			"efficiency",
 			"attention",
-			"text-encoder",
-			"archived"
+			"text-encoder"
 		],
 		"read": true,
 		"annotations": [
