@@ -33,7 +33,7 @@
 			<span class="min-w-0">{t.text}</span>
 			{#if t.action}
 				{@const action = t.action}
-				<button class="shrink-0 rounded-md px-1.5 py-0.5 font-medium underline-offset-2 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-blue-500/60" onclick={() => (dismiss(t.id), action.run())}>{action.label}</button>
+				<button class="shrink-0 rounded-md px-1.5 py-0.5 font-medium underline-offset-2 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-blue-500 dark:focus-visible:ring-blue-400" onclick={() => (dismiss(t.id), action.run())}>{action.label}</button>
 			{/if}
 		</div>
 	{/each}

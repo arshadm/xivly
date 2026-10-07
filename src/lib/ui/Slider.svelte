@@ -8,5 +8,5 @@
 
 <Slider.Root type="single" {value} {onValueChange} {min} {max} {step} {disabled} aria-label={label} class={cn('relative flex h-5 w-40 touch-none items-center select-none data-[disabled]:opacity-40', className)}>
 	<span class="relative h-1 w-full grow overflow-hidden rounded-full bg-stone-200 dark:bg-stone-700"><Slider.Range class="absolute h-full bg-stone-500 dark:bg-stone-400" /></span>
-	<Slider.Thumb index={0} class="block size-4 rounded-full border border-stone-300 bg-white shadow transition-transform outline-none hover:scale-110 focus-visible:ring-2 focus-visible:ring-blue-500/60 dark:border-stone-500" />
+	<Slider.Thumb index={0} class="block size-4 rounded-full border border-edge bg-white shadow transition-transform outline-none hover:scale-110 focus-visible:ring-2 focus-visible:ring-blue-500 dark:focus-visible:ring-blue-400" />
 </Slider.Root>

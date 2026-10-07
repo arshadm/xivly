@@ -21,7 +21,7 @@
 	{@const checkable = items.some((x) => x.checked !== undefined)}
 	{#each items as item, i (i)}
 		{#if item.separatorBefore}<DropdownMenu.Separator class="my-1 h-px bg-stone-200 dark:bg-stone-700" />{/if}
-		{#if item.heading}<div class="px-2 pt-1.5 pb-1 text-[11px] font-medium tracking-wide text-stone-400 uppercase">{item.heading}</div>{/if}
+		{#if item.heading}<div class="px-2 pt-1.5 pb-1 text-[11px] font-medium tracking-wide text-muted uppercase">{item.heading}</div>{/if}
 		{#if item.items}
 			<DropdownMenu.Sub>
 				<DropdownMenu.SubTrigger class={row} disabled={item.disabled}>
@@ -45,7 +45,7 @@
 {/snippet}
 
 {#snippet lead(item: MenuItem)}
-	{#if item.color}<span class="size-3 shrink-0 rounded-full ring-1 ring-black/10" style:background={item.color}></span>
+	{#if item.color}<span class="swatch size-3 shrink-0 rounded-full" style:--swatch={item.color}></span>
 	{:else}<span class="{item.icon ?? ''} size-4 shrink-0 {item.danger ? '' : 'text-stone-500'}"></span>{/if}
 {/snippet}
 

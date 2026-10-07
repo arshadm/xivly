@@ -8,7 +8,7 @@
 </script>
 
 <Select.Root type="single" {value} onValueChange={(v) => v && onValueChange(v as T)} {items}>
-	<Select.Trigger aria-label={label} class="inline-flex h-8 min-w-36 items-center justify-between gap-2 rounded-md border border-stone-300 bg-white px-2.5 text-[13px] outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 dark:border-stone-700 dark:bg-stone-900">
+	<Select.Trigger aria-label={label} class="inline-flex h-8 min-w-36 items-center justify-between gap-2 rounded-md border border-stone-300 bg-white px-2.5 text-[13px] outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:focus-visible:ring-blue-400 dark:border-stone-700 dark:bg-stone-900">
 		{current}<span class="icon-[lucide--chevrons-up-down] size-3.5 text-stone-400"></span>
 	</Select.Trigger>
 	<Select.Portal>

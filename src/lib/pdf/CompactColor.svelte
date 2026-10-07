@@ -15,7 +15,7 @@
 	<Tip label="Color">
 		{#snippet child({ props })}
 			<Popover.Trigger {...props} aria-label="Annotation color" class={iconButton(7, className)}>
-				<span class="size-4 rounded-full shadow-[inset_0_0_0_1px_rgb(0_0_0/0.14)]" style:background={current?.light}></span>
+				<span class="swatch size-4 rounded-full" style:--swatch={current?.light}></span>
 			</Popover.Trigger>
 		{/snippet}
 	</Tip>
@@ -28,7 +28,7 @@
 							{#each store.palette.slice(0, 9) as c, i (c.key)}
 								<Tip label={c.label} shortcut={String(i + 1)}>
 									{#snippet child({ props: tip })}
-										<Annotations.Color {...tip} color={c.key} class="size-5 rounded-full bg-(--swatch) shadow-[inset_0_0_0_1px_rgb(0_0_0/0.14)] ring-offset-[1.5px] ring-offset-white data-[active]:ring-[1.5px] data-[active]:ring-stone-800 dark:ring-offset-stone-900 dark:data-[active]:ring-stone-100" />
+										<Annotations.Color {...tip} color={c.key} class="swatch size-5 rounded-full ring-offset-[1.5px] ring-offset-white data-[active]:ring-[1.5px] data-[active]:ring-stone-800 dark:ring-offset-stone-900 dark:data-[active]:ring-stone-100" />
 									{/snippet}
 								</Tip>
 							{/each}

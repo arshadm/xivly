@@ -36,6 +36,7 @@
 	import { broadcast, onBroadcast } from '#lib/broadcast.js';
 	import { fileManager, mac } from '#lib/os.js';
 	import { button } from '#lib/ui/button.js';
+	import { paperInk } from '#lib/library-utils.js';
 	import { library } from '#lib/library.svelte.js';
 	import { platform } from '#lib/platform/index.js';
 	import { ReaderLock } from '#lib/reader-lock.svelte.js';
@@ -79,7 +80,8 @@
 		paperColor === 'white' && !theme.dark ? pageThemes.none() : pageThemes.paper({ color: paperHex(paperColor, theme.dark), dark: theme.dark, strength: s.paperStrength })
 	);
 	const swatch = $derived(pageTheme.background ?? '#ffffff');
-	const accent = $derived((paperColors.find((c) => c.name === paperColor) ?? category).accent);
+	// The accent as text (section rail, links, focus outlines): an ink shade that reads on the page.
+	const accent = $derived(paperInk(paperColors.find((c) => c.name === paperColor) ?? category, theme.dark));
 	// Opening zoom only: later zooming is the reader's business.
 	const initialZoom = untrack(() => settings.values.zoomMode);
 
@@ -496,7 +498,7 @@
 	const chrome = 'bg-stone-50 dark:bg-stone-900';
 	const kindIcon: Record<string, string> = { citation: 'icon-[lucide--quote]', figure: 'icon-[lucide--image]', table: 'icon-[lucide--table]', section: 'icon-[lucide--heading]', equation: 'icon-[lucide--sigma]', footnote: 'icon-[lucide--asterisk]', url: icons.external };
 	const chipBtn = 'inline-flex items-center gap-1 rounded-md border border-stone-200 px-1.5 py-0.5 text-[11px] text-stone-600 hover:bg-stone-100 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800';
-	const toggleOpt = 'rounded px-1.5 py-0.5 font-mono text-[11px] text-stone-500 data-[active]:bg-stone-800 data-[active]:text-white dark:data-[active]:bg-stone-200 dark:data-[active]:text-stone-900';
+	const toggleOpt = 'rounded px-1.5 py-0.5 font-mono text-[11px] text-muted data-[active]:bg-stone-800 data-[active]:text-white dark:data-[active]:bg-stone-200 dark:data-[active]:text-stone-900';
 </script>
 
 <svelte:window {onkeydown} onkeydowncapture={onSelectKey} />
@@ -512,7 +514,7 @@
 {/snippet}
 
 {#if !paper}
-	<div class="grid h-full place-items-center text-sm text-stone-500" data-tauri-drag-region>
+	<div class="grid h-full place-items-center text-sm text-muted" data-tauri-drag-region>
 		<div class="text-center">
 			<p>This paper is no longer in your library.</p>
 			<button class="mt-2 underline" onclick={closeWindow}>Close</button>
@@ -585,30 +587,30 @@
 												{#snippet content(tab)}
 													<div class="min-h-0 flex-1 overflow-y-auto px-2 {tab === 'info' ? '' : 'pb-3'}">
 														{#if tab === 'contents'}
-															<p class="px-2 pt-1 pb-2 text-[11px] font-medium tracking-wide text-stone-400 uppercase">Contents</p>
+															<p class="px-2 pt-1 pb-2 text-[11px] font-medium tracking-wide text-muted uppercase">Contents</p>
 															<Toc.Tree class="[--pdf-toc-indent:14px]">
-																{#snippet empty({ status })}<p class="p-2 text-stone-500">{status === 'analyzing' ? 'Reading the paper…' : 'No sections found.'}</p>{/snippet}
+																{#snippet empty({ status })}<p class="p-2 text-muted">{status === 'analyzing' ? 'Reading the paper…' : 'No sections found.'}</p>{/snippet}
 															</Toc.Tree>
 														{:else if tab === 'pages'}
 															<Thumbnails.Root width={136} class="space-y-2 pt-1">
 																{#each { length: viewer?.document.numPages ?? 0 } as _, i (i)}
-																	<Thumbnails.Item pageNumber={i + 1} class="mx-auto flex flex-col items-center gap-1 rounded-md p-1.5 text-xs text-stone-500 data-[current]:bg-stone-200 dark:data-[current]:bg-stone-800 [&_[data-pdf-thumbnail-canvas]]:rounded [&_[data-pdf-thumbnail-canvas]]:shadow" />
+																	<Thumbnails.Item pageNumber={i + 1} class="mx-auto flex flex-col items-center gap-1 rounded-md p-1.5 text-xs text-muted data-[current]:bg-stone-200 dark:data-[current]:bg-stone-800 [&_[data-pdf-thumbnail-canvas]]:rounded [&_[data-pdf-thumbnail-canvas]]:shadow" />
 																{/each}
 															</Thumbnails.Root>
 														{:else if tab === 'figures'}
-															<Paper.Figures kinds={['figure', 'table', 'algorithm', 'equation']} thumbnailWidth={290} class="space-y-3 pt-1 [&_[data-part=caption]]:line-clamp-2 [&_[data-part=caption]]:text-xs [&_[data-part=caption]]:text-stone-500 [&_[data-part=label]]:mt-1 [&_[data-part=label]]:block [&_[data-part=label]]:font-medium [&_[data-part=open]]:block [&_[data-part=open]]:w-full [&_[data-part=open]]:rounded-md [&_[data-part=open]]:p-1.5 [&_[data-part=open]]:text-left [&_[data-part=open]:hover]:bg-stone-200/70 dark:[&_[data-part=open]:hover]:bg-stone-800 [&_[data-part=thumbnail]]:min-h-12 [&_[data-part=thumbnail]]:overflow-hidden [&_[data-part=thumbnail]]:rounded [&_[data-part=thumbnail]]:bg-white" />
+															<Paper.Figures kinds={['figure', 'table', 'algorithm', 'equation']} thumbnailWidth={290} class="space-y-3 pt-1 [&_[data-part=caption]]:line-clamp-2 [&_[data-part=caption]]:text-xs [&_[data-part=caption]]:text-muted [&_[data-part=label]]:mt-1 [&_[data-part=label]]:block [&_[data-part=label]]:font-medium [&_[data-part=open]]:block [&_[data-part=open]]:w-full [&_[data-part=open]]:rounded-md [&_[data-part=open]]:p-1.5 [&_[data-part=open]]:text-left [&_[data-part=open]:hover]:bg-stone-200/70 dark:[&_[data-part=open]:hover]:bg-stone-800 [&_[data-part=thumbnail]]:min-h-12 [&_[data-part=thumbnail]]:overflow-hidden [&_[data-part=thumbnail]]:rounded [&_[data-part=thumbnail]]:bg-white" />
 														{:else if tab === 'references'}
 															<Paper.References class="space-y-0.5 pt-1">
 																{#snippet item({ reference, citedCount, go, nextCitation })}
 																	<div class="group rounded-md px-2 py-1.5 hover:bg-stone-200/70 dark:hover:bg-stone-800">
 																		<button class="block w-full text-left" onclick={go}>
-																			<span class="mr-1 font-mono text-[11px] text-stone-500">{reference.label}</span>
+																			<span class="mr-1 font-mono text-[11px] text-muted">{reference.label}</span>
 																			<span class="font-medium">{reference.parsed.title ?? reference.raw.slice(0, 120)}</span>
-																			<span class="block text-xs text-stone-500">{reference.parsed.authors.slice(0, 3).join(', ')}{reference.parsed.year ? ` · ${reference.parsed.year}` : ''}</span>
+																			<span class="block text-xs text-muted">{reference.parsed.authors.slice(0, 3).join(', ')}{reference.parsed.year ? ` · ${reference.parsed.year}` : ''}</span>
 																		</button>
 																		<div class="mt-0.5 flex items-center gap-2 text-xs">
 																			{#if citedCount}<button class="inline-flex items-center gap-1 text-stone-600 hover:underline dark:text-stone-300" onclick={nextCitation}>cited {citedCount}× <span class="{icons.down} size-3"></span></button>{/if}
-																			{#if reference.parsed.arxivId}<button class="text-stone-500 opacity-0 group-hover:opacity-100 hover:underline focus-visible:opacity-100" onclick={() => openReference(reference)}>Add to library</button>{/if}
+																			{#if reference.parsed.arxivId}<button class="text-muted opacity-0 group-hover:opacity-100 hover:underline focus-visible:opacity-100" onclick={() => openReference(reference)}>Add to library</button>{/if}
 																		</div>
 																	</div>
 																{/snippet}
@@ -618,7 +620,7 @@
 																{#snippet item({ annotation, quote, pageLabel, go, color })}
 																	{@const preview = hasPreview(annotation)}
 																	<button class="block w-full rounded-md border-l-4 bg-white/80 px-2.5 py-2 text-left shadow-sm hover:shadow dark:bg-stone-800/80" style:border-color={color} onclick={go}>
-																		<span class="flex items-center gap-1.5 text-[11px] text-stone-500">
+																		<span class="flex items-center gap-1.5 text-[11px] text-muted">
 																			<span class="{kindIcons[annotation.kind]} size-3.5 shrink-0"></span>{kindLabels[annotation.kind]}
 																			<span class="ml-auto tabular-nums">p. {pageLabel}</span>
 																		</span>
@@ -626,19 +628,19 @@
 																		{#if quote}<span class="line-clamp-3 block font-serif text-[13px] text-stone-600 dark:text-stone-300">{quote}</span>{/if}
 																		{#if preview}<span class="mt-1.5 block"><AnnotationPreview {annotation} {color} /></span>{/if}
 																		{#if annotation.contents}<span class="mt-1 block border-t border-stone-200 pt-1 dark:border-stone-700"><Annotations.Markdown source={annotation.contents} /></span>{/if}
-																		{#if !annotation.label && !quote && !preview && !annotation.contents}<span class="block text-stone-400 italic">{emptyText[annotation.kind] ?? 'No text'}</span>{/if}
+																		{#if !annotation.label && !quote && !preview && !annotation.contents}<span class="block text-muted italic">{emptyText[annotation.kind] ?? 'No text'}</span>{/if}
 																	</button>
 																{/snippet}
 																{#snippet empty()}
-																	<p class="flex flex-wrap items-center gap-1 p-2 text-stone-500">Select text, then press <Kbd>H</Kbd> to highlight (or <Kbd>1</Kbd>–<Kbd>9</Kbd> for a color).</p>
+																	<p class="flex flex-wrap items-center gap-1 p-2 text-muted">Select text, then press <Kbd>H</Kbd> to highlight (or <Kbd>1</Kbd>–<Kbd>9</Kbd> for a color).</p>
 																{/snippet}
 															</Annotations.List>
 														{:else if tab === 'search'}
 															<div class="space-y-2 pt-1 pb-2">
-																<div class="flex items-center gap-1 rounded-md border border-stone-300 bg-white px-2 focus-within:ring-2 focus-within:ring-blue-500/60 dark:border-stone-700 dark:bg-stone-900">
+																<div class="flex items-center gap-1 rounded-md border border-edge bg-white px-2 focus-within:ring-2 focus-within:ring-blue-500 dark:focus-within:ring-blue-400 dark:bg-stone-900">
 																	<span class="{icons.search} size-3.5 text-stone-400"></span>
-																	<Find.Input bind:ref={findInput} captureShortcut={false} onkeydown={onFindKey} class="min-w-0 flex-1 bg-transparent py-1.5 text-[13px] outline-none" placeholder="Find in paper" />
-																	<Find.Count class="text-[11px] whitespace-nowrap text-stone-500 tabular-nums" />
+																	<Find.Input bind:ref={findInput} captureShortcut={false} onkeydown={onFindKey} class="min-w-0 flex-1 bg-transparent py-1.5 text-[13px] outline-none placeholder:text-muted" placeholder="Find in paper" />
+																	<Find.Count class="text-[11px] whitespace-nowrap text-muted tabular-nums" />
 																	<Tip label="Previous match" shortcut={mac ? '⇧↵' : 'Shift+Enter'}>{#snippet child({ props })}<Find.Prev {...props} class="grid size-6 place-items-center disabled:opacity-30"><span class="{icons.up} size-4"></span></Find.Prev>{/snippet}</Tip>
 																	<Tip label="Next match" shortcut="↵">{#snippet child({ props })}<Find.Next {...props} class="grid size-6 place-items-center disabled:opacity-30"><span class="{icons.down} size-4"></span></Find.Next>{/snippet}</Tip>
 																</div>
@@ -647,13 +649,13 @@
 																	<Find.Toggle option="wholeWord" class={toggleOpt} />
 																	<Find.Toggle option="diacritics" class={toggleOpt} />
 																	<Find.Toggle option="regex" class={toggleOpt} />
-																	{#if find.status === 'searching'}<span class="ml-auto text-[11px] text-stone-500">page {find.searchedPages}/{viewer?.document.numPages}</span>{/if}
+																	{#if find.status === 'searching'}<span class="ml-auto text-[11px] text-muted">page {find.searchedPages}/{viewer?.document.numPages}</span>{/if}
 																</div>
 															</div>
 															{#each groups(find.matches) as g (g.key)}
-																<p class="px-2 pt-2 pb-1 text-[11px] font-medium tracking-wide text-stone-400 uppercase">{g.title} <span class="font-normal">· {g.matches.length}</span></p>
+																<p class="px-2 pt-2 pb-1 text-[11px] font-medium tracking-wide text-muted uppercase">{g.title} <span class="font-normal">· {g.matches.length}</span></p>
 																{#each g.matches as match (match.index)}
-																	<Find.Result {match} class="block w-full rounded-md px-2 py-1.5 text-left hover:bg-stone-200/70 data-[active]:bg-amber-100 dark:hover:bg-stone-800 dark:data-[active]:bg-amber-900/40 [&_[data-part=page]]:mr-2 [&_[data-part=page]]:text-xs [&_[data-part=page]]:text-stone-500 [&_mark]:rounded-sm [&_mark]:bg-amber-300/70 [&_mark]:px-0.5" />
+																	<Find.Result {match} class="block w-full rounded-md px-2 py-1.5 text-left hover:bg-stone-200/70 data-[active]:bg-amber-100 dark:hover:bg-stone-800 dark:data-[active]:bg-amber-900/40 [&_[data-part=page]]:mr-2 [&_[data-part=page]]:text-xs [&_[data-part=page]]:text-muted [&_mark]:rounded-sm [&_mark]:bg-amber-300/70 [&_mark]:px-0.5" />
 																{/each}
 															{/each}
 														{:else}
@@ -679,7 +681,7 @@
 											<div class="mx-2 flex min-w-0 flex-1 items-baseline gap-3" data-tauri-drag-region>
 												<!-- The title gets at most half the room; the section breadcrumb the rest. -->
 												<p class="min-w-0 truncate font-serif text-[15px] {s.breadcrumb ? 'xl:max-w-1/2' : ''}" title={paper.title} data-tauri-drag-region>{paper.title}</p>
-												{#if s.breadcrumb}<Toc.Breadcrumb class="flex min-w-0 flex-1 truncate text-xs text-stone-500 [&_[data-pdf-toc-item]]:truncate" />{/if}
+												{#if s.breadcrumb}<Toc.Breadcrumb class="flex min-w-0 flex-1 truncate text-xs text-muted [&_[data-pdf-toc-item]]:truncate" />{/if}
 											</div>
 
 											<Tip label={paper.read ? 'Read: mark as unread' : 'Mark as read'}>
@@ -718,7 +720,7 @@
 											<div class="min-w-2 flex-1"></div>
 											<Tip label="Previous page" shortcut={viewKey('nav.prevPage')}>{#snippet child({ props })}<PageNav.Prev {...props} class={iconBtn}><span class="{icons.up} size-4"></span></PageNav.Prev>{/snippet}</Tip>
 											<PageNav.Input class="h-6 w-10 shrink-0 rounded-md bg-black/5 text-center text-xs tabular-nums dark:bg-white/10" />
-											<span class="hidden shrink-0 px-1 text-xs text-stone-500 tabular-nums @2xl:inline">/ {viewer?.document.numPages ?? '–'}</span>
+											<span class="hidden shrink-0 px-1 text-xs text-muted tabular-nums @2xl:inline">/ {viewer?.document.numPages ?? '–'}</span>
 											<Tip label="Next page" shortcut={viewKey('nav.nextPage')}>{#snippet child({ props })}<PageNav.Next {...props} class={iconBtn}><span class="{icons.down} size-4"></span></PageNav.Next>{/snippet}</Tip>
 											<Separator />
 											<Tip label="Zoom out" shortcut={viewKey('view.zoomOut')}>{#snippet child({ props })}<Zoom.Out {...props} class={iconBtn}><span class="{icons.zoomOut} size-4"></span></Zoom.Out>{/snippet}</Tip>
@@ -755,7 +757,7 @@
 													</Viewer.Viewport>
 												{/snippet}
 											</PdfContextMenu>
-											{#if s.tocRail}<Toc.Rail class="absolute top-8 right-3 bottom-8 text-stone-500" />{/if}
+											{#if s.tocRail}<Toc.Rail class="absolute top-8 right-3 bottom-8 text-muted" />{/if}
 											<BackPill />
 											<CenterControl bind:locked={centerLocked} />
 											{#if paperState?.status === 'analyzing'}
@@ -795,7 +797,7 @@
 										{#if open}
 											<div {...props} transition:scale|global={{ start: 0.96, duration: 130 }} class="overflow-hidden rounded-xl border border-stone-200 bg-white shadow-2xl dark:border-stone-700 dark:bg-stone-900">
 												<div {...(canvasProps as Record<string, never>)}></div>
-												<p class="border-t border-stone-100 px-3 py-1.5 text-xs text-stone-500 dark:border-stone-800">{label}</p>
+												<p class="border-t border-stone-100 px-3 py-1.5 text-xs text-muted dark:border-stone-800">{label}</p>
 											</div>
 										{/if}
 									{/snippet}
@@ -810,7 +812,7 @@
 													</button>
 												{:else}
 													<div {...(canvasProps as Record<string, never>)}></div>
-													<p class="flex items-center gap-1.5 border-t border-stone-100 bg-stone-50 px-3 py-1.5 text-xs text-stone-500 capitalize dark:border-stone-800 dark:bg-stone-950">
+													<p class="flex items-center gap-1.5 border-t border-stone-100 bg-stone-50 px-3 py-1.5 text-xs text-muted capitalize dark:border-stone-800 dark:bg-stone-950">
 														<span class="{kindIcon[kind] ?? 'icon-[lucide--link]'} size-3.5"></span>{kind} · page {target}
 													</p>
 												{/if}
@@ -831,7 +833,7 @@
 	</Document.Root>
 {:else if access === 'elsewhere' || access === 'waiting'}
 	{@const where = platform.kind === 'desktop' ? 'window' : 'tab'}
-	<div class="grid h-full place-items-center bg-stone-100 px-6 text-center text-sm text-stone-500 dark:bg-stone-950" data-tauri-drag-region>
+	<div class="grid h-full place-items-center bg-stone-100 px-6 text-center text-sm text-muted dark:bg-stone-950" data-tauri-drag-region>
 		<div>
 			<p class="text-stone-700 dark:text-stone-300">This paper is open in another {where}.</p>
 			<p class="mx-auto mt-1 max-w-sm text-xs">It’s read and annotated in one place at a time, so that one {where} never saves over the other’s annotations.</p>
@@ -842,7 +844,7 @@
 		</div>
 	</div>
 {:else if load.status === 'missing' || load.status === 'error'}
-	<div class="grid h-full place-items-center bg-stone-100 px-6 text-center text-sm text-stone-500 dark:bg-stone-950" data-tauri-drag-region>
+	<div class="grid h-full place-items-center bg-stone-100 px-6 text-center text-sm text-muted dark:bg-stone-950" data-tauri-drag-region>
 		<div>
 			<p class="text-stone-700 dark:text-stone-300">{load.status === 'missing' ? 'This paper’s PDF is missing from its folder.' : 'The PDF couldn’t be opened.'}</p>
 			{#if load.error}<p class="mt-1 max-w-md text-xs">{load.error}</p>{/if}

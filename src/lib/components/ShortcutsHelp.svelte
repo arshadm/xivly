@@ -17,7 +17,7 @@
 	<div class="columns-1 gap-x-10 overflow-y-auto p-5 sm:columns-2 lg:columns-3">
 		{#each groups as g (g.title)}
 			<section class="mb-5 break-inside-avoid">
-				<h3 class="mb-1.5 text-[11px] font-medium tracking-wide text-stone-400 uppercase">{g.title}</h3>
+				<h3 class="mb-1.5 text-[11px] font-medium tracking-wide text-muted uppercase">{g.title}</h3>
 				<ul class="space-y-1 text-[13px]">
 					{#each g.items as it (it.label)}
 						<li class="flex items-center justify-between gap-3">

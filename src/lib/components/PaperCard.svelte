@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { coverUrl, whenNear } from '#lib/covers.js';
 	import { coverVersions } from '#lib/cover-versions.svelte.js';
+	import { paperInk } from '#lib/library-utils.js';
 	import { library } from '#lib/library.svelte.js';
 	import { paperMenu } from '#lib/paper-menu.js';
 	import { settings } from '#lib/settings.svelte.js';
@@ -57,12 +58,12 @@
 					<span class="mt-0.5 line-clamp-1 text-[11px] text-stone-600 dark:text-stone-400">{authors}{paper.year ? ` · ${paper.year}` : ''}</span>
 				</span>
 			{:else}
-				<span class="mr-5 text-[11px] font-medium tracking-wide uppercase" style:color={color.accent}>{category?.name ?? ''}</span>
+				<span class="mr-5 text-[11px] font-medium tracking-wide uppercase" style:color={paperInk(color, theme.dark)}>{category?.name ?? ''}</span>
 				<span class="mt-2 line-clamp-5 font-serif text-[17px] leading-snug text-stone-900 dark:text-stone-100">{paper.title}</span>
 				<span class="mt-auto pt-3 text-xs text-stone-600 dark:text-stone-400">
 					<span class="line-clamp-1">{authors}</span>
 					{#if paper.year}<span>{paper.year}</span>{/if}
-					{#if paper.tags?.length}<span class="ml-1 opacity-70">{paper.tags.map((t) => `#${t}`).join(' ')}</span>{/if}
+					{#if paper.tags?.length}<span class="ml-1">{paper.tags.map((t) => `#${t}`).join(' ')}</span>{/if}
 				</span>
 			{/if}
 			{#if style === 'book'}<span class="spine" aria-hidden="true"></span>{/if}

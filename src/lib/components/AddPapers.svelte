@@ -102,7 +102,7 @@
 					<div {...wrapperProps}>
 						<div {...props} transition:scale={{ start: 0.96, duration: 120 }} class="z-(--z-menu) w-96 space-y-3 rounded-xl border border-stone-200 bg-white p-3 text-sm text-stone-800 shadow-xl outline-none dark:border-stone-700 dark:bg-stone-900 dark:text-stone-200">
 							<form class="flex gap-2" onsubmit={submit}>
-								<label class="flex h-8 min-w-0 flex-1 items-center gap-2 rounded-lg bg-stone-100 px-2.5 ring-blue-500/60 focus-within:ring-2 dark:bg-stone-800">
+								<label class="flex h-8 min-w-0 flex-1 items-center gap-2 rounded-lg bg-stone-100 px-2.5 ring-blue-500 dark:ring-blue-400 focus-within:ring-2 dark:bg-stone-800">
 									<span class="{searching ? 'icon-[lucide--search]' : 'icon-[lucide--link]'} size-3.5 shrink-0 text-stone-400"></span>
 									<!-- svelte-ignore a11y_autofocus -->
 									<input
@@ -116,7 +116,7 @@
 										aria-controls="hf-results"
 										aria-activedescendant={searching && results.length ? `hf-result-${active}` : undefined}
 										aria-autocomplete="list"
-										class="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-stone-400"
+										class="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-muted"
 									/>
 									{#if status === 'loading'}<span class="icon-[lucide--loader-circle] size-3.5 shrink-0 animate-spin text-stone-400" aria-label="Searching"></span>{/if}
 								</label>
@@ -124,14 +124,14 @@
 							</form>
 							{#if searching}
 								{#if status === 'offline'}
-									<p class="flex items-center gap-2 px-1 py-2 text-[13px] text-stone-500"><span class="icon-[lucide--wifi-off] size-4 shrink-0"></span>You're offline: searching Hugging Face needs the internet.</p>
+									<p class="flex items-center gap-2 px-1 py-2 text-[13px] text-muted"><span class="icon-[lucide--wifi-off] size-4 shrink-0"></span>You're offline: searching Hugging Face needs the internet.</p>
 								{:else if status === 'error'}
-									<p class="flex items-center gap-2 px-1 py-2 text-[13px] text-stone-500">
+									<p class="flex items-center gap-2 px-1 py-2 text-[13px] text-muted">
 										<span class="icon-[lucide--circle-alert] size-4 shrink-0"></span>Hugging Face didn't answer.
 										<button type="button" class="font-medium text-stone-700 underline-offset-2 hover:underline dark:text-stone-200" onclick={() => retries++}>Try again</button>
 									</p>
 								{:else if status === 'done' && !results.length}
-									<p class="px-1 py-2 text-[13px] text-stone-500">No papers found on Hugging Face.</p>
+									<p class="px-1 py-2 text-[13px] text-muted">No papers found on Hugging Face.</p>
 								{:else if results.length}
 									<div id="hf-results" role="listbox" aria-label="Papers on Hugging Face" class="-mx-1 max-h-80 space-y-0.5 overflow-y-auto {status === 'loading' ? 'opacity-60' : ''}">
 										{#each results as r, i (r.arxiv)}
@@ -147,7 +147,7 @@
 												onkeydown={(e) => e.key === 'Enter' && add(r.arxiv)}
 											>
 												<p class="line-clamp-2 text-[13px] leading-snug font-medium">{r.title}</p>
-												<p class="mt-0.5 flex items-center gap-1.5 text-xs text-stone-500">
+												<p class="mt-0.5 flex items-center gap-1.5 text-xs text-muted">
 													<span class="min-w-0 truncate">{byline(r)}{r.year ? ` · ${r.year}` : ''}</span>
 													<span class="shrink-0 font-mono text-[11px]">{r.arxiv}</span>
 													{#if inLibrary.has(r.arxiv)}<span class="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full bg-stone-200/70 px-1.5 py-px text-[11px] text-stone-600 dark:bg-stone-700 dark:text-stone-300"><span class="icon-[lucide--check] size-3"></span>In library</span>{/if}
@@ -156,11 +156,11 @@
 										{/each}
 									</div>
 								{/if}
-								{#if results.length && status !== 'offline' && status !== 'error'}<p class="flex items-center gap-1 px-1 text-xs text-stone-400"><Kbd>↑</Kbd><Kbd>↓</Kbd> to choose, <Kbd>↵</Kbd> to add · from huggingface.co/papers</p>{/if}
+								{#if results.length && status !== 'offline' && status !== 'error'}<p class="flex items-center gap-1 px-1 text-xs text-muted"><Kbd>↑</Kbd><Kbd>↓</Kbd> to choose, <Kbd>↵</Kbd> to add · from huggingface.co/papers</p>{/if}
 							{:else}
 								<button
 									type="button"
-									class="flex w-full flex-col items-center gap-1.5 rounded-lg border border-dashed px-3 py-5 text-center transition-colors outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 {dragging ? 'border-stone-500 bg-stone-100 dark:border-stone-400 dark:bg-stone-800' : 'border-stone-300 hover:bg-stone-50 dark:border-stone-700 dark:hover:bg-stone-800/60'}"
+									class="flex w-full flex-col items-center gap-1.5 rounded-lg border border-dashed px-3 py-5 text-center transition-colors outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:focus-visible:ring-blue-400 {dragging ? 'border-stone-500 bg-stone-100 dark:border-stone-400 dark:bg-stone-800' : 'border-stone-300 hover:bg-stone-50 dark:border-stone-700 dark:hover:bg-stone-800/60'}"
 									onclick={pick}
 									ondragenter={() => (dragging = true)}
 									ondragleave={() => (dragging = false)}
@@ -168,7 +168,7 @@
 								>
 									<span class="icon-[lucide--file-up] size-5 text-stone-400"></span>
 									<span class="text-[13px] text-stone-700 dark:text-stone-200">Drop PDF files, or click to choose</span>
-									<span class="flex items-center gap-1 text-xs text-stone-400">or press <Kbd>{keys.addPapers}</Kbd></span>
+									<span class="flex items-center gap-1 text-xs text-muted">or press <Kbd>{keys.addPapers}</Kbd></span>
 								</button>
 							{/if}
 						</div>

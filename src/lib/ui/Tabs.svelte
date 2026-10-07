@@ -13,7 +13,7 @@
 		listClass
 	}: { value: T; tabs: { value: T; label: string; icon?: string; tip?: string; shortcut?: string; badge?: string | number }[]; content: Snippet<[T]>; class?: string; listClass?: string } = $props();
 	const trigger =
-		'inline-flex h-7 flex-1 items-center justify-center gap-1 rounded-md px-1.5 text-xs text-stone-600 outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 data-[state=active]:bg-white data-[state=active]:text-stone-900 data-[state=active]:shadow-sm dark:text-stone-400 dark:data-[state=active]:bg-stone-600 dark:data-[state=active]:text-white';
+		'inline-flex h-7 flex-1 items-center justify-center gap-1 rounded-md px-1.5 text-xs text-stone-600 outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:focus-visible:ring-blue-400 data-[state=active]:bg-white data-[state=active]:text-stone-900 data-[state=active]:shadow-sm dark:text-stone-400 dark:data-[state=active]:bg-stone-600 dark:data-[state=active]:text-white';
 </script>
 
 <Tabs.Root bind:value={() => value, (v) => (value = v as T)} class={cn('flex min-h-0 flex-col', className)}>
@@ -24,7 +24,7 @@
 					<Tabs.Trigger {...props} value={t.value} aria-label={t.tip ?? t.label} class={trigger}>
 						{#if t.icon}<span class={cn(t.icon, 'size-3.5 shrink-0')}></span>{/if}
 						{#if t.label}<span>{t.label}</span>{/if}
-						{#if t.badge}<span class="text-[10px] tabular-nums opacity-70">{t.badge}</span>{/if}
+						{#if t.badge}<span class="text-[10px] tabular-nums">{t.badge}</span>{/if}
 					</Tabs.Trigger>
 				{/snippet}
 			</Tip>

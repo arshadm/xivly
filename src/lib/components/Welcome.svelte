@@ -12,7 +12,7 @@
 <div class="grid h-full place-items-center px-6" data-tauri-drag-region>
 	<div class="max-w-md text-center">
 		<h1><Wordmark class="text-5xl tracking-tight" /></h1>
-		<p class="mt-2 text-stone-500">Papers, without distraction.</p>
+		<p class="mt-2 text-muted">Papers, without distraction.</p>
 
 		{#if library.status === 'error'}
 			<p class="mt-8 text-sm text-red-700 select-text dark:text-red-300">Couldn't open the library: {library.error}</p>
@@ -21,7 +21,7 @@
 			<p class="mt-8 text-sm text-stone-600 dark:text-stone-400">Your browser needs permission again to open <strong>{library.name}</strong>.</p>
 			<div class="mt-6 flex justify-center gap-3">
 				<button class={btn} onclick={() => library.reconnect()}>Open {library.name}</button>
-				<button class="text-sm text-stone-500 hover:text-stone-800 dark:hover:text-stone-200" onclick={() => library.choose()}>Choose another…</button>
+				<button class="text-sm text-muted hover:text-stone-800 dark:hover:text-stone-200" onclick={() => library.choose()}>Choose another…</button>
 			</div>
 		{:else}
 			<p class="mt-8 text-sm leading-relaxed text-stone-600 dark:text-stone-400">

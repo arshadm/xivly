@@ -68,7 +68,7 @@
 		<Tip label="{label(color)} (click for another)">
 			{#snippet child({ props })}
 				<button {...props} type="button" aria-label="Color: {label(color)}" onclick={nextPreset} class={iconButton(8, 'rounded-lg bg-stone-100 dark:bg-stone-800 dark:hover:bg-stone-700')}>
-					<span class="size-4 rounded-full ring-1 ring-black/10" style:background={categoryColor(color).accent}></span>
+					<span class="swatch size-4 rounded-full" style:--swatch={categoryColor(color).accent}></span>
 				</button>
 			{/snippet}
 		</Tip>
@@ -82,7 +82,7 @@
 		<!-- The system color picker, opened by the button above (not nested in it). -->
 		<input bind:this={picker} type="color" tabindex="-1" aria-hidden="true" class="pointer-events-none absolute size-0 opacity-0" value={categoryColor(color).accent} oninput={(e) => (color = e.currentTarget.value as CategoryColor)} />
 		<!-- svelte-ignore a11y_autofocus -->
-		<input bind:value={name} autofocus placeholder="Name, e.g. Robotics" aria-label="Name" class="h-8 min-w-0 flex-1 rounded-lg bg-stone-100 px-2.5 text-[13px] outline-none placeholder:text-stone-400 focus-visible:ring-2 focus-visible:ring-blue-500/60 dark:bg-stone-800" />
+		<input bind:value={name} autofocus placeholder="Name, e.g. Robotics" aria-label="Name" class="h-8 min-w-0 flex-1 rounded-lg bg-stone-100 px-2.5 text-[13px] outline-none placeholder:text-muted focus-visible:ring-2 focus-visible:ring-blue-500 dark:focus-visible:ring-blue-400 dark:bg-stone-800" />
 	</div>
 	<div class="mt-5 flex justify-end gap-2">
 		<Dialog.Close type="button" class={button('secondary')}>Cancel</Dialog.Close>

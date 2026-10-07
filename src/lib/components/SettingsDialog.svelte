@@ -50,7 +50,7 @@
 	<div class="flex items-center justify-between gap-6 border-b border-stone-100 py-3 last:border-0 dark:border-stone-800">
 		<div class="min-w-0">
 			<p class="text-[13px] font-medium">{label}</p>
-			{#if hint}<p class="text-xs text-stone-500">{hint}</p>{/if}
+			{#if hint}<p class="text-xs text-muted">{hint}</p>{/if}
 		</div>
 		<div class="shrink-0">{@render control()}</div>
 	</div>
@@ -73,7 +73,7 @@
 									<span class="{sec.icon} size-4 text-stone-500"></span>{sec.label}
 								</button>
 							{/each}
-							<button class="mt-auto px-2 py-1 text-left text-xs text-stone-500 hover:text-red-600 dark:hover:text-red-400" onclick={async () => (await prompts.confirm('Reset every setting to its default?', { confirmLabel: 'Reset', danger: true })) && settings.reset()}>Reset to defaults</button>
+							<button class="mt-auto px-2 py-1 text-left text-xs text-muted hover:text-red-600 dark:hover:text-red-400" onclick={async () => (await prompts.confirm('Reset every setting to its default?', { confirmLabel: 'Reset', danger: true })) && settings.reset()}>Reset to defaults</button>
 						</nav>
 
 						<div class="flex min-w-0 flex-1 flex-col">
@@ -90,7 +90,7 @@
 								{@render toggle('citationCards', 'Citation cards', 'Hover a citation to see the reference, with online metadata')}
 							{:else if settingsDialog.section === 'reading'}
 								{@render toggle('tintPages', 'Tint pages by category', 'Pages take the soft color of the paper’s category (set it in the library)')}
-								{#snippet strengthCtl()}<span class="flex items-center gap-2"><Slider disabled={!s.tintPages && s.pageColor === 'white'} label="Tint strength" value={s.paperStrength} onValueChange={set('paperStrength')} /><span class="w-9 text-right text-xs text-stone-500 tabular-nums">{Math.round(s.paperStrength * 100)}%</span></span>{/snippet}
+								{#snippet strengthCtl()}<span class="flex items-center gap-2"><Slider disabled={!s.tintPages && s.pageColor === 'white'} label="Tint strength" value={s.paperStrength} onValueChange={set('paperStrength')} /><span class="w-9 text-right text-xs text-muted tabular-nums">{Math.round(s.paperStrength * 100)}%</span></span>{/snippet}
 								{@render row('Tint strength', 'How strongly pages take the paper color', strengthCtl)}
 								{#snippet frameCtl()}<ToggleGroup label="Page edge" value={s.pageFrame} onValueChange={set('pageFrame')} items={[{ value: 'rounded', label: 'Rounded' }, { value: 'shadow', label: 'Shadow' }, { value: 'border', label: 'Border' }, { value: 'flat', label: 'Flat' }, { value: 'none', label: 'None' }]} />{/snippet}
 								{@render row('Page edge', '', frameCtl)}
@@ -115,7 +115,7 @@
 									{@render row('Minimap style', '', mmCtl)}
 								{/if}
 							{:else if settingsDialog.section === 'annotations'}
-								{#snippet authorCtl()}<input class="h-8 w-48 rounded-md border border-stone-300 bg-transparent px-2 text-[13px] dark:border-stone-700" value={s.author} placeholder="Your name" onchange={(e) => settings.set('author', e.currentTarget.value.trim())} />{/snippet}
+								{#snippet authorCtl()}<input class="h-8 w-48 rounded-md border border-edge bg-transparent px-2 text-[13px] placeholder:text-muted" value={s.author} placeholder="Your name" onchange={(e) => settings.set('author', e.currentTarget.value.trim())} />{/snippet}
 								{@render row('Author', 'Stored in each annotation (shown in other PDF readers)', authorCtl)}
 								{@render toggle('annotationsVisible', 'Show annotations')}
 								{@render toggle('sideNotes', 'Side notes', 'Notes in the page margin')}
@@ -136,7 +136,7 @@
 								{@render toggle('confirmUnsaved', 'Ask before closing unsaved work', 'Otherwise unsaved annotations are saved automatically on close')}
 							{:else if settingsDialog.section === 'research'}
 								{@render toggle('citationLookup', 'Look up references online', 'Titles, abstracts and citation counts from OpenAlex and Semantic Scholar')}
-								{#snippet keyCtl()}<input class="h-8 w-56 rounded-md border border-stone-300 bg-transparent px-2 font-mono text-xs dark:border-stone-700" type="password" value={s.semanticScholarKey} placeholder="Optional" onchange={(e) => settings.set('semanticScholarKey', e.currentTarget.value.trim())} />{/snippet}
+								{#snippet keyCtl()}<input class="h-8 w-56 rounded-md border border-edge bg-transparent px-2 font-mono text-xs placeholder:text-muted" type="password" value={s.semanticScholarKey} placeholder="Optional" onchange={(e) => settings.set('semanticScholarKey', e.currentTarget.value.trim())} />{/snippet}
 								{@render row('Semantic Scholar API key', 'Higher rate limits', keyCtl)}
 							{:else if settingsDialog.section === 'library'}
 								{#snippet sortCtl()}<span class="flex items-center gap-2"><Select label="Sort papers by" value={s.sortBy} onValueChange={set('sortBy')} items={sortOptions.map((o) => ({ value: o.value, label: o.label }))} /><ToggleGroup label="Order" value={s.sortDesc ? 'desc' : 'asc'} onValueChange={(v) => settings.set('sortDesc', v === 'desc')} items={[{ value: 'desc', label: '', title: 'Descending', icon: 'icon-[lucide--arrow-down-wide-narrow]' }, { value: 'asc', label: '', title: 'Ascending', icon: 'icon-[lucide--arrow-up-narrow-wide]' }]} /></span>{/snippet}
@@ -147,7 +147,7 @@
 								{@render row('Cover style', '', coverCtl)}
 								{#snippet samplesCtl()}
 									<span class="flex items-center gap-2">
-										{#if starter.running}<span class="text-xs text-stone-500 tabular-nums">Adding {starter.done}/{starter.total || '…'}</span>
+										{#if starter.running}<span class="text-xs text-muted tabular-nums">Adding {starter.done}/{starter.total || '…'}</span>
 										{:else}
 											<button class={button('secondary')} onclick={() => downloadStarter()}>{hasStarter() ? 'Add missing' : 'Add'}</button>
 											{#if hasStarter()}<button class={button('destructive-soft')} onclick={removeExamples}>Remove</button>{/if}
@@ -160,7 +160,7 @@
 							{:else if settingsDialog.section === 'hooks'}
 								{#snippet hookCtl()}<Select label="Hook notifications" value={s.hookToasts} onValueChange={set('hookToasts')} items={[{ value: 'errors', label: 'Failures only' }, { value: 'all', label: 'Every run' }, { value: 'off', label: 'Never' }]} />{/snippet}
 								{@render row('Notifications', 'When a hook script runs', hookCtl)}
-								<p class="mt-4 text-xs leading-relaxed text-stone-500">
+								<p class="mt-4 text-xs leading-relaxed text-muted">
 									Put executable scripts in <code>.xivly/hooks/</code>, named after an event: <code>paper-added</code>, <code>paper-saved</code>, <code>paper-updated</code>, <code>paper-removed</code>. They run in the paper's folder with <code>paper.json</code> on stdin and <code>XIVLY_*</code> variables. See <code>paper-added.sample</code>.
 								</p>
 								{#if platform.reveal}
@@ -168,12 +168,12 @@
 								{/if}
 							{:else}
 								{#each shortcuts as group (group.title)}
-									<h3 class="mt-2 mb-1 text-[11px] font-medium tracking-wide text-stone-400 uppercase">{group.title}</h3>
+									<h3 class="mt-2 mb-1 text-[11px] font-medium tracking-wide text-muted uppercase">{group.title}</h3>
 									{#each group.items as it (it.label)}
 										<div class="flex items-center justify-between py-1 text-[13px]"><span>{it.label}</span><span class="flex gap-1">{#each it.keys as k (k)}<Kbd>{k}</Kbd>{/each}</span></div>
 									{/each}
 								{/each}
-								<p class="mt-3 text-xs text-stone-500">Press <Kbd>?</Kbd> anywhere for every shortcut, reading and annotation keys included.</p>
+								<p class="mt-3 text-xs text-muted">Press <Kbd>?</Kbd> anywhere for every shortcut, reading and annotation keys included.</p>
 							{/if}
 							</div>
 						</div>

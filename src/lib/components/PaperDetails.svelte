@@ -68,8 +68,8 @@
 	});
 
 	const links = $derived(paperLinks(paper));
-	const field = 'w-full rounded-md bg-transparent px-1 -mx-1 outline-none hover:bg-stone-200/50 focus:bg-white dark:hover:bg-stone-800/60 dark:focus:bg-stone-900';
-	const label = 'mb-1.5 block text-[11px] font-medium tracking-wide text-stone-400 uppercase';
+	const field = 'w-full rounded-md bg-transparent px-1 -mx-1 outline-none hover:bg-stone-200/50 focus:bg-white dark:hover:bg-stone-800/60 dark:focus:bg-stone-900 placeholder:text-muted';
+	const label = 'mb-1.5 block text-[11px] font-medium tracking-wide text-muted uppercase';
 </script>
 
 <!-- Closing the tab (web): the save starts while the browser asks to leave. -->
@@ -102,7 +102,7 @@
 			{#each library.categories as c (c.id)}
 				{@const col = library.color({ category: c.id })}
 				<!-- The category's own shade: light by day, dark by night (text follows). -->
-				<button class="rounded-full bg-(--chip) px-2.5 py-0.5 text-xs text-stone-800 ring-stone-500 outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 data-[active]:ring-1 dark:bg-(--chip-dark) dark:text-stone-200 dark:ring-stone-400" style:--chip={col.light} style:--chip-dark={col.dark} data-active={paper.category === c.id || undefined} aria-pressed={paper.category === c.id} onclick={() => save({ category: paper.category === c.id ? null : c.id })}>{c.name}</button>
+				<button class="rounded-full bg-(--chip) px-2.5 py-0.5 text-xs text-stone-800 ring-stone-500 outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:focus-visible:ring-blue-400 data-[active]:ring-1 dark:bg-(--chip-dark) dark:text-stone-200 dark:ring-stone-400" style:--chip={col.light} style:--chip-dark={col.dark} data-active={paper.category === c.id || undefined} aria-pressed={paper.category === c.id} onclick={() => save({ category: paper.category === c.id ? null : c.id })}>{c.name}</button>
 			{/each}
 		</div>
 	</div>
@@ -113,7 +113,7 @@
 			{#each paper.tags ?? [] as tag (tag)}
 				<span class="inline-flex items-center gap-0.5 rounded-full bg-stone-200 py-0.5 pr-1 pl-2 text-xs dark:bg-stone-800">
 					#{tag}
-					<button class="grid size-4 place-items-center rounded-full text-stone-400 outline-none hover:text-stone-700 focus-visible:ring-2 focus-visible:ring-blue-500/60" aria-label="Remove tag {tag}" onclick={() => library.toggleTag(paper.id, tag).catch((e) => toast(String(e), 'error'))}><span class="icon-[lucide--x] size-3"></span></button>
+					<button class="grid size-4 place-items-center rounded-full text-muted outline-none hover:text-stone-700 focus-visible:ring-2 focus-visible:ring-blue-500 dark:focus-visible:ring-blue-400" aria-label="Remove tag {tag}" onclick={() => library.toggleTag(paper.id, tag).catch((e) => toast(String(e), 'error'))}><span class="icon-[lucide--x] size-3"></span></button>
 				</span>
 			{/each}
 			<Tip label="Add a tag">
@@ -130,7 +130,7 @@
 				<li>
 					<button class="-mx-1 flex w-full items-center gap-2 rounded-md px-1 py-0.5 text-left hover:bg-stone-200/60 dark:hover:bg-stone-800/60" onclick={() => platform.openUrl(hf.page!)}>
 						<span class="icon-[lucide--smile] size-3.5 shrink-0 text-stone-500"></span><span class="flex-1 truncate">Paper page</span>
-						{#if hf.upvotes}<span class="flex items-center gap-0.5 text-xs text-stone-500 tabular-nums"><span class="icon-[lucide--triangle] size-2.5"></span>{hf.upvotes}</span>{/if}
+						{#if hf.upvotes}<span class="flex items-center gap-0.5 text-xs text-muted tabular-nums"><span class="icon-[lucide--triangle] size-2.5"></span>{hf.upvotes}</span>{/if}
 					</button>
 				</li>
 				{#each [['models', 'Models', 'icon-[lucide--box]'], ['datasets', 'Datasets', 'icon-[lucide--database]'], ['spaces', 'Spaces', 'icon-[lucide--rocket]']] as const as [kind, name, icon] (kind)}
@@ -139,12 +139,12 @@
 						<li>
 							<button class="-mx-1 flex w-full items-center gap-2 rounded-md px-1 py-0.5 text-left hover:bg-stone-200/60 dark:hover:bg-stone-800/60" onclick={() => platform.openUrl(hfListUrl(kind, paper.arxiv!))}>
 								<span class="{icon} size-3.5 shrink-0 text-stone-500"></span><span class="flex-1 truncate">{name} citing this paper</span>
-								<span class="text-xs text-stone-500 tabular-nums">{repos.total}</span>
+								<span class="text-xs text-muted tabular-nums">{repos.total}</span>
 							</button>
 							<ul class="mb-1 ml-5.5">
 								{#each repos.top as id (id)}
 									<li>
-										<button class="-mx-1 block w-full truncate rounded-md px-1 text-left text-xs text-stone-500 hover:bg-stone-200/60 hover:text-stone-800 dark:hover:bg-stone-800/60 dark:hover:text-stone-200" onclick={() => platform.openUrl(`https://huggingface.co/${kind === 'models' ? '' : `${kind}/`}${id}`)}>{id}</button>
+										<button class="-mx-1 block w-full truncate rounded-md px-1 text-left text-xs text-muted hover:bg-stone-200/60 hover:text-stone-800 dark:hover:bg-stone-800/60 dark:hover:text-stone-200" onclick={() => platform.openUrl(`https://huggingface.co/${kind === 'models' ? '' : `${kind}/`}${id}`)}>{id}</button>
 									</li>
 								{/each}
 							</ul>

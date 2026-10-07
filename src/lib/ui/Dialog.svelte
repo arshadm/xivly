@@ -79,7 +79,7 @@
 							<div class="flex items-start gap-3 border-b border-stone-200 px-4 py-3 dark:border-stone-800">
 								<div class="min-w-0 flex-1">
 									<P.Title class="truncate font-serif text-lg">{title}</P.Title>
-									{#if description}<P.Description class="text-xs text-stone-500">{description}</P.Description>{/if}
+									{#if description}<P.Description class="text-xs text-muted">{description}</P.Description>{/if}
 								</div>
 								<Dialog.Close class={iconButton(8, mutedIcon)} aria-label="Close"><span class="icon-[lucide--x] size-4"></span></Dialog.Close>
 							</div>

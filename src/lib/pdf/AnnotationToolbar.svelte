@@ -67,7 +67,7 @@
 								<Annotations.Color
 									color={c.key}
 									{...props}
-									class="size-5 rounded-full bg-(--swatch) shadow-[inset_0_0_0_1px_rgb(0_0_0/0.14)] outline-none ring-offset-[1.5px] ring-offset-white focus-visible:ring-[1.5px] focus-visible:ring-blue-500 data-[active]:ring-[1.5px] data-[active]:ring-stone-800 dark:ring-offset-stone-900 dark:data-[active]:ring-stone-100"
+									class="swatch size-5 rounded-full outline-none ring-offset-[1.5px] ring-offset-white focus-visible:ring-[1.5px] focus-visible:ring-blue-500 data-[active]:ring-[1.5px] data-[active]:ring-stone-800 dark:ring-offset-stone-900 dark:data-[active]:ring-stone-100"
 								/>
 							{/snippet}
 						</Toolbar.Button>

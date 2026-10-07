@@ -8,7 +8,8 @@
 	import Slider from '#lib/ui/Slider.svelte';
 	import Tip from '#lib/ui/Tip.svelte';
 	import ToggleGroup from '#lib/ui/ToggleGroup.svelte';
-	import { paperSwatches } from 'svelte-pdf-mini';
+	import { theme } from '#lib/theme.svelte.js';
+	import { paperHex, paperSwatches } from 'svelte-pdf-mini';
 
 	let { swatch, class: className }: { swatch: string; class?: string } = $props();
 	const s = $derived(settings.values);
@@ -18,7 +19,7 @@
 	<Tip label="Reading theme">
 		{#snippet child({ props })}
 			<Popover.Trigger {...props} aria-label="Reading theme" class={iconButton(7, className)}>
-				<span class="size-4 rounded-full shadow-[inset_0_0_0_1.5px_rgb(0_0_0/0.25)]" style:background={swatch}></span>
+				<span class="swatch size-4 rounded-full" style:--swatch={swatch}></span>
 			</Popover.Trigger>
 		{/snippet}
 	</Tip>
@@ -33,7 +34,7 @@
 								<ToggleGroup label="Appearance" value={s.theme} onValueChange={(v) => settings.set('theme', v)} items={[{ value: 'system', label: '', title: 'System', icon: 'icon-[lucide--monitor]' }, { value: 'light', label: '', title: 'Light', icon: 'icon-[lucide--sun]' }, { value: 'dark', label: '', title: 'Dark', icon: 'icon-[lucide--moon]' }]} />
 							</div>
 							<div class="flex items-center justify-between">
-								<span class="text-xs text-stone-500">Color from the category</span>
+								<span class="text-xs text-muted">Color from the category</span>
 								<Switch label="Tint pages with the category color" checked={s.tintPages} onCheckedChange={(v) => settings.set('tintPages', v)} />
 							</div>
 							{#if !s.tintPages}
@@ -46,8 +47,8 @@
 													role="radio"
 													aria-checked={s.pageColor === sw.value}
 													aria-label={sw.label}
-													class="size-6 rounded-full shadow-[inset_0_0_0_1px_rgb(0_0_0/0.15)] ring-offset-2 ring-offset-white aria-checked:ring-2 aria-checked:ring-stone-700 dark:ring-offset-stone-900 dark:aria-checked:ring-stone-200"
-													style:background={sw.color}
+													class="swatch size-6 rounded-full ring-offset-2 ring-offset-white aria-checked:ring-2 aria-checked:ring-stone-700 dark:ring-offset-stone-900 dark:aria-checked:ring-stone-200"
+													style:--swatch={paperHex(sw.value, theme.dark)}
 													onclick={() => settings.set('pageColor', sw.value)}
 												></button>
 											{/snippet}
@@ -56,11 +57,11 @@
 								</div>
 							{/if}
 							<div class="space-y-1.5">
-								<p class="flex justify-between text-xs text-stone-500"><span>Tint strength</span><span class="tabular-nums">{Math.round(s.paperStrength * 100)}%</span></p>
+								<p class="flex justify-between text-xs text-muted"><span>Tint strength</span><span class="tabular-nums">{Math.round(s.paperStrength * 100)}%</span></p>
 								<Slider disabled={!s.tintPages && s.pageColor === 'white'} label="Tint strength" value={s.paperStrength} onValueChange={(v) => settings.set('paperStrength', v)} class="w-full" />
 							</div>
 							<div class="space-y-1.5">
-								<p class="text-xs text-stone-500">Page edge</p>
+								<p class="text-xs text-muted">Page edge</p>
 								<ToggleGroup label="Page edge" value={s.pageFrame} onValueChange={(v: PageFrame) => settings.set('pageFrame', v)} items={[{ value: 'rounded', label: 'Rounded' }, { value: 'shadow', label: 'Shadow' }, { value: 'border', label: 'Border' }, { value: 'flat', label: 'Flat' }, { value: 'none', label: 'None', title: 'No edge: the page color fills the window' }]} />
 							</div>
 						</div>

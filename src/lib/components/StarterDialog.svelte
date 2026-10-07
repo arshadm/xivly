@@ -30,7 +30,7 @@
 
 <Dialog {open} onOpenChange={(o) => !o && decide(false)} alert bare class="w-[min(420px,92vw)] p-5">
 	<AlertDialog.Title class="font-serif text-lg">Start with a few papers?</AlertDialog.Title>
-	<AlertDialog.Description class="mt-1 text-sm text-stone-500">
+	<AlertDialog.Description class="mt-1 text-sm text-muted">
 		An empty library is a little intimidating. Add {count ?? 'some'} example papers, already annotated{size ? ` (${size})` : ''}. They're easy to remove later.
 	</AlertDialog.Description>
 	<div class="mt-4 flex justify-end gap-2 text-sm">

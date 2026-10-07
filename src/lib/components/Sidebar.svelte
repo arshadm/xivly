@@ -86,17 +86,17 @@
 	<nav class="min-h-0 flex-1 overflow-y-auto px-2 pb-4">
 		<button class={item} data-active={isView({ kind: 'all' }) || undefined} aria-current={isView({ kind: 'all' }) ? 'page' : undefined} onclick={() => (library.view = { kind: 'all' })}>
 			<span class="icon-[lucide--library] size-4 text-stone-500"></span><span class="flex-1">All papers</span>
-			<span class="text-xs text-stone-400 tabular-nums">{counted.length}</span>
+			<span class="text-xs text-muted tabular-nums">{counted.length}</span>
 		</button>
 		<button class={item} data-active={isView({ kind: 'recent' }) || undefined} aria-current={isView({ kind: 'recent' }) ? 'page' : undefined} onclick={() => (library.view = isView({ kind: 'recent' }) ? { kind: 'all' } : { kind: 'recent' })}>
 			<span class="icon-[lucide--clock] size-4 text-stone-500"></span><span class="flex-1">Recent</span>
 		</button>
 		<button class={item} data-active={isView({ kind: 'uncategorized' }) || undefined} aria-current={isView({ kind: 'uncategorized' }) ? 'page' : undefined} onclick={() => (library.view = isView({ kind: 'uncategorized' }) ? { kind: 'all' } : { kind: 'uncategorized' })}>
 			<span class="icon-[lucide--inbox] size-4 text-stone-500"></span><span class="flex-1">Uncategorized</span>
-			<span class="text-xs text-stone-400 tabular-nums">{count((p) => !library.category(p.category))}</span>
+			<span class="text-xs text-muted tabular-nums">{count((p) => !library.category(p.category))}</span>
 		</button>
 
-		<div class="mt-5 mb-1 flex items-center justify-between px-2 text-[11px] font-medium tracking-wide text-stone-400 uppercase">
+		<div class="mt-5 mb-1 flex items-center justify-between px-2 text-[11px] font-medium tracking-wide text-muted uppercase">
 			Categories
 			<Tip label="New category">
 				{#snippet child({ props })}<button {...props} class={iconButton(6, `${mutedIcon} -m-1 hover:bg-transparent`)} aria-label="New category" onclick={onNewCategory}><span class="icon-[lucide--plus] size-3.5"></span></button>{/snippet}
@@ -104,13 +104,13 @@
 		</div>
 		{#each library.categories as c (c.id)}
 			<button class={item} data-active={isView({ kind: 'category', id: c.id }) || undefined} aria-current={isView({ kind: 'category', id: c.id }) ? 'page' : undefined} onclick={() => (library.view = isView({ kind: 'category', id: c.id }) ? { kind: 'all' } : { kind: 'category', id: c.id })} {@attach contextMenu(() => categoryMenu(c.id))}>
-				<span class="size-2.5 rounded-full" style:background={accent(c.color)}></span>
+				<span class="swatch size-2.5 rounded-full" style:--swatch={accent(c.color)}></span>
 				<span class="flex-1 truncate">{c.name}</span>
-				<span class="text-xs text-stone-400 tabular-nums">{count((p) => p.category === c.id)}</span>
+				<span class="text-xs text-muted tabular-nums">{count((p) => p.category === c.id)}</span>
 			</button>
 		{/each}
 
-		<div class="mt-5 mb-1 px-2 text-[11px] font-medium tracking-wide text-stone-400 uppercase">Tags</div>
+		<div class="mt-5 mb-1 px-2 text-[11px] font-medium tracking-wide text-muted uppercase">Tags</div>
 		<!-- Click: only papers with the tag (filled, ✓); again: hide them (dashed, eye off); again: no filter. -->
 		<div class="flex flex-wrap gap-1 px-2">
 			{#each library.allTags as tag (tag)}
@@ -119,11 +119,11 @@
 					{#snippet child({ props })}
 						<button
 							{...props}
-							class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-colors outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60
+							class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-colors outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:focus-visible:ring-blue-400
 								data-[mode=in]:border-stone-700 data-[mode=in]:bg-stone-700 data-[mode=in]:text-white data-[mode=in]:hover:bg-stone-600
-								data-[mode=out]:border-dashed data-[mode=out]:border-stone-400 data-[mode=out]:text-stone-500 data-[mode=out]:hover:bg-stone-200/70
+								data-[mode=out]:border-dashed data-[mode=out]:border-stone-400 data-[mode=out]:text-muted data-[mode=out]:hover:bg-stone-200/70
 								dark:data-[mode=in]:border-stone-200 dark:data-[mode=in]:bg-stone-200 dark:data-[mode=in]:text-stone-900 dark:data-[mode=in]:hover:bg-stone-300
-								dark:data-[mode=out]:border-stone-600 dark:data-[mode=out]:text-stone-400 dark:data-[mode=out]:hover:bg-stone-800
+								dark:data-[mode=out]:border-stone-600 dark:data-[mode=out]:hover:bg-stone-800
 								{mode ? '' : 'border-stone-300 text-stone-600 hover:border-stone-400 hover:bg-stone-200/70 hover:text-stone-800 dark:border-stone-700 dark:text-stone-400 dark:hover:border-stone-600 dark:hover:bg-stone-800 dark:hover:text-stone-200'}"
 							data-mode={mode}
 							aria-label={tagTip(tag, mode)}
@@ -139,7 +139,7 @@
 		</div>
 	</nav>
 
-	<div class="flex items-center gap-1 border-t border-stone-200 px-2 py-2 text-xs text-stone-500 dark:border-stone-800">
+	<div class="flex items-center gap-1 border-t border-stone-200 px-2 py-2 text-xs text-muted dark:border-stone-800">
 		<Tip label={platform.reveal ? `Show in ${fileManager}` : library.name} side="top">
 			{#snippet child({ props })}
 				<button {...props} class="flex min-w-0 flex-1 items-center gap-1 truncate rounded-md px-1 py-0.5 text-left enabled:hover:text-stone-800 dark:enabled:hover:text-stone-200" disabled={!platform.reveal} onclick={() => platform.reveal?.('.')}>

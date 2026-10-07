@@ -62,7 +62,7 @@
 		</ContextMenu.Sub>
 	{:else}
 		<ContextMenu.Item class="{item} {action.danger ? 'text-red-600 data-[highlighted]:bg-red-50! dark:text-red-400 dark:data-[highlighted]:bg-red-950/50!' : ''}" disabled={action.disabled} onSelect={() => run(action)}>
-			{#if action.color}<span class="size-3.5 rounded-full ring-1 ring-black/10" style:background={action.color}></span>{/if}
+			{#if action.color}<span class="swatch size-3.5 rounded-full" style:--swatch={action.color}></span>{/if}
 			<span class="flex-1">{action.label}</span>
 			{#if action.keys}<Kbd>{action.keys}</Kbd>{/if}
 			<!-- Check marks share the last column, after any shortcut, so they line up. -->
@@ -82,11 +82,11 @@
 			{#each groups as group, gi (group.kind)}
 				{#if gi > 0}<ContextMenu.Separator class="my-1 h-px bg-stone-200 dark:bg-stone-700" />{/if}
 				<ContextMenu.Group>
-					<ContextMenu.GroupHeading class="px-2 pt-1.5 pb-1 text-[11px] font-medium tracking-wide text-stone-400 uppercase">{group.kind === 'figure' && viewer.lastContext?.figure ? viewer.lastContext.figure.label : titles[group.kind]}</ContextMenu.GroupHeading>
+					<ContextMenu.GroupHeading class="px-2 pt-1.5 pb-1 text-[11px] font-medium tracking-wide text-muted uppercase">{group.kind === 'figure' && viewer.lastContext?.figure ? viewer.lastContext.figure.label : titles[group.kind]}</ContextMenu.GroupHeading>
 					{#each group.actions as action (action.id)}{@render entry(action, group.actions.some((x) => x.checked !== undefined))}{/each}
 				</ContextMenu.Group>
 			{/each}
-			{#if !groups.length}<div class="px-2 py-1.5 text-[13px] text-stone-400">…</div>{/if}
+			{#if !groups.length}<div class="px-2 py-1.5 text-[13px] text-muted">…</div>{/if}
 		</ContextMenu.Content>
 	</ContextMenu.Portal>
 </ContextMenu.Root>

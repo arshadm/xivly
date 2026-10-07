@@ -25,6 +25,27 @@
 @theme {
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
   --font-serif: "New York", "Iowan Old Style", Georgia, serif;
+  /* Secondary text and placeholders: 4.5:1 on every surface (dark value below). */
+  --color-muted: oklch(0.5 0.013 58);
+  /* Control edges (switch tracks when off, input borders, slider thumbs): 3:1. */
+  --color-edge: oklch(0.62 0.012 58);
+}
+
+html.dark {
+  --color-muted: var(--color-stone-400);
+  --color-edge: oklch(0.52 0.01 58);
+}
+
+/* A color chip (annotation colors, page colors, category dots): set its color as
+   --swatch. Pastels get a rim in a darker shade of their own hue (a faint light
+   rim at night), so every chip has a visible edge. */
+@utility swatch {
+  background: var(--swatch);
+  --swatch-rim: oklch(from var(--swatch) calc(min(l, 0.92) - 0.3) c h);
+  @apply inset-ring-1 inset-ring-(--swatch-rim);
+  @variant dark {
+    --swatch-rim: rgb(255 255 255 / 0.35);
+  }
 }
 
 /* The app shell never scrolls: only its panels and the PDF viewport do. A
@@ -66,8 +87,12 @@ html.dark {
   display: none;
 }
 
-/* Text boxes in light mode: palette colors are pastels made for highlights; the text
-   gets a darker shade of its color (same hue), so it reads on a light page. */
-:root:not(.dark) [data-pdf-annotation-freetext] {
-  color: oklch(from var(--annotation-color) min(l, 0.55) c h);
+/* Text boxes: palette colors are fills made for highlights; the text gets an ink
+   shade of its color (same hue), darker by day and lighter by night, so it reads
+   on the page. */
+[data-pdf-annotation-freetext] {
+  color: oklch(from var(--annotation-color) min(l, 0.5) c h);
+}
+.dark [data-pdf-annotation-freetext] {
+  color: oklch(from var(--annotation-color) max(l, 0.75) c h);
 }
