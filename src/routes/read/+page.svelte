@@ -33,15 +33,16 @@
 	import { exportPdfInWorker } from '$lib/export';
 	import { metadataCache } from '$lib/metadata-cache';
 	import { onFlush } from '$lib/flush';
-	import { onBroadcast } from '$lib/broadcast';
+	import { broadcast, onBroadcast } from '$lib/broadcast';
 	import { fileManager, mac } from '$lib/os';
 	import { button } from '$lib/ui/button';
 	import { library } from '$lib/library.svelte';
 	import { platform } from '$lib/platform';
+	import { ReaderLock } from '$lib/reader-lock.svelte';
 	import { settings } from '$lib/settings.svelte';
 	import { keys, matches } from '$lib/shortcuts';
 	import { theme } from '$lib/theme.svelte';
-	import { askUnsaved, closeWindow, openPaper, saveFile, searchParams, setWindowTitle } from '$lib/windows';
+	import { askUnsaved, closeWindow, openPaper, readerTab, saveFile, searchParams, setWindowTitle } from '$lib/windows';
 	import PaperDetails from '$lib/components/PaperDetails.svelte';
 	import { settingsDialog } from '$lib/components/SettingsDialog.svelte';
 	import { shortcutsHelp } from '$lib/components/ShortcutsHelp.svelte';
@@ -109,14 +110,65 @@
 
 	$effect(() => void (paper && setWindowTitle(paper.title)));
 
-	// Load the PDF when the paper changes; the list refreshing must not reload it.
+	// ── One reader per paper (reader-lock.svelte.ts) ─────────────────────
+	// Another tab showing this paper would save over its annotations: only the
+	// reader holding the paper's lock loads it; another one offers to take it over.
+	let lock = $state<ReaderLock>();
+	const access = $derived(lock?.access ?? 'checking');
+	$effect(() => {
+		const l = new ReaderLock(id);
+		lock = l;
+		void l.claim();
+		return () => l.dispose();
+	});
+	// Web: the tab holding the paper is the one `openPaper` finds by name (and focuses).
+	$effect(() => {
+		if (platform.kind !== 'desktop') window.name = access === 'mine' ? readerTab(id) : '';
+	});
+	// Back to a tab that showed "open in another tab": the other one may be closed by now.
+	function onvisibilitychange() {
+		if (document.visibilityState === 'visible' && access === 'elsewhere') void lock?.claim();
+	}
+
+	function takeOver() {
+		void lock?.takeOver(() => void broadcast('reader-take-over', { id }));
+	}
+
+	// Asked by another reader for this paper: save, then hand it over.
+	$effect(() =>
+		onBroadcast('reader-take-over', ({ id: wanted }) => {
+			if (wanted !== id || access !== 'mine') return;
+			void lock
+				?.handOver(async () => {
+					await save();
+					return rev === savedRev;
+				})
+				.then((ok) => {
+					if (ok) return;
+					const error = saveError ?? 'unsaved annotations';
+					void broadcast('reader-kept', { id, error });
+					toast(`This paper stays open here: its annotations couldn’t be saved (${error})`, 'error');
+				});
+		})
+	);
+	$effect(() =>
+		onBroadcast('reader-kept', ({ id: kept, error }) => {
+			if (kept !== id || access !== 'waiting') return;
+			lock?.cancel();
+			toast(`The other ${platform.kind === 'desktop' ? 'window' : 'tab'} keeps this paper: its annotations couldn’t be saved (${error})`, 'error');
+		})
+	);
+
+	// Load the PDF when the paper changes, or once this reader has it; the list refreshing must not reload it.
 	$effect(() => {
 		const current = id;
 		const repo = library.repo;
+		const mine = access === 'mine';
 		untrack(() => {
 			bytes = null;
 			load = { status: 'loading' };
 			slow = false;
+			if (!mine) return;
 			// Large PDFs (or iCloud downloading one) take a moment: a spinner then, not at once.
 			const spinner = setTimeout(() => (slow = true), 300);
 			repo
@@ -413,6 +465,7 @@
 </script>
 
 <svelte:window {onkeydown} onkeydowncapture={onSelectKey} />
+<svelte:document {onvisibilitychange} />
 
 {#snippet panelToggle()}
 	<Tip label={panelOpen ? 'Hide side panel' : 'Show side panel'} shortcut={keys.panelAlt}>
@@ -732,6 +785,18 @@
 			</Find.Root>
 		</Viewer.Root>
 	</Document.Root>
+{:else if access === 'elsewhere' || access === 'waiting'}
+	{@const where = platform.kind === 'desktop' ? 'window' : 'tab'}
+	<div class="grid h-full place-items-center bg-stone-100 px-6 text-center text-sm text-stone-500 dark:bg-stone-950" data-tauri-drag-region>
+		<div>
+			<p class="text-stone-700 dark:text-stone-300">This paper is open in another {where}.</p>
+			<p class="mx-auto mt-1 max-w-sm text-xs">It’s read and annotated in one place at a time, so that one {where} never saves over the other’s annotations.</p>
+			<div class="mt-4 flex justify-center gap-2">
+				<button class={button('secondary')} onclick={closeWindow}>Close</button>
+				<button class={button('primary')} disabled={access === 'waiting'} onclick={takeOver}>{access === 'waiting' ? 'Saving it there…' : 'Read it here'}</button>
+			</div>
+		</div>
+	</div>
 {:else if load.status === 'missing' || load.status === 'error'}
 	<div class="grid h-full place-items-center bg-stone-100 px-6 text-center text-sm text-stone-500 dark:bg-stone-950" data-tauri-drag-region>
 		<div>

@@ -1,11 +1,16 @@
 // Messages between the app's windows (desktop) or tabs (web): a paper removed
-// (its reader closes), a cover re-rendered (the library shows the new one).
+// (its reader closes), a cover re-rendered (the library shows the new one), a
+// reader taking a paper over from another (see reader-lock.svelte.ts).
 // Never delivered back to the window that sent it.
 import { platform } from './platform';
 
 export interface Messages {
 	'paper-removed': { id: string };
 	'cover-changed': { id: string };
+	/** "Hand this paper over": its reader saves, then lets go. */
+	'reader-take-over': { id: string };
+	/** The paper's reader couldn't save its annotations, so it keeps the paper. */
+	'reader-kept': { id: string; error: string };
 }
 type Name = keyof Messages;
 

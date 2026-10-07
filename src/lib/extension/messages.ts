@@ -13,5 +13,8 @@ export const PAPER_URLS = [
 	'*://*/*.pdf#*'
 ];
 
-/** Service worker → pages: "is a library tab open?" (answered with its tab). */
-export type ExtensionMessage = { type: 'find-library' };
+/**
+ * Between the extension's pages and its service worker: "is a library tab
+ * open?", "is this paper open in a reader?" (answered with that tab).
+ */
+export type ExtensionMessage = { type: 'find-library' } | { type: 'find-reader'; id: string };

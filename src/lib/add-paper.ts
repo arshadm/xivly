@@ -12,7 +12,7 @@ export async function addFiles(files: File[]) {
 	const pdfs = files.filter((f) => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'));
 	const pending = pdfs.slice(0, MAX_OPEN).map(() => openPaperWhenReady());
 	const ids = await library.import(pdfs);
-	pending.forEach((p, i) => (ids[i] ? p.open(ids[i], library.get(ids[i])?.title) : p.cancel()));
+	pending.forEach((p, i) => (ids[i] ? void p.open(ids[i], library.get(ids[i])?.title) : p.cancel()));
 }
 
 /** The file picker, then open what was added. */
@@ -27,7 +27,7 @@ export async function addFromArxiv(text: string) {
 		const { id, existed } = await library.importArxiv(text);
 		const title = library.get(id)?.title ?? id;
 		if (existed) toast(`Already in your library: ${title}`);
-		pending.open(id, title);
+		void pending.open(id, title);
 	} catch (e) {
 		pending.cancel();
 		toast(String(e), 'error');

@@ -11,14 +11,19 @@ import { toast } from '$lib/components/Toasts.svelte';
 import { library } from '$lib/library.svelte';
 import { isPdf } from '$lib/repo';
 import { prompts } from '$lib/ui/prompt.svelte';
-import { searchParams } from '$lib/windows';
+import { readerTab, searchParams } from '$lib/windows';
 import type { ExtensionMessage } from './messages';
 
 export function startExtension() {
 	if (__XIVLY_EXTENSION_DEV__) liveReload();
-	// The toolbar button focuses a tab showing the library.
+	// The toolbar button focuses a tab showing the library; "Open in Xivly" the paper's reader.
 	chrome.runtime.onMessage.addListener((message: ExtensionMessage, _sender, respond) => {
-		if (message.type !== 'find-library' || page.route.id !== '/') return false;
+		const found =
+			message.type === 'find-library'
+				? page.route.id === '/'
+				: // The reader holding the paper's lock names its tab after it (windows.ts).
+					page.route.id === '/read' && window.name === readerTab(message.id);
+		if (!found) return false;
 		void chrome.tabs.getCurrent().then(respond);
 		return true;
 	});
@@ -59,7 +64,17 @@ async function open(url: string) {
 	await goto(resolve('/'), { replaceState: true });
 	try {
 		const id = parseArxiv(url) ? (await library.importArxiv(url)).id : await importPdf(url);
-		if (id) await goto(`${resolve('/read')}?id=${encodeURIComponent(id)}`, { replaceState: true });
+		if (!id) return;
+		// Already open in a reader: show that tab, and close this one.
+		const reader = await chrome.runtime.sendMessage<ExtensionMessage, chrome.tabs.Tab | undefined>({ type: 'find-reader', id }).catch(() => undefined);
+		if (reader?.id !== undefined) {
+			await chrome.tabs.update(reader.id, { active: true });
+			await chrome.windows.update(reader.windowId, { focused: true });
+			const self = await chrome.tabs.getCurrent();
+			if (self?.id !== undefined) await chrome.tabs.remove(self.id);
+			return;
+		}
+		await goto(`${resolve('/read')}?id=${encodeURIComponent(id)}`, { replaceState: true });
 	} catch (e) {
 		toast(e instanceof Error ? e.message : String(e), 'error');
 	}

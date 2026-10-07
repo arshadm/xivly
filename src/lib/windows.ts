@@ -3,8 +3,15 @@
 import { resolve } from '$app/paths';
 import { toast } from './components/Toasts.svelte';
 import { platform } from './platform';
+import { readerOpen } from './reader-lock.svelte';
 
 const readerPath = (id: string) => `${resolve('/read')}?id=${encodeURIComponent(id)}`;
+
+/**
+ * Web: the name of the tab reading a paper. The reader holding the paper's lock
+ * takes it (reader-lock.svelte.ts), so opening the paper again finds that tab.
+ */
+export const readerTab = (id: string) => `xivly-${id}`;
 
 /** A page's query (`?id=…`): after the `#` in the Chrome extension (hash router, svelte.config.js). */
 export const searchParams = (url: URL) => (__XIVLY_EXTENSION__ ? new URLSearchParams(url.hash.split('?')[1]) : url.searchParams);
@@ -21,14 +28,43 @@ export function openPaperWhenReady() {
 	// Without a live gesture (a drop, a second file) the browser would block the tab.
 	const tab = web && navigator.userActivation.isActive ? window.open('', '_blank') : null;
 	return {
-		open(id: string, title?: string) {
-			if (tab) {
-				tab.location.href = readerPath(id);
-				tab.focus();
-			} else void openPaper(id, title);
+		async open(id: string, title?: string) {
+			if (!tab) return void openPaper(id, title);
+			// Already open (an arXiv paper added again): show that tab instead.
+			const other = (await readerOpen(id)) && findTab(id);
+			if (other) {
+				tab.close();
+				return other.focus();
+			}
+			// Named now: opening the paper again (double-click) finds this tab.
+			tab.name = readerTab(id);
+			tab.location.href = readerPath(id);
+			tab.focus();
 		},
 		cancel: () => tab?.close()
 	};
+}
+
+/**
+ * The tab named after the paper (only while the paper's lock is held, so it is
+ * there), without reloading it; null if this window can't reach it (a tab the
+ * extension opened).
+ */
+function findTab(id: string) {
+	const tab = window.open('', readerTab(id));
+	if (tab && !isBlank(tab)) return tab;
+	tab?.close();
+	return null;
+}
+
+/** A tab just opened (nothing loaded yet), vs. one showing a page. */
+function isBlank(tab: Window) {
+	try {
+		return tab.location.href === 'about:blank';
+	} catch {
+		// Another site's page.
+		return false;
+	}
 }
 
 /** Open a paper in its own window / tab, or focus it if already open. */
@@ -37,7 +73,11 @@ export async function openPaper(id: string, title = 'Xivly') {
 		// A named target reuses the paper's tab when it's already open. Pop-ups need
 		// a live gesture: after an await, offer an "Open" button (a click) instead.
 		if (!navigator.userActivation.isActive) return toast(`Added “${title}”`, 'info', { label: 'Open', run: () => void openPaper(id, title) });
-		window.open(readerPath(id), `xivly-${id}`)?.focus();
+		// An empty URL finds the paper's tab without reloading it (its annotations
+		// may be unsaved); only a new tab is pointed at the paper.
+		const tab = window.open('', readerTab(id));
+		if (tab && isBlank(tab)) tab.location.href = readerPath(id);
+		tab?.focus();
 		return;
 	}
 	const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow');
