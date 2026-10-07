@@ -54,6 +54,8 @@
 	import BackPill from '$lib/pdf/BackPill.svelte';
 	import CenterControl from '$lib/pdf/CenterControl.svelte';
 	import { icons } from '$lib/pdf/icons';
+	import { emptyText, kindIcons, kindLabels } from '$lib/pdf/annotation-kinds';
+	import AnnotationPreview, { hasPreview } from '$lib/pdf/AnnotationPreview.svelte';
 	import { paperHex } from '$lib/pdf/reading-theme';
 	import Kbd from '$lib/ui/Kbd.svelte';
 	import CycleButton, { type CycleOption } from '$lib/ui/CycleButton.svelte';
@@ -538,11 +540,17 @@
 														{:else if tab === 'notes'}
 															<Annotations.List class="space-y-2 pt-1">
 																{#snippet item({ annotation, quote, pageLabel, go, color })}
+																	{@const preview = hasPreview(annotation)}
 																	<button class="block w-full rounded-md border-l-4 bg-white/80 px-2.5 py-2 text-left shadow-sm hover:shadow dark:bg-stone-800/80" style:border-color={color} onclick={go}>
-																		<span class="text-[11px] text-stone-500 uppercase">p. {pageLabel} · {annotation.kind}</span>
+																		<span class="flex items-center gap-1.5 text-[11px] text-stone-500">
+																			<span class="{kindIcons[annotation.kind]} size-3.5 shrink-0"></span>{kindLabels[annotation.kind]}
+																			<span class="ml-auto tabular-nums">p. {pageLabel}</span>
+																		</span>
 																		{#if annotation.label}<span class="block font-medium">{annotation.label}</span>{/if}
 																		{#if quote}<span class="line-clamp-3 block font-serif text-[13px] text-stone-600 dark:text-stone-300">{quote}</span>{/if}
+																		{#if preview}<span class="mt-1.5 block"><AnnotationPreview {annotation} {color} /></span>{/if}
 																		{#if annotation.contents}<span class="mt-1 block border-t border-stone-200 pt-1 dark:border-stone-700"><Annotations.Markdown source={annotation.contents} /></span>{/if}
+																		{#if !annotation.label && !quote && !preview && !annotation.contents}<span class="block text-stone-400 italic">{emptyText[annotation.kind] ?? 'No text'}</span>{/if}
 																	</button>
 																{/snippet}
 																{#snippet empty()}
