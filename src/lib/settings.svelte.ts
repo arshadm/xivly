@@ -39,7 +39,7 @@ const defaults = {
 	smoothZoom: true,
 	wheelZoom: true,
 	/** Reopen papers where you left off (else at the top). */
-	resumePosition: false,
+	resumePosition: true,
 
 	// Reading: panels & aids
 	sidePanel: false,

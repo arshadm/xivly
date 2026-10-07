@@ -4,8 +4,8 @@
 	that draws itself in. Click saves (⌘S).
 -->
 <script lang="ts">
-	import { keys } from '$lib/shortcuts';
-	import Tip from '$lib/ui/Tip.svelte';
+	import { keys } from '#lib/shortcuts.js';
+	import Tip from '#lib/ui/Tip.svelte';
 
 	let {
 		dirty,

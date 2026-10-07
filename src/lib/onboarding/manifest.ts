@@ -1,5 +1,5 @@
 // The example library's manifest: what it may write, and which papers it holds.
-import type { Category } from '$lib/types';
+import type { Category } from '#lib/types.js';
 
 export interface StarterManifest {
 	version: number;

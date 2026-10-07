@@ -2,10 +2,11 @@
 // /dev/starter, served next to the web app on GitHub Pages) that a new user
 // can download into their library on first start.
 import { asset } from '$app/paths';
-import { dev } from '$app/environment';
-import { library } from '$lib/library.svelte';
-import { platform } from '$lib/platform';
-import type { Category } from '$lib/types';
+import type { AssetPath } from '$app/types';
+import { dev } from '$app/env';
+import { library } from '#lib/library.svelte.js';
+import { platform } from '#lib/platform/index.js';
+import type { Category } from '#lib/types.js';
 import { checkManifest, manifestIds, type StarterManifest } from './manifest';
 
 export type { StarterManifest };
@@ -28,7 +29,7 @@ export const STARTER_CATEGORIES: Category[] = [
  * from `starter/build/` (unzip starter.zip there: it stays out of `static/`, so
  * builds never ship it).
  */
-const base = () => (dev ? '/starter/build/' : platform.kind === 'desktop' || __XIVLY_EXTENSION__ ? 'https://julien-blanchon.github.io/xivly/starter/' : asset('/starter/'));
+const base = () => (dev ? '/starter/build/' : platform.kind === 'desktop' || __XIVLY_EXTENSION__ ? 'https://julien-blanchon.github.io/xivly/starter/' : asset('starter/' as AssetPath));
 
 export const starter = $state({ running: false, done: 0, total: 0, error: null as string | null });
 

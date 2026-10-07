@@ -55,6 +55,8 @@ export interface Paper {
 	abstract?: string;
 	doi?: string;
 	arxiv?: string;
+	/** SHA-256 of the PDF as imported (spots the same file imported again). */
+	sha256?: string;
 	links?: PaperLinks;
 	category?: string;
 	tags?: string[];

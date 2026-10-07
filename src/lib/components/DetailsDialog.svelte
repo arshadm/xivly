@@ -9,10 +9,10 @@
 </script>
 
 <script lang="ts">
-	import { iconButton, mutedIcon } from '$lib/ui/button';
+	import { iconButton, mutedIcon } from '#lib/ui/button.js';
 	import { Dialog } from 'bits-ui';
-	import UiDialog from '$lib/ui/Dialog.svelte';
-	import { library } from '$lib/library.svelte';
+	import UiDialog from '#lib/ui/Dialog.svelte';
+	import { library } from '#lib/library.svelte.js';
 	import PaperActions from './PaperActions.svelte';
 	import PaperDetails from './PaperDetails.svelte';
 

@@ -69,10 +69,15 @@ bun install
 bun run tauri dev        # desktop
 bun run dev              # web, http://localhost:1420
 bun run check            # svelte-check
+bun run test             # unit tests (Vitest)
+bun run test:e2e         # end-to-end smoke test: the web build in Chromium (Playwright)
+cargo test --manifest-path src-tauri/Cargo.toml   # Rust tests
 bun run build:web        # static build for Pages (BASE_PATH=/xivly)
 bun run build:extension  # Chrome extension: build-extension/ (unpacked) + dist/Xivly_<version>_chrome.zip
 bun run dev:extension    # the same, unpacked, rebuilt on every change (live reload)
 ```
+
+The e2e test (`tests/`) runs in Playwright's Chromium (`bunx playwright install chromium` once), or in another Chromium 145+ given by `XIVLY_E2E_BROWSER`, e.g. `XIVLY_E2E_BROWSER="/Applications/Brave Browser.app/Contents/MacOS/Brave Browser"`. The Rust side embeds the built frontend: `cargo test` and `cargo clippy` need a `build/` (`bun run build`).
 
 To hack on svelte-pdf-mini at the same time: `cd ../svelte-pdf-mini/packages/svelte-pdf-mini && bun link`, then `bun link svelte-pdf-mini` here. Vite caches dependencies in memory: restart the dev server after rebuilding the library.
 
@@ -82,7 +87,7 @@ On macOS, `tauri dev` runs the app inside a small `Xivly Dev.app` wrapper (`scri
 
 The web app as an extension page (`chrome-extension://<id>/index.html`), from the same code: `bun run build:extension` builds it with `XIVLY_EXTENSION=1`, which
 
-- switches SvelteKit to its hash router (`index.html#/read?id=…`: an extension is plain files, with no fallback page for `/read`) and its app folder to `app/` (Chrome reserves names starting with `_`), in `svelte.config.js`;
+- switches SvelteKit to its hash router (`index.html#/read?id=…`: an extension is plain files, with no fallback page for `/read`) and its app folder to `app/` (Chrome reserves names starting with `_`), in `vite.config.js`;
 - sets `__XIVLY_EXTENSION__` (`vite.config.js`), which gates the extension's own code (`src/lib/extension/`): the web and desktop bundles leave it out;
 - then `scripts/build-extension.ts` moves SvelteKit's inline bootstrap script to `boot.js` (extension pages only run scripts from the package), bundles the service worker, renders the icons from `src-tauri/icons/icon.svg`, writes `manifest.json` from `package.json`'s version and zips it all.
 
@@ -115,4 +120,4 @@ In dev, the app reads the example library from `starter/build/` (unzip `starter.
 bun run release 0.2.0 && git push --follow-tags
 ```
 
-The `release` workflow builds the macOS (universal; app and DMG signed, notarized and stapled), Windows (`.exe`, `.msi`) and Linux (`.AppImage`, `.deb`, `.rpm`) apps and the Chrome extension (`_chrome.zip`) into one GitHub Release, publishes it once every build is there, then bumps `Casks/xivly.rb` in `julien-blanchon/homebrew-tap` and, once set up, submits the extension to the Chrome Web Store. Release svelte-pdf-mini first when Xivly needs a new version of it. Details, secrets and troubleshooting: [RELEASING.md](RELEASING.md). The `pages` workflow deploys the web version on every push to `main`; `ci` checks the web app (and builds the Chrome extension) and the Rust side on macOS, Windows and Linux; `cache` keeps the release builds' Rust cache warm.
+The `release` workflow builds the macOS (universal; app and DMG signed, notarized and stapled), Windows (`.exe`, `.msi`) and Linux (`.AppImage`, `.deb`, `.rpm`) apps and the Chrome extension (`_chrome.zip`) into one GitHub Release, publishes it once every build is there, then bumps `Casks/xivly.rb` in `julien-blanchon/homebrew-tap` and, once set up, submits the extension to the Chrome Web Store. Release svelte-pdf-mini first when Xivly needs a new version of it. Details, secrets and troubleshooting: [RELEASING.md](RELEASING.md). `ci` checks the web app (type check, unit tests, knip, the e2e smoke test; it also builds the Chrome extension) and the Rust side on macOS, Windows and Linux; the `pages` workflow deploys the web version from `main` once `ci` passed on it; `cache` keeps the release builds' Rust cache warm. Dependabot proposes dependency updates weekly.

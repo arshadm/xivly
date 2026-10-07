@@ -1,15 +1,15 @@
 <!-- Editable paper details: title, authors, year, category, tags, links. -->
 <script lang="ts">
-	import { iconButton, mutedIcon } from '$lib/ui/button';
-	import { paperLinks } from '$lib/cite';
-	import { hfListUrl } from '$lib/huggingface';
-	import { onFlush } from '$lib/flush';
-	import { library } from '$lib/library.svelte';
-	import { addTag } from '$lib/paper-menu';
+	import { iconButton, mutedIcon } from '#lib/ui/button.js';
+	import { paperLinks } from '#lib/cite.js';
+	import { hfListUrl } from '#lib/huggingface.js';
+	import { onFlush } from '#lib/flush.js';
+	import { library } from '#lib/library.svelte.js';
+	import { addTag } from '#lib/paper-menu.js';
 	import type { Snippet } from 'svelte';
-	import { platform } from '$lib/platform';
-	import type { Paper, PaperPatch } from '$lib/types';
-	import Tip from '$lib/ui/Tip.svelte';
+	import { platform } from '#lib/platform/index.js';
+	import type { Paper, PaperPatch } from '#lib/types.js';
+	import Tip from '#lib/ui/Tip.svelte';
 	import PaperActions from './PaperActions.svelte';
 	import { toast } from './Toasts.svelte';
 

@@ -3,7 +3,7 @@ name = "xivly"
 version = "0.4.0"
 description = "Xivly — papers without distraction"
 authors = ["Julien Blanchon <julien@blanchon.cc>"]
-edition = "2021"
+edition = "2024"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

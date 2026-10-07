@@ -3,18 +3,21 @@ import { broadcast } from './broadcast';
 import { toast } from './components/Toasts.svelte';
 import { forgetCover } from './covers';
 import { parseArxiv } from './arxiv';
-import { extractMetadata, tidyTitle } from './extract';
+import { sha256 } from './duplicates';
 import { filterPapers, type View } from './filter';
 import { fetchHfPaper } from './huggingface';
 import { platform } from './platform';
 import { isPdf, merge, Repo, slugify, type Patch } from './repo';
 import { recentWindows, settings } from './settings.svelte';
-import { betterAuthors, betterTitle, categoryColor, hfUnchanged, mapLimited, mergeLinks } from './library-utils';
+import { betterAuthors, betterTitle, categoryColor, hfUnchanged, mapLimited, mergeLinks, tidyTitle } from './library-utils';
 import type { Category, CategoryColor, LibraryFile, Paper, PaperPatch } from './types';
 
 export { betterAuthors, betterTitle, categoryColor } from './library-utils';
 
 export type { View };
+
+/** Metadata extraction (pdf.js paper analysis), loaded on first use rather than with the library. */
+const extractMetadata = async (...args: Parameters<typeof import('./extract').extractMetadata>) => (await import('./extract')).extractMetadata(...args);
 
 /** Always listed; hidden by default, so tagging a paper `archived` archives it. */
 export const ARCHIVED = 'archived';
@@ -203,7 +206,7 @@ class Library {
 	 * ids. A few at a time (a drop of 200 PDFs must not load them all at once);
 	 * the ones that fail are listed in one message.
 	 */
-	async import(files: File[], hints: { arxiv?: string } = {}): Promise<string[]> {
+	async import(files: File[], hints: { arxiv?: string; keep?: (file: File, meta: PaperPatch) => Promise<boolean> } = {}): Promise<string[]> {
 		const repo = this.repo;
 		if (!repo) return [];
 		const category = this.view.kind === 'category' ? this.view.id : undefined;
@@ -216,12 +219,14 @@ class Library {
 				const bytes = new Uint8Array(await file.arrayBuffer());
 				// e.g. a paywall or login page downloaded under a .pdf name.
 				if (!isPdf(bytes)) throw new Error('it isn’t a PDF, maybe a web page saved as .pdf');
-				let meta: PaperPatch = { title: file.name.replace(/\.pdf$/i, '') };
+				let meta: PaperPatch = { title: file.name.replace(/\.pdf$/i, ''), sha256: await sha256(bytes) };
 				try {
 					meta = { ...meta, ...(await extractMetadata(bytes, { filename: file.name, arxiv: hints.arxiv })) };
 				} catch (e) {
 					console.warn('metadata extraction failed', e);
 				}
+				// e.g. a paper already in the library, which the user doesn't want twice.
+				if (hints.keep && !(await hints.keep(file, meta))) return;
 				return await repo.add(bytes, { ...meta, category, tags });
 			} catch (e) {
 				console.error(e);

@@ -1,9 +1,12 @@
 # Static web version (no Rust) on GitHub Pages: same codebase, the platform
-# layer picks the File System Access API at runtime.
+# layer picks the File System Access API at runtime. Deploys a push to main once
+# `ci` passed on it (the commit ci tested), or by hand.
 name: pages
 
 on:
-  push:
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
     branches: [main]
   workflow_dispatch:
 
@@ -18,10 +21,19 @@ concurrency:
 
 jobs:
   build:
+    # Pushes only: a pull request from a fork's `main` also matches `branches: [main]`.
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: bun-${{ runner.os }}-
       - run: bun install --frozen-lockfile
       - name: Build
         run: |

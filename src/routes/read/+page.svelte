@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { iconButton } from '$lib/ui/button';
+	import { iconButton } from '#lib/ui/button.js';
 	import { page } from '$app/state';
 	import { untrack } from 'svelte';
 	import { fade, fly, scale, slide } from 'svelte/transition';
@@ -29,41 +29,43 @@
 		type KeymapAction,
 		comboLabel
 	} from 'svelte-pdf-mini';
-	import { forgetCover } from '$lib/covers';
-	import { exportPdfInWorker } from '$lib/export';
-	import { metadataCache } from '$lib/metadata-cache';
-	import { onFlush } from '$lib/flush';
-	import { broadcast, onBroadcast } from '$lib/broadcast';
-	import { fileManager, mac } from '$lib/os';
-	import { button } from '$lib/ui/button';
-	import { library } from '$lib/library.svelte';
-	import { platform } from '$lib/platform';
-	import { ReaderLock } from '$lib/reader-lock.svelte';
-	import { settings } from '$lib/settings.svelte';
-	import { keys, matches } from '$lib/shortcuts';
-	import { theme } from '$lib/theme.svelte';
-	import { askUnsaved, closeWindow, openPaper, readerTab, saveFile, searchParams, setWindowTitle } from '$lib/windows';
-	import PaperDetails from '$lib/components/PaperDetails.svelte';
-	import { settingsDialog } from '$lib/components/SettingsDialog.svelte';
-	import { shortcutsHelp } from '$lib/components/ShortcutsHelp.svelte';
-	import { toast } from '$lib/components/Toasts.svelte';
-	import AnnotationToolbar from '$lib/pdf/AnnotationToolbar.svelte';
-	import NoteHoverCard from '$lib/pdf/NoteHoverCard.svelte';
-	import PdfContextMenu from '$lib/pdf/PdfContextMenu.svelte';
-	import ThemePopover from '$lib/pdf/ThemePopover.svelte';
-	import SaveStatus from '$lib/pdf/SaveStatus.svelte';
-	import BackPill from '$lib/pdf/BackPill.svelte';
-	import CenterControl from '$lib/pdf/CenterControl.svelte';
-	import { icons } from '$lib/pdf/icons';
-	import { paperHex } from '$lib/pdf/reading-theme';
-	import Kbd from '$lib/ui/Kbd.svelte';
-	import CycleButton, { type CycleOption } from '$lib/ui/CycleButton.svelte';
-	import Separator from '$lib/ui/Separator.svelte';
-	import Tabs from '$lib/ui/Tabs.svelte';
-	import Tip from '$lib/ui/Tip.svelte';
-	import ZoomSelect from '$lib/ui/ZoomSelect.svelte';
-	import ZoomSlider from '$lib/ui/ZoomSlider.svelte';
-	import { contextMenuState, isEditable, setFallbackMenu, type MenuItem } from '$lib/ui/context-menu.svelte';
+	import { forgetCover } from '#lib/covers.js';
+	import { exportPdfInWorker } from '#lib/export.js';
+	import { metadataCache } from '#lib/metadata-cache.js';
+	import { onFlush } from '#lib/flush.js';
+	import { broadcast, onBroadcast } from '#lib/broadcast.js';
+	import { fileManager, mac } from '#lib/os.js';
+	import { button } from '#lib/ui/button.js';
+	import { library } from '#lib/library.svelte.js';
+	import { platform } from '#lib/platform/index.js';
+	import { ReaderLock } from '#lib/reader-lock.svelte.js';
+	import { settings } from '#lib/settings.svelte.js';
+	import { keys, matches } from '#lib/shortcuts.js';
+	import { theme } from '#lib/theme.svelte.js';
+	import { askUnsaved, closeWindow, openPaper, readerTab, saveFile, searchParams, setWindowTitle, showLibrary } from '#lib/windows.js';
+	import PaperDetails from '#lib/components/PaperDetails.svelte';
+	import { settingsDialog } from '#lib/components/SettingsDialog.svelte';
+	import { shortcutsHelp } from '#lib/components/ShortcutsHelp.svelte';
+	import { toast } from '#lib/components/Toasts.svelte';
+	import AnnotationToolbar from '#lib/pdf/AnnotationToolbar.svelte';
+	import NoteHoverCard from '#lib/pdf/NoteHoverCard.svelte';
+	import PdfContextMenu from '#lib/pdf/PdfContextMenu.svelte';
+	import ThemePopover from '#lib/pdf/ThemePopover.svelte';
+	import SaveStatus from '#lib/pdf/SaveStatus.svelte';
+	import BackPill from '#lib/pdf/BackPill.svelte';
+	import CenterControl from '#lib/pdf/CenterControl.svelte';
+	import { icons } from '#lib/pdf/icons.js';
+	import { emptyText, kindIcons, kindLabels } from '#lib/pdf/annotation-kinds.js';
+	import AnnotationPreview, { hasPreview } from '#lib/pdf/AnnotationPreview.svelte';
+	import { paperHex } from '#lib/pdf/reading-theme.js';
+	import Kbd from '#lib/ui/Kbd.svelte';
+	import CycleButton, { type CycleOption } from '#lib/ui/CycleButton.svelte';
+	import Separator from '#lib/ui/Separator.svelte';
+	import Tabs from '#lib/ui/Tabs.svelte';
+	import Tip from '#lib/ui/Tip.svelte';
+	import ZoomSelect from '#lib/ui/ZoomSelect.svelte';
+	import ZoomSlider from '#lib/ui/ZoomSlider.svelte';
+	import { contextMenuState, isEditable, setFallbackMenu, type MenuItem } from '#lib/ui/context-menu.svelte.js';
 
 	const id = $derived(searchParams(page.url).get('id') ?? '');
 	const paper = $derived(library.get(id));
@@ -175,6 +177,7 @@
 				?.readPdf(current)
 				.then((b) => {
 					if (current !== id) return;
+					restoring = !!resumeAt();
 					bytes = b;
 					load = b ? { status: 'ready' } : { status: 'missing' };
 				})
@@ -287,10 +290,30 @@
 		const target = id;
 		clearTimeout(posTimer);
 		posTimer = setTimeout(() => {
-			if (viewer?.document.status === 'ready' && library.get(target)) library.touch(target, { position: Number(viewer.position.toFixed(2)) }).catch(() => {});
+			if (!restoring && viewer?.document.status === 'ready' && library.get(target)) library.touch(target, { position: Number(viewer.position.toFixed(2)) }).catch(() => {});
 		}, 1500);
 		return () => clearTimeout(posTimer);
 	});
+
+	// Reopen where you left off: the pages stay hidden until they're there (no jump from page 1).
+	const resumeAt = () => (s.resumePosition && paper?.position && paper.position >= 1.01 ? paper.position : undefined);
+	let restoring = $state(false);
+	async function restorePosition() {
+		const position = resumeAt();
+		// Shown anyway if the restore hangs (a page that never loads).
+		const reveal = setTimeout(() => (restoring = false), 2000);
+		try {
+			if (position) {
+				await new Promise(requestAnimationFrame);
+				await viewer?.restorePosition(position);
+			}
+		} catch {
+			// Opens at the top instead.
+		} finally {
+			clearTimeout(reveal);
+			restoring = false;
+		}
+	}
 
 	// ── Panels, find, menus ──────────────────────────────────────────────
 	/** Where ⌘F came from: Esc in the search field goes back there (or closes the panel). */
@@ -467,9 +490,12 @@
 <svelte:window {onkeydown} onkeydowncapture={onSelectKey} />
 <svelte:document {onvisibilitychange} />
 
-{#snippet panelToggle()}
+{#snippet cornerButtons()}
 	<Tip label={panelOpen ? 'Hide side panel' : 'Show side panel'} shortcut={keys.panelAlt}>
 		{#snippet child({ props })}<button {...props} class={iconBtn} aria-label="Side panel" data-active={panelOpen || undefined} onclick={() => (panelOpen = !panelOpen)}><span class="{icons.panel} size-4"></span></button>{/snippet}
+	</Tip>
+	<Tip label="Library" shortcut={keys.library}>
+		{#snippet child({ props })}<button {...props} class={iconBtn} aria-label="Show the library" onclick={showLibrary}><span class="icon-[lucide--library] size-4"></span></button>{/snippet}
 	</Tip>
 {/snippet}
 
@@ -481,7 +507,7 @@
 		</div>
 	</div>
 {:else if bytes}
-	<Document.Root src={bytes} onLoad={() => s.resumePosition && paper.position && requestAnimationFrame(() => viewer?.restorePosition(paper.position!))}>
+	<Document.Root src={bytes} onLoad={restorePosition}>
 		<Viewer.Root
 			bind:viewer
 			{pageTheme}
@@ -520,11 +546,11 @@
 							<!--
 								Full-height sidebar (macOS): when open, the traffic lights sit on it.
 								One animated value drives it all: --side-w (the panel's width). The
-								toggle never moves, and the title row keeps clear of the lights and
-								toggle at every frame (its padding is computed from --side-w).
+								panel toggle and library button never move, and the title row keeps clear
+								of the lights and buttons at every frame (its padding is computed from --side-w).
 							-->
 							<div class="reader-row relative flex min-h-0 flex-1" data-panel={panelOpen || undefined}>
-								<div class="absolute top-2 left-2 z-40 lights:left-20">{@render panelToggle()}</div>
+								<div class="absolute top-2 left-2 z-40 flex gap-1 lights:left-20">{@render cornerButtons()}</div>
 								<!-- ── Side panel ── -->
 								<aside class="side flex shrink-0 flex-col overflow-hidden text-[13px] {chrome}" inert={!panelOpen}>
 									<div class="flex min-h-0 w-80 flex-1 flex-col">
@@ -578,11 +604,17 @@
 														{:else if tab === 'notes'}
 															<Annotations.List class="space-y-2 pt-1">
 																{#snippet item({ annotation, quote, pageLabel, go, color })}
+																	{@const preview = hasPreview(annotation)}
 																	<button class="block w-full rounded-md border-l-4 bg-white/80 px-2.5 py-2 text-left shadow-sm hover:shadow dark:bg-stone-800/80" style:border-color={color} onclick={go}>
-																		<span class="text-[11px] text-stone-500 uppercase">p. {pageLabel} · {annotation.kind}</span>
+																		<span class="flex items-center gap-1.5 text-[11px] text-stone-500">
+																			<span class="{kindIcons[annotation.kind]} size-3.5 shrink-0"></span>{kindLabels[annotation.kind]}
+																			<span class="ml-auto tabular-nums">p. {pageLabel}</span>
+																		</span>
 																		{#if annotation.label}<span class="block font-medium">{annotation.label}</span>{/if}
 																		{#if quote}<span class="line-clamp-3 block font-serif text-[13px] text-stone-600 dark:text-stone-300">{quote}</span>{/if}
+																		{#if preview}<span class="mt-1.5 block"><AnnotationPreview {annotation} {color} /></span>{/if}
 																		{#if annotation.contents}<span class="mt-1 block border-t border-stone-200 pt-1 dark:border-stone-700"><Annotations.Markdown source={annotation.contents} /></span>{/if}
+																		{#if !annotation.label && !quote && !preview && !annotation.contents}<span class="block text-stone-400 italic">{emptyText[annotation.kind] ?? 'No text'}</span>{/if}
 																	</button>
 																{/snippet}
 																{#snippet empty()}
@@ -693,7 +725,7 @@
 											<PdfContextMenu onOpenReference={openReference} {saveFile}>
 												{#snippet trigger({ props })}
 													<Viewer.Viewport {...props} style={s.pageFrame === 'none' ? `background:${swatch}` : undefined} class="h-full bg-stone-100 transition-colors dark:bg-stone-950 [--pdf-page-gap:22px] [--pdf-pages-padding:28px] {s.sideNotes ? '[--pdf-pages-aside:252px]' : ''}">
-														<Viewer.Pages>
+														<Viewer.Pages class={restoring ? 'opacity-0' : 'transition-opacity duration-150'}>
 															{#snippet children({ pageNumber })}
 																<Viewer.Page {pageNumber}>
 																	<Viewer.Canvas />
@@ -761,7 +793,7 @@
 										{#if open}
 											<div {...props} transition:fly|global={{ y: 6, duration: 140 }} class="overflow-hidden rounded-xl border border-stone-200 bg-white shadow-2xl ring-1 ring-black/5 dark:border-stone-700 dark:bg-stone-900">
 												{#if url}
-													<button type="button" class="flex w-full items-center gap-2 p-3 text-left text-sm hover:bg-stone-50 dark:hover:bg-stone-800" onclick={() => url && platform.openUrl(url)}>
+													<button type="button" class="flex w-full cursor-pointer items-center gap-2 p-3 text-left text-sm hover:bg-stone-50 dark:hover:bg-stone-800" onclick={() => url && platform.openUrl(url)}>
 														<span class="{icons.external} size-4 shrink-0 text-stone-400"></span><span class="truncate text-sky-700 underline-offset-2 hover:underline dark:text-sky-400">{url}</span>
 													</button>
 												{:else}
@@ -822,12 +854,12 @@
 	}
 	.reader-row {
 		--side-w: 0px;
-		/* Room the title row keeps free on the left: traffic lights (macOS desktop) + toggle. */
-		--chrome-w: 36px;
+		/* Room the title row keeps free on the left: traffic lights (macOS desktop), panel toggle and library button. */
+		--chrome-w: 68px;
 		transition: --side-w 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
 	}
 	:global([data-lights]) .reader-row {
-		--chrome-w: 108px;
+		--chrome-w: 140px;
 	}
 	.reader-row[data-panel] {
 		--side-w: 320px;

@@ -4,7 +4,7 @@
 // - text fields get Cut / Copy / Paste / Select all.
 // Rendered by GlobalContextMenu.svelte (a bits-ui DropdownMenu at the cursor).
 import type { Attachment } from 'svelte/attachments';
-import { mod } from '$lib/shortcuts';
+import { mod } from '#lib/shortcuts.js';
 import { clipboard } from './clipboard';
 
 export interface MenuItem {

@@ -51,7 +51,7 @@ Prereleases: `bun run release 0.2.0-rc.1` → tag `v0.2.0-rc.1`. The GitHub rele
 1. **prepare** (ubuntu)
    - `node scripts/check-version.js vX.Y.Z`: tag vs `package.json` vs `tauri.conf.json` vs `Cargo.toml` vs `Cargo.lock`.
    - The `svelte-pdf-mini` version from `bun.lock` is on npm.
-   - `bun install --frozen-lockfile`, `bun run check`.
+   - `bun install --frozen-lockfile`, `bun run check`, `bun run test`.
    - Creates a **draft** release `vX.Y.Z` (title *Xivly vX.Y.Z*, install instructions + GitHub-generated notes), or reuses that tag's draft on re-runs. An already **published** release is refused (its assets are what users and the cask's sha256 have) unless a manual run sets **force**.
 2. **build** (matrix, `fail-fast: false`). The Rust cache comes from `cache.yml` (see below):
    - **macOS** (`macos-latest`): `--target universal-apple-darwin`, bundles from `tauri.conf.json` (`app`, `dmg`). Imports the Developer ID certificate into a temporary keychain; `tauri build` signs the app, notarizes it and staples it. The DMG is then notarized itself (`xcrun notarytool submit --wait`), stapled and checked (`stapler validate`, `spctl`), and uploaded with `gh release upload --clobber`. Assets: `Xivly_X.Y.Z_universal.dmg`, `Xivly_X.Y.Z_universal.app.tar.gz`.

@@ -12,6 +12,7 @@ import {
 	pdfjsPaperSource,
 	type Section
 } from 'svelte-pdf-mini';
+import { tidyTitle } from './library-utils';
 import type { PaperLinks, PaperPatch } from './types';
 
 /** Pages scanned for the paper's *own* links (later pages cite other work). */
@@ -191,21 +192,4 @@ function classifyLinks(raw: string[], titleWords: string[] = []): PaperLinks | u
 		other: other.size ? [...other].slice(0, 10) : undefined
 	};
 	return Object.values(links).some(Boolean) ? links : undefined;
-}
-
-const MINOR = new Set(['a', 'an', 'and', 'as', 'at', 'by', 'for', 'from', 'in', 'into', 'of', 'on', 'or', 'over', 'the', 'to', 'via', 'vs', 'with']);
-
-/**
- * Titles set in capitals ("MULTIMODAL FLOW: UNIFIED…") become title case
- * ("Multimodal Flow: Unified…"); anything else is left as typed.
- */
-export function tidyTitle(title: string) {
-	const letters = title.replace(/[^\p{L}]/gu, '');
-	if (letters.length < 8 || letters !== letters.toUpperCase()) return title;
-	let first = true;
-	return title.toLowerCase().replace(/[\p{L}\p{N}][\p{L}\p{N}'’]*/gu, (w) => {
-		const keep = !first && MINOR.has(w);
-		first = false;
-		return keep ? w : w[0].toUpperCase() + w.slice(1);
-	}).replace(/([:?!.]\s+)(\p{Ll})/gu, (_, p, c) => p + c.toUpperCase());
 }

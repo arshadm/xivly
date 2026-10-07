@@ -1,18 +1,88 @@
 // Adding papers: PDF files, or an arXiv link / id (typed in the "+" panel, or pasted).
+// A paper already in the library (same file, arXiv id or DOI) is asked about first.
 import { parseArxiv } from './arxiv';
 import { toast } from './components/Toasts.svelte';
-import { library } from './library.svelte';
-import { openPaperWhenReady } from './windows';
+import { findDuplicate, sha256 } from './duplicates';
+import { ARCHIVED, library } from './library.svelte';
+import type { Paper } from './types';
+import { prompts } from './ui/prompt.svelte';
+import { openPaper, openPaperWhenReady } from './windows';
 
 /** New papers open right away (a handful at most, when many are dropped at once). */
 const MAX_OPEN = 4;
 
+const isArchived = (p: Paper) => !!p.tags?.includes(ARCHIVED);
+
+// One question at a time (a new prompt would cancel the one still open).
+let asking: Promise<unknown> = Promise.resolve();
+
+/** "Already in your library": open that one (unarchived, if it was), import a copy, or neither. */
+function askDuplicate(p: Paper): Promise<'open' | 'import' | null> {
+	const archived = isArchived(p);
+	const answer = asking.then(() =>
+		prompts.choose(
+			'Already in your library',
+			[
+				{ value: 'import', label: 'Import anyway' },
+				{ value: 'open', label: archived ? 'Unarchive and open' : 'Open it' }
+			],
+			{ message: `“${p.title}”${archived ? ' is archived, so it’s hidden from the library.' : ''}` }
+		)
+	);
+	asking = answer;
+	return answer;
+}
+
+/** Open a paper already there (in the click on "Open it": the web opens tabs only in a gesture). */
+function openExisting(p: Paper) {
+	void openPaper(p.id, p.title);
+	if (isArchived(p)) void library.toggleTag(p.id, ARCHIVED).catch((e) => toast(String(e), 'error'));
+}
+
 /** Import files and open what was added. Call it in the user's gesture. */
 export async function addFiles(files: File[]) {
 	const pdfs = files.filter((f) => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'));
-	const pending = pdfs.slice(0, MAX_OPEN).map(() => openPaperWhenReady());
-	const ids = await library.import(pdfs);
-	pending.forEach((p, i) => (ids[i] ? void p.open(ids[i], library.get(ids[i])?.title) : p.cancel()));
+	// The same file again: asked before any tab opens (on the web it would cover the question).
+	const asked = new Set<File>();
+	const skipped = new Set<File>();
+	for (const file of pdfs) {
+		const existing = findDuplicate(library.papers, { sha256: await sha256(await file.arrayBuffer()) });
+		if (!existing) continue;
+		const answer = await askDuplicate(existing);
+		asked.add(file);
+		if (answer === 'import') continue;
+		skipped.add(file);
+		if (answer === 'open') openExisting(existing);
+	}
+	const todo = pdfs.filter((f) => !skipped.has(f));
+	const pending = new Map(todo.slice(0, MAX_OPEN).map((f) => [f, openPaperWhenReady()]));
+	/** Files whose tab was closed for a question: opened later, if added after all. */
+	const reopen = new Set<File>();
+	const ids = await library.import(todo, {
+		// The same paper in another file (arXiv id or DOI), found once its metadata is read.
+		keep: async (file, meta) => {
+			const existing = asked.has(file) ? undefined : findDuplicate(library.papers, meta);
+			if (!existing) return true;
+			if (pending.has(file)) {
+				pending.get(file)!.cancel();
+				pending.delete(file);
+				reopen.add(file);
+			}
+			const answer = await askDuplicate(existing);
+			if (answer === 'import') return true;
+			skipped.add(file);
+			if (answer === 'open') openExisting(existing);
+			return false;
+		}
+	});
+	// `ids` follows the files that were added, in order.
+	const added = todo.filter((f) => !skipped.has(f));
+	added.forEach((f, i) => {
+		const p = pending.get(f);
+		if (!ids[i]) p?.cancel();
+		else if (p) void p.open(ids[i], library.get(ids[i])?.title);
+		else if (reopen.has(f)) void openPaper(ids[i], library.get(ids[i])?.title);
+	});
 }
 
 /** The file picker, then open what was added. */
@@ -25,8 +95,10 @@ export async function addFromArxiv(text: string) {
 	const pending = openPaperWhenReady();
 	try {
 		const { id, existed } = await library.importArxiv(text);
-		const title = library.get(id)?.title ?? id;
-		if (existed) toast(`Already in your library: ${title}`);
+		const paper = library.get(id);
+		const title = paper?.title ?? id;
+		if (paper && existed && isArchived(paper)) toast(`Already in your library, archived: ${title}`, 'info', { label: 'Unarchive', run: () => void library.toggleTag(id, ARCHIVED).catch((e) => toast(String(e), 'error')) });
+		else if (existed) toast(`Already in your library: ${title}`);
 		void pending.open(id, title);
 	} catch (e) {
 		pending.cancel();

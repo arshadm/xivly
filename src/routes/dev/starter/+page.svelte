@@ -9,15 +9,15 @@
 -->
 <script lang="ts">
 	import { assetUrls, exportPdf, getSharedWorker, loadPdfJs } from 'svelte-pdf-mini';
-	import { extractMetadata } from '$lib/extract';
-	import { fetchHfPaper } from '$lib/huggingface';
-	import { betterAuthors, betterTitle } from '$lib/library.svelte';
-	import { MemoryFs } from '$lib/onboarding/memory-fs';
-	import { placeAnnotations, type PaperSpec } from '$lib/onboarding/place';
-	import { STARTER_CATEGORIES, STARTER_TAG, type StarterManifest } from '$lib/onboarding/starter.svelte';
-	import { platform } from '$lib/platform';
-	import { Repo } from '$lib/repo';
-	import { button } from '$lib/ui/button';
+	import { extractMetadata } from '#lib/extract.js';
+	import { fetchHfPaper } from '#lib/huggingface.js';
+	import { betterAuthors, betterTitle } from '#lib/library.svelte.js';
+	import { MemoryFs } from '#lib/onboarding/memory-fs.js';
+	import { placeAnnotations, type PaperSpec } from '#lib/onboarding/place.js';
+	import { STARTER_CATEGORIES, STARTER_TAG, type StarterManifest } from '#lib/onboarding/starter.svelte.js';
+	import { platform } from '#lib/platform/index.js';
+	import { Repo } from '#lib/repo.js';
+	import { button } from '#lib/ui/button.js';
 
 	// Fetched from the dev server (the repo's starter/ folder), never bundled: the
 	// production build must not ship the starter PDFs.

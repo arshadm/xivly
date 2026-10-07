@@ -1,32 +1,32 @@
 <script lang="ts">
 	import '../app.css';
 	import { page } from '$app/state';
-	import '$lib/pdf';
+	import '#lib/pdf.js';
 	import { invoke } from '@tauri-apps/api/core';
 	import { listen } from '@tauri-apps/api/event';
 	import { getCurrentWindow } from '@tauri-apps/api/window';
 	import { Tooltip } from 'bits-ui';
 	import { onMount, type Snippet } from 'svelte';
-	import { addFiles } from '$lib/add-paper';
-	import { flushAll, hasUnsaved } from '$lib/flush';
-	import { library } from '$lib/library.svelte';
-	import { platform } from '$lib/platform';
-	import { settings } from '$lib/settings.svelte';
-	import { keys, matches } from '$lib/shortcuts';
-	import { mac, os } from '$lib/os';
-	import { theme } from '$lib/theme.svelte';
-	import { fixRestoredSize, searchParams, showLibrary } from '$lib/windows';
-	import SettingsDialog, { settingsDialog } from '$lib/components/SettingsDialog.svelte';
-	import Welcome from '$lib/components/Welcome.svelte';
-	import Toasts, { toast } from '$lib/components/Toasts.svelte';
-	import GlobalContextMenu from '$lib/ui/GlobalContextMenu.svelte';
-	import TitleTooltips from '$lib/ui/TitleTooltips.svelte';
-	import Wordmark from '$lib/ui/Wordmark.svelte';
-	import StarterDialog from '$lib/components/StarterDialog.svelte';
-	import PromptHost from '$lib/ui/PromptHost.svelte';
-	import DetailsDialog from '$lib/components/DetailsDialog.svelte';
-	import { isEditable, onWindowContextMenu } from '$lib/ui/context-menu.svelte';
-	import ShortcutsHelp, { shortcutsHelp } from '$lib/components/ShortcutsHelp.svelte';
+	import { addFiles } from '#lib/add-paper.js';
+	import { flushAll, hasUnsaved } from '#lib/flush.js';
+	import { library } from '#lib/library.svelte.js';
+	import { platform } from '#lib/platform/index.js';
+	import { settings } from '#lib/settings.svelte.js';
+	import { keys, matches } from '#lib/shortcuts.js';
+	import { mac, os } from '#lib/os.js';
+	import { theme } from '#lib/theme.svelte.js';
+	import { fixRestoredSize, searchParams, showLibrary } from '#lib/windows.js';
+	import SettingsDialog, { settingsDialog } from '#lib/components/SettingsDialog.svelte';
+	import Welcome from '#lib/components/Welcome.svelte';
+	import Toasts, { toast } from '#lib/components/Toasts.svelte';
+	import GlobalContextMenu from '#lib/ui/GlobalContextMenu.svelte';
+	import TitleTooltips from '#lib/ui/TitleTooltips.svelte';
+	import Wordmark from '#lib/ui/Wordmark.svelte';
+	import StarterDialog from '#lib/components/StarterDialog.svelte';
+	import PromptHost from '#lib/ui/PromptHost.svelte';
+	import DetailsDialog from '#lib/components/DetailsDialog.svelte';
+	import { isEditable, onWindowContextMenu } from '#lib/ui/context-menu.svelte.js';
+	import ShortcutsHelp, { shortcutsHelp } from '#lib/components/ShortcutsHelp.svelte';
 
 	let { children }: { children: Snippet } = $props();
 
@@ -61,7 +61,7 @@
 			return () => unlisten.forEach((p) => p.then((f) => f()));
 		}
 		settings.init().then(() => library.init());
-		if (__XIVLY_EXTENSION__) void import('$lib/extension/app.svelte').then((m) => m.startExtension());
+		if (__XIVLY_EXTENSION__) void import('#lib/extension/app.svelte.js').then((m) => m.startExtension());
 		if (platform.kind !== 'desktop') return;
 		void fixRestoredSize();
 		const win = getCurrentWindow();
@@ -179,7 +179,7 @@
 	<div class="h-full bg-stone-50 text-stone-800 dark:bg-stone-950 dark:text-stone-200">
 		{#if page.route.id?.startsWith('/dev')}
 			<!-- Dev tools (e.g. /dev/starter) don't need a library. The extension
-			     build skips dev/+layout.ts (svelte.config.js), which 404s them. -->
+			     build skips dev/+layout.ts (vite.config.js), which 404s them. -->
 			{#if !__XIVLY_EXTENSION__}{@render children()}{/if}
 		{:else if !modern}
 			<div class="grid h-full place-items-center px-6 text-center" data-tauri-drag-region>

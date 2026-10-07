@@ -1,6 +1,7 @@
 // Windows (desktop) and tabs (web): the library stays open, each paper gets
 // its own reader window.
 import { resolve } from '$app/paths';
+import type { ReadonlyURL } from '$app/state';
 import { toast } from './components/Toasts.svelte';
 import { platform } from './platform';
 import { readerOpen } from './reader-lock.svelte';
@@ -13,8 +14,8 @@ const readerPath = (id: string) => `${resolve('/read')}?id=${encodeURIComponent(
  */
 export const readerTab = (id: string) => `xivly-${id}`;
 
-/** A page's query (`?id=…`): after the `#` in the Chrome extension (hash router, svelte.config.js). */
-export const searchParams = (url: URL) => (__XIVLY_EXTENSION__ ? new URLSearchParams(url.hash.split('?')[1]) : url.searchParams);
+/** A page's query (`?id=…`): after the `#` in the Chrome extension (hash router, vite.config.js). */
+export const searchParams = (url: ReadonlyURL) => (__XIVLY_EXTENSION__ ? new URLSearchParams(url.hash.split('?')[1]) : url.searchParams);
 /** Window labels allow `a-zA-Z0-9-/:_`; paper ids are slugs. */
 const labelFor = (id: string) => `paper-${id.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
 
@@ -104,10 +105,21 @@ export async function openPaper(id: string, title = 'Xivly') {
 	});
 }
 
+/** Name of the browser tab showing the library (web). */
+export const LIBRARY_TAB = 'xivly-library';
+
 /** Bring the library back (desktop: re-create its window if it was closed). */
 export async function showLibrary() {
+	if (__XIVLY_EXTENSION__) {
+		const { focusLibraryTab } = await import('./extension/messages');
+		if (await focusLibraryTab()) return;
+	}
 	if (platform.kind !== 'desktop') {
-		window.open(resolve('/'), 'xivly-library')?.focus();
+		// The library's tab carries this name (routes/+page.svelte): tabs opened from it
+		// switch back to it; otherwise a new tab shows the library.
+		const tab = window.open('', LIBRARY_TAB);
+		if (tab?.location.href === 'about:blank') tab.location.href = resolve('/');
+		tab?.focus();
 		return;
 	}
 	const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow');

@@ -6,12 +6,12 @@ import { untrack } from 'svelte';
 import { goto } from '$app/navigation';
 import { resolve } from '$app/paths';
 import { page } from '$app/state';
-import { parseArxiv } from '$lib/arxiv';
-import { toast } from '$lib/components/Toasts.svelte';
-import { library } from '$lib/library.svelte';
-import { isPdf } from '$lib/repo';
-import { prompts } from '$lib/ui/prompt.svelte';
-import { readerTab, searchParams } from '$lib/windows';
+import { parseArxiv } from '#lib/arxiv.js';
+import { toast } from '#lib/components/Toasts.svelte';
+import { library } from '#lib/library.svelte.js';
+import { isPdf } from '#lib/repo.js';
+import { prompts } from '#lib/ui/prompt.svelte.js';
+import { readerTab, searchParams } from '#lib/windows.js';
 import type { ExtensionMessage } from './messages';
 
 export function startExtension() {
@@ -61,7 +61,7 @@ function liveReload() {
 /** Add the paper at `url` (arXiv, or any PDF), then read it in this tab. */
 async function open(url: string) {
 	// A reload must not add it again.
-	await goto(resolve('/'), { replaceState: true });
+	await goto(resolve('/'), { replace: true });
 	try {
 		const id = parseArxiv(url) ? (await library.importArxiv(url)).id : await importPdf(url);
 		if (!id) return;
@@ -74,7 +74,7 @@ async function open(url: string) {
 			if (self?.id !== undefined) await chrome.tabs.remove(self.id);
 			return;
 		}
-		await goto(`${resolve('/read')}?id=${encodeURIComponent(id)}`, { replaceState: true });
+		await goto(`${resolve('/read')}?id=${encodeURIComponent(id)}`, { replace: true });
 	} catch (e) {
 		toast(e instanceof Error ? e.message : String(e), 'error');
 	}

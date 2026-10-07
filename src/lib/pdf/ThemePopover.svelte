@@ -1,13 +1,13 @@
 <!-- Reading theme: appearance (system / light / dark), paper color, strength and page edge (bound to settings). -->
 <script lang="ts">
-	import { iconButton } from '$lib/ui/button';
+	import { iconButton } from '#lib/ui/button.js';
 	import { Popover } from 'bits-ui';
 	import { scale } from 'svelte/transition';
-	import { settings, type PageFrame } from '$lib/settings.svelte';
-	import Switch from '$lib/ui/Switch.svelte';
-	import Slider from '$lib/ui/Slider.svelte';
-	import Tip from '$lib/ui/Tip.svelte';
-	import ToggleGroup from '$lib/ui/ToggleGroup.svelte';
+	import { settings, type PageFrame } from '#lib/settings.svelte.js';
+	import Switch from '#lib/ui/Switch.svelte';
+	import Slider from '#lib/ui/Slider.svelte';
+	import Tip from '#lib/ui/Tip.svelte';
+	import ToggleGroup from '#lib/ui/ToggleGroup.svelte';
 	import { paperSwatches } from './reading-theme';
 
 	let { swatch, class: className }: { swatch: string; class?: string } = $props();

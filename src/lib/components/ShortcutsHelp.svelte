@@ -1,14 +1,14 @@
 <!-- `?`: every shortcut. App keys always; reading & annotation keys (from
      svelte-pdf-mini's keymap) when a paper is open. -->
 <script module lang="ts">
-	import type { Group } from '$lib/shortcuts';
+	import type { Group } from '#lib/shortcuts.js';
 	export const shortcutsHelp = $state({ open: false, pdf: null as null | (() => Group[]) });
 </script>
 
 <script lang="ts">
-	import { shortcuts } from '$lib/shortcuts';
-	import Dialog from '$lib/ui/Dialog.svelte';
-	import Kbd from '$lib/ui/Kbd.svelte';
+	import { shortcuts } from '#lib/shortcuts.js';
+	import Dialog from '#lib/ui/Dialog.svelte';
+	import Kbd from '#lib/ui/Kbd.svelte';
 
 	const groups = $derived(shortcutsHelp.open ? [...(shortcutsHelp.pdf?.() ?? []), ...shortcuts] : []);
 </script>

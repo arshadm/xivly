@@ -1,8 +1,9 @@
 //! Filesystem primitives over the library folder.
 //!
 //! All library logic (layout, paper.json merging, slugs...) lives in
-//! TypeScript (`src/lib/library/`) so the desktop app and the static web
-//! build share it. The web build implements the same primitives with the
+//! TypeScript (`src/lib/repo.ts`, `src/lib/library.svelte.ts`,
+//! `src/lib/library-utils.ts`) so the desktop app and the static web build
+//! share it. The web build implements the same primitives with the
 //! File System Access API (`src/lib/platform/web.ts`).
 //!
 //! Every path is relative to the library root and checked so it can't

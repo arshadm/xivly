@@ -57,7 +57,7 @@ export const shortcuts: Group[] = [
 		items: [
 			{ label: 'Search papers', keys: [keys.search] },
 			{ label: 'Add PDF files', keys: [keys.addPapers] },
-			{ label: 'Add papers (an arXiv link, or paste it)', keys: [keys.addArxiv] },
+			{ label: 'Add papers (an arXiv link, or search Hugging Face)', keys: [keys.addArxiv] },
 			{ label: 'Open the paper', keys: ['↵'] }
 		]
 	},

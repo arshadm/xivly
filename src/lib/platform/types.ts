@@ -1,5 +1,5 @@
 // Everything platform-specific goes through this interface. The library
-// logic on top (`$lib/repo.ts`) is shared by the desktop and web builds.
+// logic on top (`#lib/repo.ts`) is shared by the desktop and web builds.
 
 /** Minimal filesystem over the library root. Paths are relative, `/`-separated. */
 export interface LibraryFs {
