@@ -1,3 +1,4 @@
+/// <reference types="chrome" />
 // Shared by the extension's service worker and its pages.
 
 /** Where "Open in Xivly" shows up: arXiv (and its mirrors parseArxiv knows) and PDF links. */
@@ -15,3 +16,12 @@ export const PAPER_URLS = [
 
 /** Service worker → pages: "is a library tab open?" (answered with its tab). */
 export type ExtensionMessage = { type: 'find-library' };
+
+/** Switch to a tab showing the library (one answers `find-library`): false when none is open. */
+export async function focusLibraryTab() {
+	const found = await chrome.runtime.sendMessage<ExtensionMessage, chrome.tabs.Tab | undefined>({ type: 'find-library' }).catch(() => undefined);
+	if (found?.id === undefined) return false;
+	await chrome.tabs.update(found.id, { active: true });
+	await chrome.windows.update(found.windowId, { focused: true });
+	return true;
+}

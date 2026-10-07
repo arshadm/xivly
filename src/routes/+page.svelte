@@ -12,7 +12,7 @@
 	import Kbd from '$lib/ui/Kbd.svelte';
 	import Tip from '$lib/ui/Tip.svelte';
 	import { setFallbackMenu, type MenuItem } from '$lib/ui/context-menu.svelte';
-	import { setWindowTitle } from '$lib/windows';
+	import { LIBRARY_TAB, setWindowTitle } from '$lib/windows';
 	import { readOptions, sortMenu, sortOptions } from '$lib/sort-menu';
 	import { onLibraryPaste, pickFiles } from '$lib/add-paper';
 	import AddPapers, { addPapers } from '$lib/components/AddPapers.svelte';
@@ -35,6 +35,11 @@
 		return { all: 'All papers', recent: 'Recent', uncategorized: 'Uncategorized' }[v.kind];
 	});
 	$effect(() => void setWindowTitle(library.name ? `Xivly — ${library.name}` : 'Xivly'));
+	// Web: a reader opened from this tab switches back to it (showLibrary).
+	$effect(() => {
+		window.name = LIBRARY_TAB;
+		return () => (window.name = '');
+	});
 
 	// The grid is rebuilt (a fade) only when the view changes to papers that share none with
 	// the previous ones (e.g. one category to another): otherwise shared cards move (flip).

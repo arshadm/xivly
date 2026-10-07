@@ -64,10 +64,21 @@ export async function openPaper(id: string, title = 'Xivly') {
 	});
 }
 
+/** Name of the browser tab showing the library (web). */
+export const LIBRARY_TAB = 'xivly-library';
+
 /** Bring the library back (desktop: re-create its window if it was closed). */
 export async function showLibrary() {
+	if (__XIVLY_EXTENSION__) {
+		const { focusLibraryTab } = await import('./extension/messages');
+		if (await focusLibraryTab()) return;
+	}
 	if (platform.kind !== 'desktop') {
-		window.open(resolve('/'), 'xivly-library')?.focus();
+		// The library's tab carries this name (routes/+page.svelte): tabs opened from it
+		// switch back to it; otherwise a new tab shows the library.
+		const tab = window.open('', LIBRARY_TAB);
+		if (tab?.location.href === 'about:blank') tab.location.href = resolve('/');
+		tab?.focus();
 		return;
 	}
 	const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow');

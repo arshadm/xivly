@@ -41,7 +41,7 @@
 	import { settings } from '$lib/settings.svelte';
 	import { keys, matches } from '$lib/shortcuts';
 	import { theme } from '$lib/theme.svelte';
-	import { askUnsaved, closeWindow, openPaper, saveFile, searchParams, setWindowTitle } from '$lib/windows';
+	import { askUnsaved, closeWindow, openPaper, saveFile, searchParams, setWindowTitle, showLibrary } from '$lib/windows';
 	import PaperDetails from '$lib/components/PaperDetails.svelte';
 	import { settingsDialog } from '$lib/components/SettingsDialog.svelte';
 	import { shortcutsHelp } from '$lib/components/ShortcutsHelp.svelte';
@@ -424,9 +424,12 @@
 
 <svelte:window {onkeydown} onkeydowncapture={onSelectKey} />
 
-{#snippet panelToggle()}
+{#snippet cornerButtons()}
 	<Tip label={panelOpen ? 'Hide side panel' : 'Show side panel'} shortcut={keys.panelAlt}>
 		{#snippet child({ props })}<button {...props} class={iconBtn} aria-label="Side panel" data-active={panelOpen || undefined} onclick={() => (panelOpen = !panelOpen)}><span class="{icons.panel} size-4"></span></button>{/snippet}
+	</Tip>
+	<Tip label="Library" shortcut={keys.library}>
+		{#snippet child({ props })}<button {...props} class={iconBtn} aria-label="Show the library" onclick={showLibrary}><span class="icon-[lucide--library] size-4"></span></button>{/snippet}
 	</Tip>
 {/snippet}
 
@@ -477,11 +480,11 @@
 							<!--
 								Full-height sidebar (macOS): when open, the traffic lights sit on it.
 								One animated value drives it all: --side-w (the panel's width). The
-								toggle never moves, and the title row keeps clear of the lights and
-								toggle at every frame (its padding is computed from --side-w).
+								panel toggle and library button never move, and the title row keeps clear
+								of the lights and buttons at every frame (its padding is computed from --side-w).
 							-->
 							<div class="reader-row relative flex min-h-0 flex-1" data-panel={panelOpen || undefined}>
-								<div class="absolute top-2 left-2 z-40 lights:left-20">{@render panelToggle()}</div>
+								<div class="absolute top-2 left-2 z-40 flex gap-1 lights:left-20">{@render cornerButtons()}</div>
 								<!-- ── Side panel ── -->
 								<aside class="side flex shrink-0 flex-col overflow-hidden text-[13px] {chrome}" inert={!panelOpen}>
 									<div class="flex min-h-0 w-80 flex-1 flex-col">
@@ -767,12 +770,12 @@
 	}
 	.reader-row {
 		--side-w: 0px;
-		/* Room the title row keeps free on the left: traffic lights (macOS desktop) + toggle. */
-		--chrome-w: 36px;
+		/* Room the title row keeps free on the left: traffic lights (macOS desktop), panel toggle and library button. */
+		--chrome-w: 68px;
 		transition: --side-w 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
 	}
 	:global([data-lights]) .reader-row {
-		--chrome-w: 108px;
+		--chrome-w: 140px;
 	}
 	.reader-row[data-panel] {
 		--side-w: 320px;

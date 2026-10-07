@@ -5,7 +5,7 @@
 // opens it. The toolbar button shows the library (an open one is focused), and
 // "Open in Xivly" (a paper's page or link) opens a new tab that adds the paper,
 // then shows it in the reader (see ./app.svelte.ts).
-import { PAPER_URLS, type ExtensionMessage } from './messages';
+import { PAPER_URLS, focusLibraryTab } from './messages';
 
 const app = (hash = '') => chrome.runtime.getURL(`index.html${hash}`);
 
@@ -40,8 +40,5 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 
 /** Focus a library tab (the app answers from its library route), or open one. */
 async function showLibrary() {
-	const found = await chrome.runtime.sendMessage<ExtensionMessage, chrome.tabs.Tab | undefined>({ type: 'find-library' }).catch(() => undefined);
-	if (found?.id === undefined) return void chrome.tabs.create({ url: app() });
-	await chrome.tabs.update(found.id, { active: true });
-	await chrome.windows.update(found.windowId, { focused: true });
+	if (!(await focusLibraryTab())) await chrome.tabs.create({ url: app() });
 }
