@@ -3,10 +3,7 @@
 <h1 align="center">Xivly</h1>
 <p align="center"><em>Papers, without distraction.</em></p>
 
-<p align="center">
-  <a href="https://github.com/julien-blanchon/xivly/releases/download/v0.5.0/Xivly-demo.mp4"><img src="docs/media/xivly-preview.gif" width="800" alt="Xivly: boxing a figure and adding a note (click for the full video)"></a>
-  <br><sub><a href="https://github.com/julien-blanchon/xivly/releases/download/v0.5.0/Xivly-demo.mp4">▶ Watch the 2-minute tour</a></sub>
-</p>
+https://github.com/user-attachments/assets/c67ae97f-a1a4-4fdd-8edb-b77ba62bce72
 
 A calm reader for research papers: read, annotate and organize your PDFs. Free and open source, on Mac, Windows, Linux, the web and Chrome. No account, no tracking: your library is a folder of plain files.
 
