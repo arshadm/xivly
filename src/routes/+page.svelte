@@ -21,12 +21,14 @@
 	import type { RecentWindow, SortKey } from '#lib/settings.svelte.js';
 	import { starter } from '#lib/onboarding/starter.svelte.js';
 	import ToggleGroup from '#lib/ui/ToggleGroup.svelte';
+	import VirtualGrid from '#lib/ui/VirtualGrid.svelte';
 	import { disjointViewKey } from '#lib/ui/view-key.js';
 	import { button } from '#lib/ui/button.js';
 	import { ARCHIVED } from '#lib/library.svelte.js';
 	import { prefersReducedMotion } from 'svelte/motion';
 
 	let search = $state<HTMLInputElement>();
+	let scroller = $state<HTMLElement>();
 	let searchFocused = $state(false);
 
 	const title = $derived.by(() => {
@@ -206,24 +208,25 @@
 			<p class="mx-6 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{library.error}</p>
 		{/if}
 
-		<div class="min-h-0 flex-1 overflow-y-auto px-6 pt-4 pb-10">
+		<div bind:this={scroller} class="min-h-0 flex-1 overflow-y-auto px-6 pt-4 pb-10">
 			{#if library.filtered.length}
 				<!-- Cards move (flip) between views that share papers, and as searching and
 				     tag filters re-flow; a view with none in common swaps the grid (a fade). -->
 				{#key gridKey}
-					<ul class="grid gap-5" style:grid-template-columns="repeat(auto-fill, minmax({minCard}px, 1fr))" in:fade={{ duration: 160 * motion }}>
-						{#if animated}
+					{#if animated}
+						<ul class="grid gap-5" style:grid-template-columns="repeat(auto-fill, minmax({minCard}px, 1fr))" in:fade={{ duration: 160 * motion }}>
 							{#each library.filtered as paper (paper.id)}
 								<li animate:flip={{ duration: 260 * motion, easing: cubicOut }} in:fade={{ duration: 160 * motion }} out:scale={{ start: 0.96, duration: 120 * motion }}>
 									<PaperCard {paper} />
 								</li>
 							{/each}
-						{:else}
-							{#each library.filtered as paper (paper.id)}
-								<li><PaperCard {paper} /></li>
-							{/each}
-						{/if}
-					</ul>
+						</ul>
+					{:else}
+						<!-- Too many to animate: only the rows on screen are rendered. -->
+						<VirtualGrid items={library.filtered} key={(p) => p.id} min={minCard} gap={20} {scroller}>
+							{#snippet cell(paper)}<PaperCard {paper} />{/snippet}
+						</VirtualGrid>
+					{/if}
 				{/key}
 			{:else}
 				<div class="grid h-full place-items-center text-center text-sm text-muted" in:fade={{ duration: 160 * motion }}>
