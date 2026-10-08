@@ -116,6 +116,34 @@ describe('Repo', () => {
 		expect((await r.readPaper(p.id))!.tags).toEqual(['x']);
 	});
 
+	it('lists every paper in one read, reusing unchanged ones', async () => {
+		const { fs, r } = await repo();
+		const a = await r.add(PDF, { title: 'A' });
+		const b = await r.add(PDF, { title: 'B' });
+		const c = await r.add(PDF, { title: 'C' });
+		await fs.write(`papers/${c.id}/paper.json`, enc.encode('{ not json'));
+		await fs.write('papers/only-a-pdf/paper.pdf', PDF);
+		// Like the desktop: one call for every paper.json.
+		Object.assign(fs, {
+			readEach: async (dir: string, file: string) =>
+				Promise.all(
+					(await fs.list(dir)).filter((e) => e.dir).map(async ({ name }) => {
+						const bytes = await fs.read(`${dir}/${name}/${file}`);
+						return { name, text: bytes && dec.decode(bytes), error: false };
+					})
+				)
+		});
+		const shownC = { ...(await r.readPaper(a.id))!, id: c.id, title: 'C as shown' };
+		const first = await r.listPapers(new Map([[c.id, shownC]]));
+		const byId = (list: typeof first, id: string) => list.find((p) => p.id === id)!;
+		expect(first.map((p) => p.title).sort()).toEqual(['A', 'B', 'C as shown', 'only-a-pdf']);
+		await r.update(b.id, { title: 'B2' });
+		const second = await r.listPapers();
+		// Unchanged paper.json: the very same object, not parsed again.
+		expect(byId(second, a.id)).toBe(byId(first, a.id));
+		expect(byId(second, b.id).title).toBe('B2');
+	});
+
 	it('init never overwrites existing files', async () => {
 		const fs = new MemoryFs();
 		await fs.write('AGENTS.md', enc.encode('mine'));

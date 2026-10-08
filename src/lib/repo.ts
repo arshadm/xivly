@@ -256,10 +256,40 @@ export class Repo {
 		return normalizePaper(id, meta ?? {});
 	}
 
-	/** Every paper; `previous` (by id) is kept for a paper whose paper.json can't be read right now. */
+	/** The last paper.json text seen per paper, and the paper parsed from it. */
+	#parsed = new Map<string, { text: string; paper: Paper }>();
+
+	/**
+	 * Every paper; `previous` (by id) is kept for a paper whose paper.json can't be read right now.
+	 * Desktop reads every paper.json in one call (writes are atomic, so never a half-written
+	 * one), and an unchanged file returns the same object, unparsed: the library reloads on
+	 * every focus. A file that's missing or unreadable is read alone, as `readPaper` does.
+	 */
 	async listPapers(previous?: ReadonlyMap<string, Paper>): Promise<Paper[]> {
-		const dirs = (await this.fs.list('papers')).filter((e) => e.dir && !e.name.startsWith('.'));
-		const papers = await Promise.all(dirs.map(({ name: id }) => this.readPaper(id, previous?.get(id))));
+		if (!this.fs.readEach) {
+			const dirs = (await this.fs.list('papers')).filter((e) => e.dir && !e.name.startsWith('.'));
+			const papers = await Promise.all(dirs.map(({ name: id }) => this.readPaper(id, previous?.get(id))));
+			return papers.filter((p): p is Paper => !!p);
+		}
+		const files = await this.fs.readEach('papers', 'paper.json');
+		const parsed = new Map<string, { text: string; paper: Paper }>();
+		const papers = await Promise.all(
+			files.map(async ({ name: id, text, error }) => {
+				if (text !== null && !error) {
+					const hit = this.#parsed.get(id);
+					if (hit?.text === text) return (parsed.set(id, hit), hit.paper);
+					try {
+						const paper = normalizePaper(id, JSON.parse(text));
+						parsed.set(id, { text, paper });
+						return paper;
+					} catch {
+						// Not valid JSON: read alone (retried, or the paper shown so far is kept).
+					}
+				}
+				return this.readPaper(id, previous?.get(id));
+			})
+		);
+		this.#parsed = parsed;
 		return papers.filter((p): p is Paper => !!p);
 	}
 

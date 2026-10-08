@@ -8,6 +8,12 @@ export interface LibraryFs {
 	/** Atomic (temp + rename / swap file). Creates parent folders. */
 	write(path: string, data: Uint8Array): Promise<void>;
 	list(path: string): Promise<{ name: string; dir: boolean }[]>;
+	/**
+	 * Optional: `file` in every child folder of `dir` at once (desktop: one call
+	 * for the whole library). `text` is null when it's missing; `error` when it
+	 * exists but must be read alone (`read` says why).
+	 */
+	readEach?(dir: string, file: string): Promise<{ name: string; text: string | null; error: boolean }[]>;
 	exists(path: string): Promise<boolean>;
 	mkdir(path: string): Promise<void>;
 	/** Recoverable delete (system Trash on desktop, `.xivly/trash/` on web). */

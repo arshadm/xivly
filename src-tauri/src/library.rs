@@ -391,6 +391,46 @@ fn list_dir(root: &Path, rel: &str) -> Result<Vec<Entry>> {
         .collect())
 }
 
+/// `<dir>/<child>/<file>` of a child folder: its text, or why there's none.
+#[derive(serde::Serialize)]
+pub struct ChildFile {
+    name: String,
+    /// `None` when the file is missing (or `error` is set).
+    text: Option<String>,
+    /// It exists but couldn't be read as UTF-8 text (read it alone to see why).
+    error: bool,
+}
+
+/// One file in every child folder of `dir` (every `papers/*/paper.json`) in a
+/// single call: a library of thousands of papers loads in one round trip
+/// instead of one per paper. Read in parallel; each path checked like `fs_read`.
+#[tauri::command]
+pub async fn fs_read_each(state: State<'_, AppState>, root_dir: PathBuf, dir: String, file: String) -> Result<Vec<ChildFile>> {
+    let root = root(&state, &root_dir)?;
+    blocking(move || read_each(&root, &dir, &file)).await
+}
+
+fn read_each(root: &Path, dir: &str, file: &str) -> Result<Vec<ChildFile>> {
+    let names: Vec<String> = list_dir(root, dir)?.into_iter().filter(|e| e.dir && !e.name.starts_with('.')).map(|e| e.name).collect();
+    let read = |name: &String| {
+        let text = resolve(root, &format!("{dir}/{name}/{file}")).and_then(|p| match std::fs::read(p) {
+            Ok(bytes) => String::from_utf8(bytes).map(Some).map_err(|e| e.to_string().into()),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
+            Err(e) => Err(e.into()),
+        });
+        match text {
+            Ok(text) => ChildFile { name: name.clone(), text, error: false },
+            Err(_) => ChildFile { name: name.clone(), text: None, error: true },
+        }
+    };
+    let threads = std::thread::available_parallelism().map_or(4, |n| n.get()).min(8);
+    let chunk = names.len().div_ceil(threads).max(1);
+    Ok(std::thread::scope(|s| {
+        let handles: Vec<_> = names.chunks(chunk).map(|part| s.spawn(move || part.iter().map(read).collect::<Vec<_>>())).collect();
+        handles.into_iter().flat_map(|h| h.join().unwrap_or_default()).collect()
+    }))
+}
+
 #[tauri::command]
 pub async fn fs_exists(state: State<'_, AppState>, root_dir: PathBuf, path: String) -> Result<bool> {
     let p = resolve(&root(&state, &root_dir)?, &path)?;
@@ -589,6 +629,31 @@ mod tests {
         assert_eq!(entries, [("a".to_string(), true)]);
         assert!(list_dir(&root, "papers/missing").unwrap().is_empty());
         assert!(list_dir(&root, "..").is_err());
+    }
+
+    #[test]
+    fn reads_one_file_per_folder() {
+        let (_tmp, root, outside) = library();
+        std::fs::write(root.join("papers/a/paper.json"), r#"{"title":"A"}"#).unwrap();
+        std::fs::create_dir_all(root.join("papers/b")).unwrap();
+        std::fs::create_dir_all(root.join("papers/c")).unwrap();
+        std::fs::write(root.join("papers/c/paper.json"), [0xff, 0xfe]).unwrap();
+        std::fs::create_dir_all(root.join("papers/.hidden")).unwrap();
+        #[cfg(unix)]
+        {
+            std::fs::write(outside.join("paper.json"), "{}").unwrap();
+            symlink(&outside, &root.join("papers/linked"));
+        }
+        let _ = &outside;
+        let mut got: Vec<_> = read_each(&root, "papers", "paper.json").unwrap().into_iter().map(|f| (f.name, f.text, f.error)).collect();
+        got.sort();
+        let mut want = vec![("a".to_string(), Some(r#"{"title":"A"}"#.to_string()), false), ("b".to_string(), None, false), ("c".to_string(), None, true)];
+        // A folder linked from outside the library is refused, like any read through it.
+        if cfg!(unix) {
+            want.push(("linked".to_string(), None, true));
+        }
+        assert_eq!(got, want);
+        assert!(read_each(&root, "..", "paper.json").is_err());
     }
 
     #[test]

@@ -45,7 +45,7 @@ class Library {
 
 	categories = $derived(this.file.categories);
 
-	/** Every tag in use, plus the ones declared in library.json; `archived` always, last. */
+	/** Every tag in use, plus the ones declared in library.json, `archived` always, last. */
 	allTags = $derived([...new Set([...this.file.tags, ...this.papers.flatMap((p) => p.tags ?? [])])].filter((t) => t !== ARCHIVED).sort().concat(ARCHIVED));
 
 	filtered = $derived(
@@ -160,18 +160,23 @@ class Library {
 		const old = new Map(this.papers.map((p) => [p.id, p]));
 		let changed = papers.length !== this.papers.length;
 		const next = papers.map((raw, i) => {
-			// Shown tidied; written back only if the paper is edited.
-			const p = { ...raw, title: tidyTitle(raw.title) };
-			const before = old.get(p.id);
-			if (before && JSON.stringify(before) === JSON.stringify(p)) {
-				if (this.papers[i] !== before) changed = true;
-				return before;
+			const before = old.get(raw.id);
+			// The very object read last time (its paper.json didn't change): nothing to compare.
+			let p = this.#shown.get(raw);
+			if (!p || p !== before) {
+				// Shown tidied; written back only if the paper is edited.
+				p = { ...raw, title: tidyTitle(raw.title) };
+				if (before && JSON.stringify(before) === JSON.stringify(p)) p = before;
+				this.#shown.set(raw, p);
 			}
-			changed = true;
+			if (p !== before || this.papers[i] !== before) changed = true;
 			return p;
 		});
 		if (changed) this.papers = next;
 	}
+
+	/** The paper shown for each paper read (Repo returns the same object for an unchanged paper.json). */
+	#shown = new WeakMap<Paper, Paper>();
 
 	get(id: string) {
 		return this.papers.find((p) => p.id === id);

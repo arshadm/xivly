@@ -102,6 +102,7 @@ pub fn run() {
             library::fs_read,
             library::fs_write,
             library::fs_list,
+            library::fs_read_each,
             library::fs_exists,
             library::fs_mkdir,
             library::fs_trash,

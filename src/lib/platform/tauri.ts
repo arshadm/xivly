@@ -23,6 +23,7 @@ function libraryFs(rootDir: string): LibraryFs {
 		},
 		write: (path, data) => invoke('fs_write', data, { headers: { 'x-root': header(rootDir), 'x-path': header(path) } }),
 		list: (path) => invoke('fs_list', { rootDir, path }),
+		readEach: (dir, file) => invoke('fs_read_each', { rootDir, dir, file }),
 		exists: (path) => invoke('fs_exists', { rootDir, path }),
 		mkdir: (path) => invoke('fs_mkdir', { rootDir, path }),
 		trash: (path) => invoke('fs_trash', { rootDir, path })
