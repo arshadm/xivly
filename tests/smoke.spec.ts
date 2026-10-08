@@ -192,3 +192,37 @@ test('one reader per paper: a second tab takes it over, annotations kept', async
 	await expect(first.getByText('This paper is open in another tab.')).toBeVisible();
 	expect(errs).toEqual([]);
 });
+
+test('a library of 1500 papers stays fast: only the cards on screen are rendered', async ({ page }) => {
+	const errs = errors(page);
+	await startLibrary(page);
+	await page.evaluate(async () => {
+		const papers = await (await navigator.storage.getDirectory()).getDirectoryHandle('papers', { create: true });
+		await Promise.all(
+			Array.from({ length: 1500 }, async (_, i) => {
+				const dir = await papers.getDirectoryHandle(`p-${i}`, { create: true });
+				const file = await (await dir.getFileHandle('paper.json', { create: true })).createWritable();
+				await file.write(JSON.stringify({ title: `Paper ${i}`, authors: ['A. Author'], year: 2000 + (i % 26), tags: [`t${i % 40}`, i % 3 ? 'common' : 'rare'] }));
+				await file.close();
+			})
+		);
+	});
+	await page.reload();
+	const cards = page.locator('ul.grid > li');
+	await expect(cards.first()).toBeVisible();
+	expect(await cards.count()).toBeLessThan(200);
+
+	const search = page.getByPlaceholder('Search papers');
+	const start = Date.now();
+	await search.fill('Paper 1499');
+	await expect(cards).toHaveCount(1);
+	await search.fill('');
+	await expect.poll(() => cards.count()).toBeGreaterThan(10);
+	// Generous for slow CI machines; the regression it guards against took ~18 s.
+	expect(Date.now() - start).toBeLessThan(8000);
+
+	// Tags: the most used first, the rest behind "more".
+	await expect(page.locator('nav .flex-wrap > button').first()).toHaveText('#common');
+	await expect(page.locator('nav').getByRole('button', { name: /\d+ more/ })).toBeVisible();
+	expect(errs).toEqual([]);
+});
