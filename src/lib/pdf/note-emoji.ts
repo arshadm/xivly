@@ -23,4 +23,4 @@ export const noteEmojiChoices = [
 
 /** An emoji chip (toolbar, popover): the active one is ringed like the active color. */
 export const emojiChip =
-	'grid size-6 place-items-center rounded-md font-emoji text-[15px] leading-none outline-none hover:bg-stone-200/70 focus-visible:ring-[1.5px] focus-visible:ring-blue-500 data-[active]:bg-stone-200/70 data-[active]:ring-[1.5px] data-[active]:ring-stone-800 dark:hover:bg-stone-800 dark:data-[active]:bg-stone-800 dark:data-[active]:ring-stone-100';
+	'grid size-6 place-items-center rounded-md font-emoji text-[15px] leading-none outline-none hover:bg-stone-200/70 focus-visible:ring-(length:--ring-width) focus-visible:ring-blue-500 data-[active]:bg-stone-200/70 data-[active]:ring-(length:--ring-width) data-[active]:ring-stone-800 dark:hover:bg-stone-800 dark:data-[active]:bg-stone-800 dark:data-[active]:ring-stone-100';

@@ -81,6 +81,22 @@ html.dark {
   --color-edge: oklch(0.52 0.01 58);
 }
 
+/* Selection rings are box-shadows, and a 1.5px spread is 1.5 device pixels on a
+   1x screen: WebKitGTK snaps it lopsided (thick top-left, gone bottom-right).
+   On 1x screens they use whole pixels instead, with the same 3px outer edge. */
+:root {
+  --ring-gap: 1.5px;
+  --ring-width: 1.5px;
+  --hairline: 1.5px;
+}
+@media (max-resolution: 1.99dppx) {
+  :root {
+    --ring-gap: 1px;
+    --ring-width: 2px;
+    --hairline: 1px;
+  }
+}
+
 /* A color chip (annotation colors, page colors, category dots): set its color as
    --swatch. Pastels get a rim in a darker shade of their own hue (a faint light
    rim at night), so every chip has a visible edge. */

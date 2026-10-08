@@ -72,7 +72,7 @@
 				{/each}
 			</div>
 		{:else}
-			<!-- Colors: one roving group; the selected chip's ring stays inside the gap (gap 6px, ring 1.5 + 1.5px). -->
+			<!-- Colors: one roving group; the selected chip's ring stays inside the gap (gap 6px, ring --ring-gap + --ring-width: 3px). -->
 			<div class="hidden shrink-0 items-center gap-1.5 px-1 @4xl:flex" role="group" aria-label="Color">
 				{#each store.palette.slice(0, 9) as c, i (c.key)}
 					<Tip label={c.label} shortcut={String(i + 1)}>
@@ -82,7 +82,7 @@
 									<Annotations.Color
 										color={c.key}
 										{...props}
-										class="swatch size-5 rounded-full outline-none ring-offset-[1.5px] ring-offset-white focus-visible:ring-[1.5px] focus-visible:ring-blue-500 data-[active]:ring-[1.5px] data-[active]:ring-stone-800 dark:ring-offset-stone-900 dark:data-[active]:ring-stone-100"
+										class="swatch size-5 rounded-full outline-none ring-offset-(length:--ring-gap) ring-offset-white focus-visible:ring-(length:--ring-width) focus-visible:ring-blue-500 data-[active]:ring-(length:--ring-width) data-[active]:ring-stone-800 dark:ring-offset-stone-900 dark:data-[active]:ring-stone-100"
 									/>
 								{/snippet}
 							</Toolbar.Button>

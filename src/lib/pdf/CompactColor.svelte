@@ -41,7 +41,7 @@
 								{#each store.palette.slice(0, 9) as c, i (c.key)}
 									<Tip label={c.label} shortcut={String(i + 1)}>
 										{#snippet child({ props: tip })}
-											<Annotations.Color {...tip} color={c.key} class="swatch size-5 rounded-full ring-offset-[1.5px] ring-offset-white data-[active]:ring-[1.5px] data-[active]:ring-stone-800 dark:ring-offset-stone-900 dark:data-[active]:ring-stone-100" />
+											<Annotations.Color {...tip} color={c.key} class="swatch size-5 rounded-full ring-offset-(length:--ring-gap) ring-offset-white data-[active]:ring-(length:--ring-width) data-[active]:ring-stone-800 dark:ring-offset-stone-900 dark:data-[active]:ring-stone-100" />
 										{/snippet}
 									</Tip>
 								{/each}

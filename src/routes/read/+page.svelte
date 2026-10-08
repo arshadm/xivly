@@ -770,7 +770,7 @@
 											<div transition:slide={{ axis: 'x', duration: 160 }} class="flex shrink-0">
 												<Minimap.Root style="background:{swatch}" variant={s.minimapVariant} width={s.minimapVariant === 'heatmap' ? 18 : s.minimapVariant === 'spine' ? 120 : 84} class="h-full border-l border-stone-200 dark:border-stone-800">
 													{#if s.minimapVariant === 'heatmap'}<Minimap.Heatmap />{/if}
-													<Minimap.Viewport class="rounded-sm! bg-sky-500/10! shadow-[inset_0_0_0_1.5px_rgb(14_165_233/0.5)]!" />
+													<Minimap.Viewport class="rounded-sm! bg-sky-500/10! shadow-[inset_0_0_0_var(--hairline)_rgb(14_165_233/0.5)]!" />
 													{#if s.minimapVariant !== 'heatmap'}<Minimap.Markers find annotations sections={s.minimapVariant !== 'spine'} />{/if}
 												</Minimap.Root>
 											</div>
