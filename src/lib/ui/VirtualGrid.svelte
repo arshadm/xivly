@@ -29,7 +29,7 @@
 		/** The element that scrolls the grid. */
 		scroller: HTMLElement | undefined;
 		cell: Snippet<[T]>;
-		/** Rows rendered beyond each edge of the viewport. */
+		/** Rows rendered beyond each edge of the viewport, at least (and at least a viewport's worth). */
 		overscan?: number;
 		class?: string;
 	} = $props();
@@ -46,8 +46,11 @@
 	const rowHeight = $derived(measured || ((width - gap * (columns - 1)) / columns) * (4 / 3));
 	const stride = $derived(rowHeight + gap);
 	const rows = $derived(Math.ceil(items.length / columns));
-	const first = $derived(stride > 0 ? Math.max(0, Math.floor(top / stride) - overscan) : 0);
-	const last = $derived(stride > 0 ? Math.min(rows - 1, Math.ceil((top + viewHeight) / stride) + overscan) : rows - 1);
+	// A viewport's worth of rows ahead each way: a fast flick (scrolled by the compositor,
+	// ahead of the main thread) never reaches the edge of what's rendered.
+	const extra = $derived(stride > 0 ? Math.max(overscan, Math.ceil(viewHeight / stride)) : overscan);
+	const first = $derived(stride > 0 ? Math.max(0, Math.floor(top / stride) - extra) : 0);
+	const last = $derived(stride > 0 ? Math.min(rows - 1, Math.ceil((top + viewHeight) / stride) + extra) : rows - 1);
 	const shown = $derived(items.slice(first * columns, (last + 1) * columns));
 
 	function update() {
