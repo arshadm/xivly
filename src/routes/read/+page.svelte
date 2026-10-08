@@ -86,6 +86,9 @@
 	const initialZoom = untrack(() => settings.values.zoomMode);
 
 	let bytes = $state.raw<Uint8Array | null>(null);
+	// Handed over to pdf.js's worker, not copied: a large PDF isn't in memory twice
+	// (the reader never reads these bytes again; saving asks pdf.js for them).
+	const source = $derived(bytes && { data: bytes, transfer: true as const });
 	/** The PDF: being read (a spinner after a moment), there, missing or unreadable. */
 	let load = $state<{ status: 'loading' | 'ready' | 'missing' | 'error'; error?: string }>({ status: 'loading' });
 	let slow = $state(false);
@@ -522,7 +525,7 @@
 		</div>
 	</div>
 {:else if bytes}
-	<Document.Root src={bytes} onLoad={restorePosition}>
+	<Document.Root src={source} onLoad={restorePosition}>
 		<Viewer.Root
 			bind:viewer
 			{pageTheme}
