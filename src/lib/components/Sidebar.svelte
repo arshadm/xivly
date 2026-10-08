@@ -67,8 +67,8 @@
 		];
 	}
 
-	/** What a tag chip does now, and what a click does next (none → only these → hide these → none). */
-	function tagTip(tag: string, mode: 'in' | 'out' | undefined) {
+	/** What a tag chip does now, and what a click does next (none → only these → hide these → none): the chip's accessible name. */
+	function tagLabel(tag: string, mode: 'in' | 'out' | undefined) {
 		const papers = tag === ARCHIVED ? 'archived papers' : `papers tagged #${tag}`;
 		if (mode === 'in') return `Showing only ${papers}. Click to hide them`;
 		if (mode === 'out') return `Hiding ${papers}. Click to show them too`;
@@ -115,26 +115,21 @@
 		<div class="flex flex-wrap gap-1 px-2">
 			{#each library.allTags as tag (tag)}
 				{@const mode = library.tagFilter[tag]}
-				<Tip label={tagTip(tag, mode)}>
-					{#snippet child({ props })}
-						<button
-							{...props}
-							class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-colors outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:focus-visible:ring-blue-400
-								data-[mode=in]:border-stone-700 data-[mode=in]:bg-stone-700 data-[mode=in]:text-white data-[mode=in]:hover:bg-stone-600
-								data-[mode=out]:border-dashed data-[mode=out]:border-stone-400 data-[mode=out]:text-muted data-[mode=out]:hover:bg-stone-200/70
-								dark:data-[mode=in]:border-stone-200 dark:data-[mode=in]:bg-stone-200 dark:data-[mode=in]:text-stone-900 dark:data-[mode=in]:hover:bg-stone-300
-								dark:data-[mode=out]:border-stone-600 dark:data-[mode=out]:hover:bg-stone-800
-								{mode ? '' : 'border-stone-300 text-stone-600 hover:border-stone-400 hover:bg-stone-200/70 hover:text-stone-800 dark:border-stone-700 dark:text-stone-400 dark:hover:border-stone-600 dark:hover:bg-stone-800 dark:hover:text-stone-200'}"
-							data-mode={mode}
-							aria-label={tagTip(tag, mode)}
-							onclick={() => library.cycleTag(tag)}
-							{@attach contextMenu(() => tagMenu(tag))}
-						>
-							{#if tag === ARCHIVED}<span class="icon-[lucide--archive] size-3"></span>{tag}{:else}#{tag}{/if}
-							{#if mode === 'in'}<span class="icon-[lucide--check] size-3"></span>{:else if mode === 'out'}<span class="icon-[lucide--eye-off] size-3"></span>{/if}
-						</button>
-					{/snippet}
-				</Tip>
+				<button
+					class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-colors outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:focus-visible:ring-blue-400
+						data-[mode=in]:border-stone-700 data-[mode=in]:bg-stone-700 data-[mode=in]:text-white data-[mode=in]:hover:bg-stone-600
+						data-[mode=out]:border-dashed data-[mode=out]:border-stone-400 data-[mode=out]:text-muted data-[mode=out]:hover:bg-stone-200/70
+						dark:data-[mode=in]:border-stone-200 dark:data-[mode=in]:bg-stone-200 dark:data-[mode=in]:text-stone-900 dark:data-[mode=in]:hover:bg-stone-300
+						dark:data-[mode=out]:border-stone-600 dark:data-[mode=out]:hover:bg-stone-800
+						{mode ? '' : 'border-stone-300 text-stone-600 hover:border-stone-400 hover:bg-stone-200/70 hover:text-stone-800 dark:border-stone-700 dark:text-stone-400 dark:hover:border-stone-600 dark:hover:bg-stone-800 dark:hover:text-stone-200'}"
+					data-mode={mode}
+					aria-label={tagLabel(tag, mode)}
+					onclick={() => library.cycleTag(tag)}
+					{@attach contextMenu(() => tagMenu(tag))}
+				>
+					{#if tag === ARCHIVED}<span class="icon-[lucide--archive] size-3"></span>{tag}{:else}#{tag}{/if}
+					{#if mode === 'in'}<span class="icon-[lucide--check] size-3"></span>{:else if mode === 'out'}<span class="icon-[lucide--eye-off] size-3"></span>{/if}
+				</button>
 			{/each}
 		</div>
 	</nav>
