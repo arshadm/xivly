@@ -75,6 +75,12 @@
 		return `Click to show only ${papers}`;
 	}
 
+	// Many tags: the most used ones, then a More chip. A tag being filtered on always shows.
+	const TAGS_SHOWN = 16;
+	let allTagsShown = $state(false);
+	const tags = $derived(library.allTags.filter((t) => t !== ARCHIVED));
+	const shownTags = $derived(allTagsShown || tags.length <= TAGS_SHOWN + 2 ? tags : tags.filter((t, i) => i < TAGS_SHOWN || library.tagFilter[t]));
+
 	const item = 'flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-[13px] hover:bg-stone-200/60 data-[active]:bg-stone-200 dark:hover:bg-stone-800/60 dark:data-[active]:bg-stone-800';
 	const iconBtn = iconButton(6, mutedIcon);
 </script>
@@ -113,7 +119,7 @@
 		<div class="mt-5 mb-1 px-2 text-[11px] font-medium tracking-wide text-muted uppercase">Tags</div>
 		<!-- Click: only papers with the tag (filled, ✓); again: hide them (dashed, eye off); again: no filter. -->
 		<div class="flex flex-wrap gap-1 px-2">
-			{#each library.allTags as tag (tag)}
+			{#each [...shownTags, ARCHIVED] as tag (tag)}
 				{@const mode = library.tagFilter[tag]}
 				<button
 					class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-colors outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:focus-visible:ring-blue-400
@@ -131,6 +137,15 @@
 					{#if mode === 'in'}<span class="icon-[lucide--check] size-3"></span>{:else if mode === 'out'}<span class="icon-[lucide--eye-off] size-3"></span>{/if}
 				</button>
 			{/each}
+			{#if tags.length > TAGS_SHOWN + 2}
+				<button
+					class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs text-muted outline-none hover:bg-stone-200/70 hover:text-stone-800 focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:bg-stone-800 dark:hover:text-stone-200 dark:focus-visible:ring-blue-400"
+					aria-expanded={allTagsShown}
+					onclick={() => (allTagsShown = !allTagsShown)}
+				>
+					{allTagsShown ? 'Less' : `${tags.length - shownTags.length} more`}<span class="size-3 {allTagsShown ? 'icon-[lucide--chevron-up]' : 'icon-[lucide--chevron-down]'}"></span>
+				</button>
+			{/if}
 		</div>
 	</nav>
 

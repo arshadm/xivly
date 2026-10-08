@@ -9,7 +9,7 @@ import { fetchHfPaper } from './huggingface';
 import { platform } from './platform';
 import { isPdf, merge, Repo, slugify, type Patch } from './repo';
 import { recentWindows, settings } from './settings.svelte';
-import { betterAuthors, betterTitle, categoryColor, hfUnchanged, mapLimited, mergeLinks, tidyTitle } from './library-utils';
+import { betterAuthors, betterTitle, categoryColor, hfUnchanged, mapLimited, mergeLinks, tagsByUse, tidyTitle } from './library-utils';
 import type { Category, CategoryColor, LibraryFile, Paper, PaperPatch } from './types';
 
 export { betterAuthors, betterTitle, categoryColor } from './library-utils';
@@ -45,8 +45,8 @@ class Library {
 
 	categories = $derived(this.file.categories);
 
-	/** Every tag in use, plus the ones declared in library.json, `archived` always, last. */
-	allTags = $derived([...new Set([...this.file.tags, ...this.papers.flatMap((p) => p.tags ?? [])])].filter((t) => t !== ARCHIVED).sort().concat(ARCHIVED));
+	/** Every tag in use, plus the ones declared in library.json, most used first; `archived` always, last. */
+	allTags = $derived(tagsByUse(this.papers, this.file.tags).filter((t) => t !== ARCHIVED).concat(ARCHIVED));
 
 	filtered = $derived(
 		filterPapers(this.papers, {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { betterAuthors, betterTitle, categoryColor, hfUnchanged, mapLimited, mergeLinks, mix } from './library-utils';
+import { betterAuthors, betterTitle, categoryColor, hfUnchanged, mapLimited, mergeLinks, mix, tagsByUse } from './library-utils';
 
 describe('colors', () => {
 	it('mixes hex colors', () => {
@@ -74,5 +74,13 @@ describe('mergeLinks', () => {
 		expect(mergeLinks(current, undefined)).toBe(current);
 		expect(mergeLinks(undefined, undefined)).toBeUndefined();
 		expect(mergeLinks(undefined, { project: 'https://p.example' })).toEqual({ project: 'https://p.example' });
+	});
+});
+
+describe('tagsByUse', () => {
+	it('puts the most used tags first, ties alphabetical, declared ones too', () => {
+		const papers = [{ tags: ['b', 'c'] }, { tags: ['c', 'a'] }, { tags: ['c', 'b'] }, {}];
+		expect(tagsByUse(papers, ['unused', 'a'])).toEqual(['c', 'b', 'a', 'unused']);
+		expect(tagsByUse([])).toEqual([]);
 	});
 });

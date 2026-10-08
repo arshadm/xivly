@@ -16,6 +16,13 @@ export function categoryColor(color: CategoryColor | undefined): PaperColor {
 	return paperColors.find((c) => c.name === color) ?? stone;
 }
 
+/** Every tag of the papers plus the `declared` ones, most used first (ties alphabetical). */
+export function tagsByUse(papers: Pick<Paper, 'tags'>[], declared: string[] = []): string[] {
+	const uses = new Map(declared.map((t) => [t, 0]));
+	for (const p of papers) for (const t of p.tags ?? []) uses.set(t, (uses.get(t) ?? 0) + 1);
+	return [...uses.keys()].sort((a, b) => uses.get(b)! - uses.get(a)! || a.localeCompare(b));
+}
+
 /** `fn` over `items`, at most `limit` at a time; results in order. */
 export async function mapLimited<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
 	const out: R[] = new Array(items.length);
