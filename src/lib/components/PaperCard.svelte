@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { coverUrl, whenNear } from '#lib/covers.js';
+	import { coverUrl, loadedCover, whenNear } from '#lib/covers.js';
 	import { coverVersions } from '#lib/cover-versions.svelte.js';
 	import { library } from '#lib/library.svelte.js';
 	import { paperMenu } from '#lib/paper-menu.js';
@@ -10,6 +10,7 @@
 	import Tip from '#lib/ui/Tip.svelte';
 	import { openPaper } from '#lib/windows.js';
 	import { paperInk } from 'svelte-pdf-mini';
+	import { untrack } from 'svelte';
 
 	let { paper }: { paper: Paper } = $props();
 
@@ -23,7 +24,8 @@
 
 	// Page covers render lazily, once the card is near the viewport, and again when
 	// the paper is saved (from any window).
-	let cover = $state<string | null>(null);
+	// A card is keyed by its paper: the cover loaded already shows from the first frame.
+	let cover = $state<string | null>(untrack(() => loadedCover(paper.id)));
 	let near = $state(false);
 	function lazyCover(node: HTMLElement) {
 		if (style !== 'page') return;

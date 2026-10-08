@@ -9,6 +9,11 @@ import { library } from './library.svelte';
 const WIDTH = 360;
 const store = idb('covers');
 const urls = new Map<string, Promise<string | null>>();
+/** The covers loaded so far: a card scrolled back into view shows its cover at once. */
+const loaded = new Map<string, string>();
+
+/** The paper's cover if it's loaded already (else null: ask `coverUrl`). */
+export const loadedCover = (id: string) => loaded.get(id) ?? null;
 
 /** Object URL of the paper's first page (null if it can't be rendered). */
 export function coverUrl(id: string): Promise<string | null> {
@@ -16,6 +21,7 @@ export function coverUrl(id: string): Promise<string | null> {
 	if (!url) {
 		url = load(id).catch(() => null);
 		urls.set(id, url);
+		void url.then((u) => u && urls.get(id) === url && loaded.set(id, u));
 	}
 	return url;
 }
@@ -33,6 +39,7 @@ export function forgetCover(id: string) {
 function drop(id: string) {
 	const url = urls.get(id);
 	urls.delete(id);
+	loaded.delete(id);
 	void url?.then((u) => u && URL.revokeObjectURL(u));
 	coverVersions.bump(id);
 }
@@ -66,6 +73,8 @@ async function render(id: string): Promise<Blob | null> {
 }
 
 // Rendering competes with the reader for the shared worker: keep it to two.
+// Newest first: after a fast scroll, the covers on screen (asked last) render
+// before the ones scrolled past (which still render after, for next time).
 let running = 0;
 const waiting: (() => void)[] = [];
 async function queue<T>(job: () => Promise<T>): Promise<T> {
@@ -75,7 +84,7 @@ async function queue<T>(job: () => Promise<T>): Promise<T> {
 		return await job();
 	} finally {
 		running--;
-		waiting.shift()?.();
+		waiting.pop()?.();
 	}
 }
 
