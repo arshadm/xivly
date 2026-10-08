@@ -15,13 +15,17 @@
 	import Kbd from './Kbd.svelte';
 
 	let { label, shortcut, side = 'bottom', child }: { label: string; shortcut?: string; side?: 'top' | 'bottom' | 'left' | 'right'; child: Snippet<[{ props: Record<string, unknown> }]> } = $props();
+
+	// The content (portal, positioning) mounts on first open, then stays for its
+	// exit transition: a grid of 1000 cards must not build 1000 closed tooltips.
+	let used = $state(false);
 </script>
 
-<Tooltip.Root delayDuration={350}>
+<Tooltip.Root delayDuration={350} onOpenChange={(open) => open && (used = true)}>
 	<Tooltip.Trigger>
 		{#snippet child({ props })}{@render childSnippet({ props })}{/snippet}
 	</Tooltip.Trigger>
-	<Tooltip.Portal>
+	{#if used}<Tooltip.Portal>
 		<Tooltip.Content {side} sideOffset={6} forceMount>
 			{#snippet child({ wrapperProps, props, open })}
 				{#if open}
@@ -34,7 +38,7 @@
 				{/if}
 			{/snippet}
 		</Tooltip.Content>
-	</Tooltip.Portal>
+	</Tooltip.Portal>{/if}
 </Tooltip.Root>
 
 {#snippet childSnippet({ props }: { props: Record<string, unknown> })}{@render child({ props })}{/snippet}
