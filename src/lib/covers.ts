@@ -1,5 +1,7 @@
-// First-page covers for the library grid: rendered once with pdf.js, kept as
-// WebP in IndexedDB (per device, never in the library folder), two at a time.
+// First-page covers for the library grid: rendered once with pdf.js, kept in
+// IndexedDB (per device, never in the library folder). Covers on screen render
+// first; new papers' covers, and every missing one with the "First page" style,
+// render ahead of time when nothing on screen waits.
 import { assetUrls, getSharedWorker, loadPdfJs } from 'svelte-pdf-mini';
 import { broadcast, onBroadcast } from './broadcast';
 import { coverVersions } from './cover-versions.svelte';
@@ -40,6 +42,7 @@ function drop(id: string) {
 	const url = urls.get(id);
 	urls.delete(id);
 	loaded.delete(id);
+	rendering.delete(id);
 	void url?.then((u) => u && URL.revokeObjectURL(u));
 	coverVersions.bump(id);
 }
@@ -50,10 +53,18 @@ if (typeof window !== 'undefined') onBroadcast('cover-changed', ({ id }) => drop
 async function load(id: string) {
 	const cached = await store.get<Blob>(id);
 	if (cached) return URL.createObjectURL(cached);
-	const blob = await queue(() => render(id));
-	if (!blob) return null;
-	void store.set(id, blob);
-	return URL.createObjectURL(blob);
+	const blob = await renderOnce(id, false);
+	return blob && URL.createObjectURL(blob);
+}
+
+/**
+ * Render (and keep) the covers of these papers that aren't cached yet, one at a
+ * time and only when no card waits for one: a new paper's cover is ready before
+ * its card shows, and the "First page" style fills in while the app is idle.
+ */
+export async function warmCovers(ids: string[]) {
+	const cached = new Set(await store.keys());
+	for (const id of ids) if (!cached.has(id) && !urls.has(id)) void renderOnce(id, true).catch(() => null);
 }
 
 async function render(id: string): Promise<Blob | null> {
@@ -66,26 +77,86 @@ async function render(id: string): Promise<Blob | null> {
 		const viewport = page.getViewport({ scale: WIDTH / page.getViewport({ scale: 1 }).width });
 		const canvas = Object.assign(document.createElement('canvas'), { width: Math.round(viewport.width), height: Math.round(viewport.height) });
 		await page.render({ canvas, viewport }).promise;
-		return await new Promise<Blob | null>((r) => canvas.toBlob(r, 'image/webp', 0.82));
+		return await encode(canvas);
 	} finally {
 		await task.destroy();
 	}
 }
 
-// Rendering competes with the reader for the shared worker: keep it to two.
-// Newest first: after a fast scroll, the covers on screen (asked last) render
-// before the ones scrolled past (which still render after, for next time).
+const toBlob = (canvas: HTMLCanvasElement, type: string, quality: number) => new Promise<Blob | null>((r) => canvas.toBlob(r, type, quality));
+
+/** WebP where the browser encodes it; JPEG elsewhere (WebKit would quietly give a PNG, ~50% larger). */
+async function encode(canvas: HTMLCanvasElement) {
+	const webp = await toBlob(canvas, 'image/webp', 0.82);
+	return webp?.type === 'image/webp' ? webp : toBlob(canvas, 'image/jpeg', 0.8);
+}
+
+// Rendering competes with the reader for the shared worker: two at a time. Covers
+// on screen go first, newest first (after a fast scroll, the ones on screen were
+// asked last); covers rendered ahead of time only start when nothing else runs.
+type Job = { start: () => void };
+const onScreen: Job[] = [];
+const ahead: Job[] = [];
+const rendering = new Map<string, { promise: Promise<Blob | null>; job: Job }>();
 let running = 0;
-const waiting: (() => void)[] = [];
-async function queue<T>(job: () => Promise<T>): Promise<T> {
-	if (running >= 2) await new Promise<void>((r) => waiting.push(r));
-	running++;
-	try {
-		return await job();
-	} finally {
-		running--;
-		waiting.pop()?.();
+
+// Drawing a page takes the main thread (up to ~100 ms): ahead-of-time renders wait
+// for a pause in scrolling, pointing and typing, so they never cost a frame of it.
+const QUIET_MS = 800;
+let lastInput = 0;
+let retry: ReturnType<typeof setTimeout> | undefined;
+if (typeof window !== 'undefined')
+	for (const type of ['scroll', 'wheel', 'pointermove', 'keydown'])
+		addEventListener(type, () => (lastInput = performance.now()), { capture: true, passive: true });
+
+function next() {
+	if (running >= 2) return;
+	let job = onScreen.pop();
+	if (!job && running === 0 && ahead.length) {
+		const quiet = performance.now() - lastInput;
+		if (quiet < QUIET_MS) {
+			clearTimeout(retry);
+			retry = setTimeout(next, QUIET_MS - quiet);
+			return;
+		}
+		job = ahead.shift();
 	}
+	if (!job) return;
+	running++;
+	job.start();
+}
+
+/** The cover rendered once (and stored), whoever asks; a card asking moves it out of the ahead-of-time queue. */
+function renderOnce(id: string, aheadOfTime: boolean): Promise<Blob | null> {
+	const current = rendering.get(id);
+	if (current) {
+		const i = aheadOfTime ? -1 : ahead.indexOf(current.job);
+		if (i >= 0) {
+			ahead.splice(i, 1);
+			onScreen.push(current.job);
+			next();
+		}
+		return current.promise;
+	}
+	let job!: Job;
+	const started = new Promise<void>((start) => (job = { start }));
+	const latest = () => rendering.get(id)?.promise === promise;
+	const promise: Promise<Blob | null> = started
+		.then(() => render(id))
+		.then((blob) => {
+			// Not if the paper changed meanwhile (`forgetCover`): that render is stale.
+			if (blob && latest()) void store.set(id, blob);
+			return blob;
+		})
+		.finally(() => {
+			running--;
+			if (latest()) rendering.delete(id);
+			next();
+		});
+	rendering.set(id, { promise, job });
+	(aheadOfTime ? ahead : onScreen).push(job);
+	next();
+	return promise;
 }
 
 // One observer for every card (a library of 500 papers must not create 500).

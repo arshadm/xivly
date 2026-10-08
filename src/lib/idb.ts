@@ -38,6 +38,7 @@ export function idb(store: StoreName) {
 	return {
 		get: <T>(key: string) => run<T | undefined>(store, 'readonly', (s) => s.get(key)).catch(() => undefined),
 		set: (key: string, value: unknown) => run<void>(store, 'readwrite', (s) => s.put(value, key)).catch(() => {}),
-		delete: (key: string) => run<void>(store, 'readwrite', (s) => s.delete(key)).catch(() => {})
+		delete: (key: string) => run<void>(store, 'readwrite', (s) => s.delete(key)).catch(() => {}),
+		keys: () => run<IDBValidKey[]>(store, 'readonly', (s) => s.getAllKeys()).catch(() => [] as IDBValidKey[])
 	};
 }

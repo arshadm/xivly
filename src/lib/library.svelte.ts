@@ -1,7 +1,7 @@
 import type { PaperColor } from 'svelte-pdf-mini';
 import { broadcast } from './broadcast';
 import { toast } from './components/Toasts.svelte';
-import { forgetCover } from './covers';
+import { forgetCover, warmCovers } from './covers';
 import { parseArxiv } from './arxiv';
 import { sha256 } from './duplicates';
 import { filterPapers, type View } from './filter';
@@ -245,6 +245,8 @@ class Library {
 		await this.reload();
 		if (failed.length) toast(`${failed.length} of ${pdfs.length} PDF${pdfs.length > 1 ? 's' : ''} couldn’t be added: ${failed.join(', ')}`, 'error');
 		const papers = added.filter((p): p is Paper => !!p);
+		// Their covers, ready before their cards ask (whatever the cover style: switching is instant).
+		void warmCovers(papers.map((p) => p.id));
 		// Links from Hugging Face, in the background, one paper at a time.
 		void (async () => {
 			for (const p of papers) if (p.arxiv) await this.refreshHf(p.id).catch(() => {});

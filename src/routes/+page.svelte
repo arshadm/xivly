@@ -7,6 +7,7 @@
 	import { coverStyles, settings } from '#lib/settings.svelte.js';
 	import { keys, matches } from '#lib/shortcuts.js';
 	import PaperCard from '#lib/components/PaperCard.svelte';
+	import { warmCovers } from '#lib/covers.js';
 	import { settingsDialog } from '#lib/components/SettingsDialog.svelte';
 	import Sidebar from '#lib/components/Sidebar.svelte';
 	import Kbd from '#lib/ui/Kbd.svelte';
@@ -60,6 +61,15 @@
 	const animated = $derived(library.filtered.length <= 150 && !prefersReducedMotion.current);
 	const motion = $derived(animated && !typing ? 1 : 0);
 	const minCard = $derived({ small: 140, medium: 170, large: 220 }[settings.values.cardSize]);
+
+	// "First page" covers: the ones not cached yet render ahead of time, once the
+	// covers on screen are done (one at a time, only while nothing else renders).
+	$effect(() => {
+		if (settings.values.coverStyle !== 'page' || library.status !== 'ready') return;
+		const ids = library.papers.map((p) => p.id);
+		const timer = setTimeout(() => void warmCovers(ids), 2000);
+		return () => clearTimeout(timer);
+	});
 
 	const newCategory = () => showCategoryDialog();
 
