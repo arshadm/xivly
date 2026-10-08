@@ -27,12 +27,24 @@ const sortKeys: Record<SortKey, (p: Paper) => string> = {
 	title: (p) => p.title
 };
 
+// Built once per paper object (an edit replaces the object): typing a search
+// doesn't rebuild a thousand abstracts per keystroke.
+const haystacks = new WeakMap<Paper, string>();
 function haystack(p: Paper) {
-	return [p.title, p.authors?.join(' '), p.abstract, p.year, p.arxiv, p.doi, p.tags?.join(' ')]
-		.filter(Boolean)
-		.join(' ')
-		.toLowerCase();
+	let h = haystacks.get(p);
+	if (h === undefined) {
+		h = [p.title, p.authors?.join(' '), p.abstract, p.year, p.arxiv, p.doi, p.tags?.join(' ')]
+			.filter(Boolean)
+			.join(' ')
+			.toLowerCase();
+		haystacks.set(p, h);
+	}
+	return h;
 }
+
+// The same orders as `localeCompare` (with and without options), many times faster.
+const byValue = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' }).compare;
+const byTitle = new Intl.Collator().compare;
 
 export function filterPapers(papers: Paper[], o: FilterOptions): Paper[] {
 	const q = o.query.trim().toLowerCase();
@@ -53,7 +65,7 @@ export function filterPapers(papers: Paper[], o: FilterOptions): Paper[] {
 	return list.toSorted((a, b) => {
 		const x = key(a),
 			y = key(b);
-		if (!x || !y) return x ? -1 : y ? 1 : a.title.localeCompare(b.title);
-		return dir * x.localeCompare(y, undefined, { numeric: true, sensitivity: 'base' }) || a.title.localeCompare(b.title);
+		if (!x || !y) return x ? -1 : y ? 1 : byTitle(a.title, b.title);
+		return dir * byValue(x, y) || byTitle(a.title, b.title);
 	});
 }
