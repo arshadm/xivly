@@ -62,6 +62,6 @@ Open the folder in Claude Code and ask it about your papers and highlights. Unkn
 - [DEVELOPMENT.md](DEVELOPMENT.md): architecture, running and testing it, the Chrome extension, the example library, releases.
 - [RELEASING.md](RELEASING.md): the release workflow and store publishing.
 - [PRIVACY.md](PRIVACY.md) · [CODE_SIGNING.md](CODE_SIGNING.md)
-- The PDF engine is [svelte-pdf-mini](https://github.com/julien-blanchon/svelte-pdf-mini), by the same author.
+- Built on [svelte-pdf-mini](https://github.com/julien-blanchon/svelte-pdf-mini), my Svelte library for PDF reading and annotation.
 
 MIT License.
