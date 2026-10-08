@@ -47,6 +47,7 @@
 	import { settingsDialog } from '#lib/components/SettingsDialog.svelte';
 	import { shortcutsHelp } from '#lib/components/ShortcutsHelp.svelte';
 	import { toast } from '#lib/components/Toasts.svelte';
+	import { paperCache, warmPdf } from '#lib/pdf.js';
 	import AnnotationToolbar from '#lib/pdf/AnnotationToolbar.svelte';
 	import NoteHoverCard from '#lib/pdf/NoteHoverCard.svelte';
 	import PdfContextMenu from '#lib/pdf/PdfContextMenu.svelte';
@@ -174,6 +175,7 @@
 			if (!mine) return;
 			// Large PDFs (or iCloud downloading one) take a moment: a spinner then, not at once.
 			const spinner = setTimeout(() => (slow = true), 300);
+			warmPdf();
 			repo
 				?.readPdf(current)
 				.then((b) => {
@@ -542,7 +544,7 @@
 		>
 			<Find.Root>
 				{#snippet children({ find })}
-					<Paper.Root {provider} bind:paper={paperState}>
+					<Paper.Root {provider} cache={paperCache} bind:paper={paperState}>
 						<Annotations.Root
 							bind:annotations
 							bind:store
