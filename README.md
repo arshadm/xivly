@@ -18,6 +18,15 @@ A calm reader for research papers: read, annotate and organize your PDFs. Free a
 - **Read comfortably:** reading themes that tint the page by category, light and dark, one page, two pages or scroll sideways, and it reopens where you left off. A keyboard shortcut for everything (`?` lists them).
 - **Yours, as plain files:** each paper is a folder with `paper.pdf` and `paper.json`, in any folder you choose (iCloud Drive, Dropbox, a git repo…). Scripts and coding agents can read and extend it (below).
 
+## Screenshots
+
+<table>
+<tr><td width="50%"><img src="docs/media/library.jpg" alt="Your library: categories, tags, read and unread"><br><sub>Your library: categories, tags, read and unread</sub></td><td width="50%"><img src="docs/media/hf-search.jpg" alt="Add a paper from a Hugging Face search"><br><sub>Add a paper from a Hugging Face search</sub></td></tr>
+<tr><td width="50%"><img src="docs/media/handwritten.jpg" alt="Write on the page; the page tint follows the category"><br><sub>Write on the page; the page tint follows the category</sub></td><td width="50%"><img src="docs/media/citation.jpg" alt="Hover a citation: the paper, and one click to add it"><br><sub>Hover a citation: the paper, and one click to add it</sub></td></tr>
+<tr><td width="50%"><img src="docs/media/figure-preview.jpg" alt="Hover a figure reference to preview the figure"><br><sub>Hover a figure reference to preview the figure</sub></td><td width="50%"><img src="docs/media/panels-find.jpg" alt="Find in the paper, with every match listed"><br><sub>Find in the paper, with every match listed</sub></td></tr>
+<tr><td width="50%"><img src="docs/media/sideways.jpg" alt="One page, two pages, or scroll sideways"><br><sub>One page, two pages, or scroll sideways</sub></td><td width="50%"><img src="docs/media/preview-app.jpg" alt="Share it: your notes open in any PDF app"><br><sub>Share it: your notes open in any PDF app</sub></td></tr>
+</table>
+
 ## Install
 
 | | |
