@@ -531,6 +531,7 @@
 			zoomMode={initialZoom}
 			minZoom={0.5}
 			maxZoom={3}
+			overscan={2}
 			zoomLocked={centerLocked}
 			bind:columns={() => s.columns, (v) => settings.set('columns', v === 'auto' ? 'auto' : v === 2 ? 2 : 1)}
 			bind:scrollMode={() => s.scrollMode, (v) => settings.set('scrollMode', v)}
