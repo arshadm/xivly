@@ -28,7 +28,7 @@ const defaults = {
 	tintPages: true,
 	/** Page color when not tinted by category: 'white', 'warm' or a palette name. */
 	pageColor: 'white',
-	paperStrength: 0.5,
+	paperStrength: 0.2,
 	pageFrame: 'rounded' as PageFrame,
 
 	// Reading: layout & zoom
