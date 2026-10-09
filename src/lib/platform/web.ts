@@ -147,6 +147,8 @@ async function persist() {
 export const webPlatform: Platform = {
 	kind: 'web',
 	onDisk: hasPicker,
+	// No claude on the web; end-to-end tests stand one in (tests/smoke.spec.ts) to drive the Chat tab.
+	claude: (globalThis as { __xivlyTestClaude?: Platform['claude'] }).__xivlyTestClaude,
 	async restore() {
 		if (!hasPicker) return localStorage.getItem('xivly:opfs') ? opfs() : null;
 		const h = await loadHandle().catch(() => undefined);

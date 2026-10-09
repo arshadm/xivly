@@ -57,6 +57,7 @@
 	import ReaderPages from '#lib/pdf/ReaderPages.svelte';
 	import SplitPane from '#lib/pdf/SplitPane.svelte';
 	import NotesPane, { flushNotes } from '#lib/notes/NotesPane.svelte';
+	import ChatPane from '#lib/chat/ChatPane.svelte';
 	import BookmarkPicker from '#lib/pdf/BookmarkPicker.svelte';
 	import { anchorAt, anchorAtPdfY, jumpTo } from '#lib/anchor.js';
 	import { quoteContent } from '#lib/notes/paper-link.js';
@@ -451,6 +452,16 @@
 
 	// ── Notes ────────────────────────────────────────────────────────────
 	let notesPane = $state<NotesPane>();
+	let notesStatus = $state<{ text: string; error: string | null }>({ text: '', error: null });
+	let chatPane = $state<ChatPane>();
+
+	/** The chat (⌘⇧E): the pane on its Chat tab, the question box focused. */
+	async function openChat() {
+		settings.set('paneTab', 'chat');
+		if (!s.notesPane) settings.set('notesPane', true);
+		for (let i = 0; i < 60 && !chatPane; i++) await new Promise(requestAnimationFrame);
+		await chatPane?.focus();
+	}
 
 	/** The selected text, as a quote at the end of the notes (opening them if hidden) with a chip to where it is. */
 	async function quoteInNotes(ctx: PdfContext) {
@@ -458,6 +469,7 @@
 		const text = ctx.selectedText.trim();
 		if (!first || !text || !viewer) return;
 		const anchor = first.rect ? anchorAtPdfY(first.page, first.rect[3], viewer.document.pageSize(first.page)) : anchorAt(first.page);
+		settings.set('paneTab', 'notes');
 		if (!s.notesPane) settings.set('notesPane', true);
 		for (let i = 0; i < 60 && !notesPane; i++) await new Promise(requestAnimationFrame);
 		await notesPane?.append(quoteContent(text, anchor));
@@ -571,6 +583,7 @@
 		else if (matches(e, keys.closeWindow)) (e.preventDefault(), closeWindow());
 		else if (matches(e, keys.addBookmark)) (e.preventDefault(), void addBookmark());
 		else if (matches(e, keys.notesPane)) (e.preventDefault(), settings.set('notesPane', !s.notesPane));
+		else if (matches(e, keys.chat)) (e.preventDefault(), void openChat());
 		else if (matches(e, keys.goToBookmark)) (e.preventDefault(), (bookmarkPicker = true));
 		else if (panelKeys.some(([k]) => matches(e, k))) (e.preventDefault(), togglePanel(panelKeys.find(([k]) => matches(e, k))![1]));
 		else if (matches(e, keys.scrollContinuous)) (e.preventDefault(), settings.set('scrollMode', 'vertical'));
@@ -864,7 +877,26 @@
 								<!-- ── Notes pane (⌘E) ── -->
 								{#if s.notesPane}
 									<SplitPane class="text-[13px] {chrome}">
-										<NotesPane bind:this={notesPane} {id} onclose={() => settings.set('notesPane', false)} onjump={(a) => viewer && jumpTo(viewer, a)} anchor={readingAnchor} />
+										<div class="flex h-11 shrink-0 items-center gap-2 pr-2 pl-3" data-tauri-drag-region>
+											<div class="flex gap-0.5" role="tablist" aria-label="Pane">
+												{#each [{ value: 'notes', label: 'Notes', icon: 'icon-[lucide--notebook-pen]' }, { value: 'chat', label: 'Chat', icon: 'icon-[lucide--sparkles]' }] as const as t (t.value)}
+													<button role="tab" aria-selected={s.paneTab === t.value} class="flex h-7 items-center gap-1.5 rounded-md px-2 text-xs text-muted hover:text-stone-900 aria-selected:bg-stone-200/80 aria-selected:text-stone-900 dark:hover:text-stone-100 dark:aria-selected:bg-stone-800 dark:aria-selected:text-stone-100" onclick={() => settings.set('paneTab', t.value)}>
+														<span class="{t.icon} size-3.5"></span>{t.label}
+													</button>
+												{/each}
+											</div>
+											<span class="flex-1 truncate text-[11px] {notesStatus.error ? 'text-red-600 dark:text-red-400' : 'text-muted'}" title={notesStatus.error ?? undefined} aria-live="polite" data-tauri-drag-region>{s.paneTab === 'notes' ? notesStatus.text : ''}</span>
+											<Tip label="Hide the pane" shortcut={keys.notesPane}>
+												{#snippet child({ props })}<button {...props} class={iconBtn} aria-label="Hide notes" onclick={() => settings.set('notesPane', false)}><span class="icon-[lucide--x] size-4"></span></button>{/snippet}
+											</Tip>
+										</div>
+										<!-- Both stay alive: an answer keeps streaming while the notes show, and back. -->
+										<div class="flex min-h-0 flex-1 flex-col" class:hidden={s.paneTab !== 'notes'}>
+											<NotesPane bind:this={notesPane} bind:status={notesStatus} {id} onjump={(a) => viewer && jumpTo(viewer, a)} anchor={readingAnchor} />
+										</div>
+										<div class="flex min-h-0 flex-1 flex-col" class:hidden={s.paneTab !== 'chat'}>
+											<ChatPane bind:this={chatPane} {id} title={paper.title} onpage={(page) => viewer && jumpTo(viewer, { page })} />
+										</div>
 									</SplitPane>
 								{/if}
 							</div>

@@ -109,8 +109,8 @@ Catchup pages don't allow cross-origin reads, so fetching (and running `claude`)
   - Every event is streamed to the window through a Tauri `Channel`; `claude_cancel` stops a run.
   - `src/lib/chat/events.ts` turns the events into an answer (text as it streams, "Reading paper.pdf…", session, cost, errors).
   - *Test:* Rust tests (the arguments; a stand-in `claude` script for streaming and exit codes; an ignored test against the real CLI), and `events.test.ts`.
-- [ ] **4.3 Chat panel** as a right-pane tab, with streamed Markdown answers and a stop button.
-- [ ] **4.4 Conversations:** `--resume <session_id>` for follow-up questions. Chats are saved in `papers/<id>/chats/<timestamp>.json` and listed.
+- [x] **4.3 Chat panel:** the right pane has **Notes | Chat** tabs (both stay alive), ⌘⇧E opens the chat with the question box focused. Answers stream in as text, then show rendered (Markdown, maths); what Claude did shows under them ("Reading paper.pdf (pages 1-3)"); `[p. N]` citations are chips that jump to the page. Stop cancels. Suggested first questions.
+- [x] **4.4 Conversations:** saved as `papers/<id>/chats/<chat>.json` with the Claude Code session, continued with `--resume`, the latest one reopened; New chat, and earlier chats from the history menu. *Test:* `store.test.ts`, `session.test.ts` (a stand-in claude), and an e2e test where the web build is given a stand-in claude.
 - [ ] **4.5 Saved prompts** in `.xivly/prompts.json`, with placeholders such as `{{title}}`, `{{selection}}` and `{{notes}}`.
 - [ ] **4.6 "Ask Claude about the selection"** in the PDF right-click menu.
 - [ ] **4.7 Connect to notes:** "Insert answer into notes", and page citations like `[p. 7]` turned into anchor chips.

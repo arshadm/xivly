@@ -809,3 +809,65 @@ test('a list of 1500 papers only renders the rows on screen', async ({ page }) =
 	await expect(rows.getByText('Paper 0', { exact: true })).toBeVisible();
 	expect(errs).toEqual([]);
 });
+
+test('chat with Claude (a stand-in claude): ⌘⇧E, streamed answers with page links, kept and continued after a reload', async ({ page, context }) => {
+	// Every new tab of the context gets the stand-in (the reader opens in one).
+	await context.addInitScript(() => {
+		const w = window as unknown as { __xivlyTestClaude: unknown; __claudeRequests: unknown[] };
+		w.__claudeRequests = JSON.parse(sessionStorage.getItem('claudeRequests') ?? '[]');
+		w.__xivlyTestClaude = {
+			locate: async () => ({ path: '/fake/claude', version: 'test' }),
+			async run(r: { sessionId: string; prompt: string }, onEvent: (e: unknown) => void) {
+				w.__claudeRequests.push(r);
+				sessionStorage.setItem('claudeRequests', JSON.stringify(w.__claudeRequests));
+				const answer = r.prompt.includes('again') ? 'Still about **calm** reading.' : 'It is about **calm reading** [p. 1].';
+				const events = [{ type: 'system', subtype: 'init', session_id: r.sessionId }, { type: 'assistant', message: { content: [{ type: 'tool_use', name: 'Read', input: { file_path: 'paper.pdf' } }] } }];
+				for (const word of answer.split(/(?<= )/)) events.push({ type: 'stream_event', event: { type: 'content_block_delta', delta: { type: 'text_delta', text: word } } } as never);
+				events.push({ type: 'result', is_error: false, result: answer, session_id: r.sessionId, total_cost_usd: 0.004 } as never, { type: 'xivly_exit', code: 0, stderr: '' } as never);
+				for (const e of events) {
+					await new Promise((res) => setTimeout(res, 30));
+					onEvent(e);
+				}
+			},
+			cancel: async () => {}
+		};
+	});
+	const reader = await addPaper(page, context);
+	const errs = errors(reader);
+	await expect(reader.locator('[data-pdf-page]').first().locator('[data-pdf-canvas]')).toBeVisible();
+
+	await reader.keyboard.press('ControlOrMeta+Shift+e');
+	await expect(reader.getByRole('tab', { name: 'Chat' })).toHaveAttribute('aria-selected', 'true');
+	const box = reader.getByRole('textbox', { name: 'Ask Claude about this paper' });
+	await expect(box).toBeFocused();
+	await box.fill('What is it about?');
+	await box.press('Enter');
+
+	const chat = reader.locator('.chat');
+	await expect(chat.locator('strong')).toHaveText('calm reading');
+	await expect(chat).toContainText('Reading paper.pdf');
+	const cite = chat.getByRole('link', { name: 'p. 1' });
+	await cite.click();
+	await expect(reader.getByRole('group', { name: 'Back' })).toBeVisible();
+
+	// Kept: after a reload the conversation is there, and a follow-up continues the session.
+	await writesDone(reader);
+	await reader.reload();
+	await expect(reader.locator('[data-pdf-page]').first().locator('[data-pdf-canvas]')).toBeVisible();
+	await expect(chat).toContainText('What is it about?');
+	await expect(chat.locator('strong')).toHaveText('calm reading');
+	await box.fill('Tell me again');
+	await box.press('Enter');
+	await expect(chat.locator('strong').last()).toHaveText('calm');
+	const requests = await reader.evaluate(() => (window as unknown as { __claudeRequests: { sessionId: string; resume: boolean; tools: string[] }[] }).__claudeRequests);
+	expect(requests.map((r) => r.resume)).toEqual([false, true]);
+	expect(requests[1].sessionId).toBe(requests[0].sessionId);
+	expect(requests[0].tools).toEqual(['Read']);
+
+	// The Notes tab is still there, with its save state in the header.
+	await reader.getByRole('tab', { name: 'Notes' }).click();
+	await reader.getByRole('textbox', { name: 'Notes' }).click();
+	await reader.keyboard.type('Noted.');
+	await expect(reader.getByText('Saved', { exact: true })).toBeVisible();
+	expect(errs).toEqual([]);
+});

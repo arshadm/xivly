@@ -46,6 +46,8 @@ const defaults = {
 	/** The notes pane, right of the pages (⌘E), and its width in px. */
 	notesPane: false,
 	notesPaneWidth: 420,
+	/** What the pane shows: the notes, or the chat with Claude. */
+	paneTab: 'notes' as 'notes' | 'chat',
 	minimap: false,
 	minimapVariant: 'pages' as MinimapVariant,
 	tocRail: false,
@@ -262,6 +264,7 @@ export function overrideOf<K extends SettingKey>(key: K, value: Settings[K]): Se
 const validators: Partial<Record<string, (v: unknown) => boolean>> = {
 	coverStyle: (v) => coverStyles.some((c) => c.value === v),
 	libraryLayout: (v) => v === 'cards' || v === 'list',
+	paneTab: (v) => v === 'notes' || v === 'chat',
 	recentWindow: (v) => typeof v === 'string' && v in recentWindows,
 	freetextFont: (v) => FREETEXT_FONT_FAMILIES.includes(v as FreeTextFontFamily),
 	noteEmojis: (v) => Array.isArray(v) && v.length === defaultNoteEmojis.length && v.every((e) => typeof e === 'string' && isSingleEmoji(e))

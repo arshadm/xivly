@@ -55,19 +55,17 @@
 <script lang="ts">
 	import type { JSONContent } from '@tiptap/core';
 	import { onDestroy } from 'svelte';
-	import { keys } from '#lib/shortcuts.js';
-	import { iconButton } from '#lib/ui/button.js';
-	import Tip from '#lib/ui/Tip.svelte';
 	import NotesEditor from './NotesEditor.svelte';
 
 	let {
 		id,
-		onclose,
 		onjump,
-		anchor
+		anchor,
+		status = $bindable({ text: '', error: null })
 	}: {
 		id: string;
-		onclose: () => void;
+		/** The save state, for the pane's header. */
+		status?: { text: string; error: string | null };
 		onjump: (anchor: PaperAnchor) => void;
 		/** Where the reader is (for "Link to this page"). */
 		anchor: () => PaperAnchor | null;
@@ -101,18 +99,16 @@
 	// Hidden (⌘E) or the window going: write what's waiting now.
 	onDestroy(() => void saver.flush());
 
-	const status = $derived(saver.state === 'saving' || saver.state === 'pending' ? 'Saving…' : saver.state === 'error' ? 'Not saved' : saver.savedAt || (notes.status === 'ready' && notes.doc) ? 'Saved' : '');
+	$effect(() => {
+		status = {
+			text: saver.state === 'saving' || saver.state === 'pending' ? 'Saving…' : saver.state === 'error' ? 'Not saved' : saver.savedAt || (notes.status === 'ready' && notes.doc) ? 'Saved' : '',
+			error: saver.state === 'error' ? saver.error : null
+		};
+	});
 </script>
 
 <!-- data-notes-pane: ⌘F in here finds in the notes, not in the paper. -->
 <div class="contents" data-notes-pane>
-<div class="flex h-11 shrink-0 items-center gap-2 pr-2 pl-4" data-tauri-drag-region>
-	<p class="text-[11px] font-medium tracking-wide text-muted uppercase" data-tauri-drag-region>Notes</p>
-	<span class="flex-1 truncate text-[11px] {saver.state === 'error' ? 'text-red-600 dark:text-red-400' : 'text-muted'}" title={saver.error ?? undefined} aria-live="polite" data-tauri-drag-region>{status}</span>
-	<Tip label="Hide notes" shortcut={keys.notesPane}>
-		{#snippet child({ props })}<button {...props} class={iconButton(7)} aria-label="Hide notes" onclick={onclose}><span class="icon-[lucide--x] size-4"></span></button>{/snippet}
-	</Tip>
-</div>
 <div class="min-h-0 flex-1 border-t border-stone-200 bg-white dark:border-stone-800 dark:bg-stone-900">
 	{#if notes.status === 'ready'}
 		{#key id}<NotesEditor bind:this={editor} content={notes.doc as JSONContent | null} onupdate={(doc) => saver.change(doc as NotesDoc)} {onjump} {anchor} assets={assetsFor(id)} />{/key}

@@ -23,7 +23,7 @@ export interface LibraryFs {
 import type { ArxivFetchExport } from '#lib/feed/import.js';
 
 /** A question to Claude about a paper (`claude -p` in its folder). */
-interface ClaudeRequest {
+export interface ClaudeRequest {
 	/** This run's id (to cancel it). */
 	id: string;
 	/** The claude to run (from `locate`). */
@@ -40,7 +40,7 @@ interface ClaudeRequest {
 	tools: string[];
 }
 
-interface ClaudeCli {
+export interface ClaudeCli {
 	/** Where claude is (`path`: the one set in Settings, else found) and its version; throws when there's none. */
 	locate(path?: string): Promise<{ path: string; version: string }>;
 	/** Start a run; `onEvent` gets each stream-json event, then `{ type: 'xivly_exit' }`. */
