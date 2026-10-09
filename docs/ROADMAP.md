@@ -62,7 +62,12 @@ Planned features for this fork: split-view notes, a mind map per paper, named bo
   - The formatting bar's "Link to the page you're reading" inserts a page chip ("p. 5"), stored as `{type: "paperLink", attrs: {page, label}}`. Clicking a chip jumps there (then "Back to page N").
   - Right-clicking selected text offers "Quote in notes": the text as a quote at the end of the notes, with a chip just above its first line. It opens the notes pane if it's hidden.
   - *Test:* `paper-link.test.ts`, `anchor.test.ts`, and the e2e "notes link to the paper" test.
-- [ ] **2.7 Extras:** maths (KaTeX), tables, pasted images saved to `notes-assets/`, checklists.
+- [x] **2.7 Extras:**
+  - **Checklists:** `[ ] `, ⌘⇧9 or the bar; nested; ticked items struck through.
+  - **Tables:** inserted from the bar; Tab moves between cells; a Table bar adds or deletes rows and columns and turns the header row on or off.
+  - **Maths (KaTeX):** `$x$` inline and `$$x$$` alone on a line, as you type; prices like "$5 and $6" stay text. Bar buttons too; click a formula to edit it (`src/lib/notes/maths.ts`).
+  - **Images:** pasted, dropped or picked, kept as `notes-assets/<hash>.<ext>` next to the paper (the same image once), shown from the library (`src/lib/notes/images.ts`).
+  - *Test:* `maths.test.ts`, `images.test.ts`, the notes images tests in `repo.test.ts`, and an e2e test for each.
 - [x] **2.8 Markdown:**
   - "Export › Notes as Markdown…" (or Paper info's export button) gives the title, then your notes under "## Notes" (headings shifted down two levels, page chips as "(p. 5)"), then the highlights by section.
   - `notes.md` is rewritten next to `notes.json` on every save, for Claude Code and other tools. The converter (`src/lib/notes/markdown.ts`) also covers maths, tables, images and checklists.

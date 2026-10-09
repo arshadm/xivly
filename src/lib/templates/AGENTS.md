@@ -12,6 +12,7 @@ papers/<slug>/notes.json   your notes on the paper: { version, updated, doc }, d
                            rich text as TipTap / ProseMirror JSON
 papers/<slug>/notes.md     the same notes as Markdown, rewritten on every save (read it,
                            don't edit it: edit notes.json, or in Xivly)
+papers/<slug>/notes-assets/  images in the notes (notes.json / notes.md refer to them by this path)
 papers/<slug>/*            anything else you add (summary.md, code/, ...) is kept
 .xivly/library.json        categories (id, name, color) and tags
 .xivly/hooks/              scripts run by the desktop app on events

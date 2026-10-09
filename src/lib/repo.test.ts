@@ -317,3 +317,27 @@ describe('readAllNotesText', () => {
 		expect(calls).toEqual(['papers/*/notes.md']);
 	});
 });
+
+describe('notes images', () => {
+	const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 1, 2, 3]);
+
+	it('kept next to the paper under a name from their content, once', async () => {
+		const { fs, r } = await repo();
+		const p = await r.add(PDF, { title: 'Illustrated' });
+		const path = await r.saveNoteAsset(p.id, PNG, 'png');
+		expect(path).toMatch(/^notes-assets\/[0-9a-f]{16}\.png$/);
+		expect(await r.saveNoteAsset(p.id, PNG, 'png')).toBe(path);
+		expect((await fs.list(`papers/${p.id}/notes-assets`)).length).toBe(1);
+		expect(await r.readPaperFile(p.id, path)).toEqual(PNG);
+		expect(await r.readPaperFile(p.id, 'notes-assets/none.png')).toBeNull();
+	});
+
+	it('never outside the paper’s folder, nor for a removed paper', async () => {
+		const { r } = await repo();
+		const p = await r.add(PDF, { title: 'Illustrated' });
+		expect(() => r.readPaperFile(p.id, '../other/paper.pdf')).toThrow(/Not a path/);
+		await expect(r.saveNoteAsset(p.id, PNG, '../png')).rejects.toThrow(/Not a file extension/);
+		await r.remove(p.id);
+		await expect(r.saveNoteAsset(p.id, PNG, 'png')).rejects.toThrow(RemovedError);
+	});
+});

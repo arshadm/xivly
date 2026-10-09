@@ -7,6 +7,7 @@
 	import { library } from '#lib/library.svelte.js';
 	import type { NotesDoc, PaperAnchor } from '#lib/types.js';
 	import { Saver } from './saver.svelte';
+	import { IMAGE_TYPES, imageMime, type NoteAssets } from './images';
 
 	// One saver per paper, outliving the pane: hiding it (⌘E) mid-save loses nothing,
 	// and closing the window or quitting waits for the last write.
@@ -19,6 +20,32 @@
 			savers.set(id, (saver = s));
 		}
 		return saver;
+	}
+
+	// Notes images shown so far (blob URLs by `<id>/<path>`): each is read once per window.
+	const imageUrls = new Map<string, Promise<string | null>>();
+
+	/** Where a paper's notes images are kept: next to it, under notes-assets/. */
+	function assetsFor(id: string): NoteAssets {
+		return {
+			async save(file) {
+				const ext = IMAGE_TYPES[file.type];
+				if (!ext) throw new Error('not an image the notes can keep');
+				return library.repo!.saveNoteAsset(id, new Uint8Array(await file.arrayBuffer()), ext);
+			},
+			url(src) {
+				if (/^(https?|data|blob):/i.test(src)) return Promise.resolve(src);
+				const key = `${id}/${src}`;
+				let url = imageUrls.get(key);
+				if (!url) {
+					url = library.repo!.readPaperFile(id, src).then((bytes) => (bytes ? URL.createObjectURL(new Blob([bytes as Uint8Array<ArrayBuffer>], { type: imageMime(src) })) : null));
+					imageUrls.set(key, url);
+					// A missing file may appear later (a sync client still downloading it).
+					void url.then((u) => u || imageUrls.delete(key), () => imageUrls.delete(key));
+				}
+				return url;
+			}
+		};
 	}
 
 	/** Write the paper's notes now, if any are waiting (before another window takes the paper). */
@@ -88,7 +115,7 @@
 </div>
 <div class="min-h-0 flex-1 border-t border-stone-200 bg-white dark:border-stone-800 dark:bg-stone-900">
 	{#if notes.status === 'ready'}
-		{#key id}<NotesEditor bind:this={editor} content={notes.doc as JSONContent | null} onupdate={(doc) => saver.change(doc as NotesDoc)} {onjump} {anchor} />{/key}
+		{#key id}<NotesEditor bind:this={editor} content={notes.doc as JSONContent | null} onupdate={(doc) => saver.change(doc as NotesDoc)} {onjump} {anchor} assets={assetsFor(id)} />{/key}
 	{:else if notes.status === 'error'}
 		<div class="m-4 rounded-lg border border-red-200 bg-red-50 p-3 text-[13px] text-red-800 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-200">
 			<p class="font-medium">These notes couldn’t be read, so they’re left as they are.</p>

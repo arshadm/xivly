@@ -2,6 +2,8 @@
 // for the layout. paper.json / library.json are merged, never rewritten
 // from scratch, so fields added by users, hooks or agents survive.
 import { parseBookmarks } from './bookmarks';
+import { sha256 } from './duplicates';
+import { isPaperPath } from './notes/images';
 import { notesToMarkdown } from './notes/markdown';
 import type { HookEvent, LibraryFs, Platform } from './platform';
 import agentsMd from './templates/AGENTS.md?raw';
@@ -388,6 +390,26 @@ export class Repo {
 			await this.#present(id);
 			await this.fs.write(`papers/${id}/notes.md`, enc.encode(`${NOTES_MD_HEADER}\n\n${md}${md ? '\n' : ''}`));
 		});
+	}
+
+	/**
+	 * An image for the paper's notes, kept as `notes-assets/<hash>.<ext>` (the same image is
+	 * stored once). Returns that path, relative to the paper's folder.
+	 */
+	async saveNoteAsset(id: string, bytes: Uint8Array, ext: string): Promise<string> {
+		if (!/^[a-z0-9]+$/.test(ext)) throw new Error(`Not a file extension: ${ext}`);
+		const name = `notes-assets/${(await sha256(bytes as Uint8Array<ArrayBuffer>)).slice(0, 16)}.${ext}`;
+		await this.#lock(`papers/${id}/${name}`, async () => {
+			await this.#present(id);
+			if (!(await this.fs.exists(`papers/${id}/${name}`))) await this.fs.write(`papers/${id}/${name}`, bytes);
+		});
+		return name;
+	}
+
+	/** A file in the paper's folder by its relative path (a notes image), or null when missing. */
+	readPaperFile(id: string, path: string) {
+		if (!isPaperPath(path)) throw new Error(`Not a path in the paper’s folder: ${path}`);
+		return this.fs.read(`papers/${id}/${path}`);
 	}
 
 	/**

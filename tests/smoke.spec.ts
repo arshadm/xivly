@@ -593,3 +593,28 @@ test('notes: maths — $x$ inline and $$x$$ blocks rendered by KaTeX, click to e
 	await expect(reloaded.locator('[data-type="block-math"]')).toHaveAttribute('data-latex', '\\int_0^1 x\\,dx');
 	expect(errs).toEqual([]);
 });
+
+test('notes: images — a pasted image is kept next to the paper and shown again after a reload', async ({ page, context }) => {
+	const { reader, notes } = await openNotes(page, context);
+	const errs = errors(reader);
+	await reader.keyboard.type('A figure I drew:');
+	await reader.keyboard.press('Enter');
+	// Paste a 40×20 red PNG.
+	await notes.evaluate(async (el) => {
+		const canvas = Object.assign(document.createElement('canvas'), { width: 40, height: 20 });
+		const g = canvas.getContext('2d')!;
+		g.fillStyle = '#e11';
+		g.fillRect(0, 0, 40, 20);
+		const blob = await new Promise<Blob>((r) => canvas.toBlob((b) => r(b!), 'image/png'));
+		const data = new DataTransfer();
+		data.items.add(new File([blob], 'red square.png', { type: 'image/png' }));
+		el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }));
+	});
+	const shown = (n: typeof notes) => n.locator('img.notes-image').evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth);
+	await expect.poll(() => shown(notes)).toBe(40);
+	await expect(notes.locator('img.notes-image')).toHaveAttribute('alt', 'red square');
+
+	const reloaded = await reloadNotes(reader);
+	await expect.poll(() => shown(reloaded)).toBe(40);
+	expect(errs).toEqual([]);
+});

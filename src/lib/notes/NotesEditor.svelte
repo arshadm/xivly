@@ -23,12 +23,15 @@
 	import { PaperLink, paperLinkNode, toAnchor } from './paper-link';
 	import { findMatches, findStep, NotesFind, setFindQuery } from './find';
 	import { NotesBlockMath, NotesInlineMath } from './maths';
+	import { imageFiles, MAX_IMAGE_BYTES, NotesImage, type NoteAssets } from './images';
+	import { toast } from '#lib/components/Toasts.svelte';
 
 	let {
 		content,
 		onupdate,
 		onjump,
 		anchor,
+		assets,
 		editable = true
 	}: {
 		/** The notes as loaded (null: none yet). Read once: the editor owns the document after that. */
@@ -38,6 +41,8 @@
 		onjump?: (anchor: PaperAnchor) => void;
 		/** Where the reader is (for "Link to this page"); null before the paper shows. */
 		anchor?: () => PaperAnchor | null;
+		/** Where images are kept (none: images can't be added). */
+		assets?: NoteAssets;
 		editable?: boolean;
 	} = $props();
 
@@ -113,7 +118,8 @@
 				TableKit.configure({ table: { resizable: false } }),
 				// A formula with an error shows as its source (red), never breaks the notes.
 				NotesInlineMath.configure({ katexOptions: { throwOnError: false }, onClick: (node, pos) => void editMath(node, pos) }),
-				NotesBlockMath.configure({ katexOptions: { throwOnError: false, displayMode: true }, onClick: (node, pos) => void editMath(node, pos) })
+				NotesBlockMath.configure({ katexOptions: { throwOnError: false, displayMode: true }, onClick: (node, pos) => void editMath(node, pos) }),
+				NotesImage.configure({ assets: assets ?? null })
 			],
 			editorProps: {
 				attributes: { class: 'notes-editor min-h-full px-5 py-4 outline-none', role: 'textbox', 'aria-multiline': 'true', 'aria-label': 'Notes', 'data-notes-editor': '' },
@@ -122,6 +128,20 @@
 				handleClickOn: (_view, _pos, node) => {
 					if (node.type.name !== 'paperLink') return false;
 					onjump?.(toAnchor(node.attrs));
+					return true;
+				},
+				// Images pasted or dropped in: kept next to the paper.
+				handlePaste: (_view, event) => {
+					const files = imageFiles(event.clipboardData?.files);
+					if (!files.length || !assets) return false;
+					void addImages(files);
+					return true;
+				},
+				handleDrop: (view, event, _slice, moved) => {
+					const files = moved ? [] : imageFiles(event.dataTransfer?.files);
+					if (!files.length || !assets) return false;
+					event.preventDefault();
+					void addImages(files, view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos);
 					return true;
 				},
 				handleClick: (_view, _pos, event) => {
@@ -193,6 +213,35 @@
 		run((c) => c.insertContent({ type: 'blockMath', attrs: { latex: latex.trim() } }));
 	}
 
+	// ── Images ────────────────────────────────────────────────────────────
+	let picker = $state<HTMLInputElement>();
+
+	/** Save the images, then insert them (at `pos`, else at the cursor). */
+	async function addImages(files: File[], pos?: number) {
+		if (!assets) return;
+		const nodes: JSONContent[] = [];
+		for (const file of files) {
+			if (file.size > MAX_IMAGE_BYTES) {
+				toast(`${file.name} is too large for the notes (over ${MAX_IMAGE_BYTES / 1024 / 1024} MB)`, 'error');
+				continue;
+			}
+			try {
+				nodes.push({ type: 'image', attrs: { src: await assets.save(file), alt: file.name.replace(/\.[^.]+$/, '') } });
+			} catch (e) {
+				toast(`Couldn’t add ${file.name}: ${e instanceof Error ? e.message : e}`, 'error');
+			}
+		}
+		if (!nodes.length || !editor) return;
+		if (pos === undefined) run((c) => c.insertContent(nodes));
+		else editor.chain().focus().insertContentAt(pos, nodes).run();
+	}
+
+	function onpick(e: Event) {
+		const input = e.currentTarget as HTMLInputElement;
+		void addImages(imageFiles(input.files));
+		input.value = '';
+	}
+
 	function linkHere() {
 		const a = anchor?.();
 		if (a) run((c) => c.insertContent([paperLinkNode(a), { type: 'text', text: ' ' }]));
@@ -226,7 +275,8 @@
 			{ label: 'Code block', icon: 'icon-[lucide--square-code]', keys: `${alt}${mod}C`, on: () => run((c) => c.toggleCodeBlock()), isActive: () => active('codeBlock') },
 			{ label: 'Table', icon: 'icon-[lucide--table]', on: () => run((c) => c.insertTable({ rows: 3, cols: 3, withHeaderRow: true })), isActive: () => active('table') },
 			{ label: 'Equation ($…$)', icon: 'icon-[lucide--sigma]', on: inlineMath },
-			{ label: 'Equation block ($$…$$)', icon: 'icon-[lucide--square-sigma]', on: blockMath }
+			{ label: 'Equation block ($$…$$)', icon: 'icon-[lucide--square-sigma]', on: blockMath },
+			{ label: 'Image (or paste / drop one)', icon: 'icon-[lucide--image-plus]', on: () => picker?.click(), disabled: () => !assets }
 		],
 		[
 			{ label: 'Undo', icon: 'icon-[lucide--undo-2]', keys: `${mod}Z`, on: () => run((c) => c.undo()), disabled: () => !can((e) => e.can().undo()) },
@@ -290,6 +340,7 @@
 		</div>
 	{/if}
 	<div class="min-h-0 flex-1 overflow-y-auto" bind:this={element}></div>
+	<input bind:this={picker} type="file" accept="image/png,image/jpeg,image/gif,image/webp,image/avif,image/svg+xml" multiple hidden onchange={onpick} />
 </div>
 
 <style>
@@ -498,6 +549,22 @@
 	:global(.notes-editor .ProseMirror-selectednode.tiptap-mathematics-render),
 	:global(.notes-editor .ProseMirror-selectednode .tiptap-mathematics-render) {
 		outline: 2px solid rgb(14 165 233 / 0.6);
+	}
+	/* Images: as wide as the notes at most. */
+	:global(.notes-editor img.notes-image) {
+		display: block;
+		max-width: 100%;
+		height: auto;
+		border-radius: 6px;
+		margin: 0.4em 0;
+	}
+	:global(.notes-editor img.notes-image.ProseMirror-selectednode) {
+		outline: 2px solid rgb(14 165 233 / 0.6);
+	}
+	:global(.notes-editor img.notes-image-missing) {
+		min-height: 2.5em;
+		min-width: 8em;
+		background: rgb(0 0 0 / 0.05);
 	}
 	/* Find in the notes. */
 	:global(.notes-editor .notes-match) {
