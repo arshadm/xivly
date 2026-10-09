@@ -6,6 +6,7 @@
 <script lang="ts">
 	import { settingsDialog } from '#lib/components/SettingsDialog.svelte';
 	import { platform } from '#lib/platform/index.js';
+	import { openPaper } from '#lib/windows.js';
 	import { keys } from '#lib/shortcuts.js';
 	import { button, iconButton, mutedIcon } from '#lib/ui/button.js';
 	import Tip from '#lib/ui/Tip.svelte';
@@ -101,7 +102,23 @@
 						{#if g.day}<h2 class="mt-4 mb-2 text-[11px] font-medium tracking-wide text-muted uppercase first:mt-0">{dayLabel(g.day)}</h2>{/if}
 						<div class="space-y-2">
 							{#each g.papers as paper (paper.id)}
-								<FeedCard {paper} />
+								{@const linked = feed.inLibrary(paper)}
+								<FeedCard {paper}>
+									{#snippet actions()}
+										{#if linked}
+											<button class={button('secondary', 'h-7 px-2.5 text-xs')} onclick={() => openPaper(linked.id, linked.title)}><span class="icon-[lucide--book-open] size-3.5"></span>Open</button>
+										{:else}
+											<button class={button('secondary', 'h-7 px-2.5 text-xs')} disabled={feed.adding.has(paper.id)} onclick={() => feed.add(paper)}>
+												<span class="{feed.adding.has(paper.id) ? 'icon-[lucide--loader-circle] animate-spin' : 'icon-[lucide--plus]'} size-3.5"></span>{feed.adding.has(paper.id) ? 'Adding…' : 'Add'}
+											</button>
+										{/if}
+										{#if paper.dismissed}
+											<Tip label="Back to the feed">{#snippet child({ props })}<button {...props} class={iconButton(7, mutedIcon)} aria-label="Restore {paper.title}" onclick={() => feed.restore(paper)}><span class="icon-[lucide--archive-restore] size-4"></span></button>{/snippet}</Tip>
+										{:else}
+											<Tip label="Dismiss (never shown again)">{#snippet child({ props })}<button {...props} class={iconButton(7, mutedIcon)} aria-label="Dismiss {paper.title}" onclick={() => feed.dismiss(paper)}><span class="icon-[lucide--x] size-4"></span></button>{/snippet}</Tip>
+										{/if}
+									{/snippet}
+								</FeedCard>
 							{/each}
 						</div>
 					</section>

@@ -715,3 +715,32 @@ test('the arXiv feed: P1–P3 by default, newest day first, chips, search, abstr
 	await expect(cards.locator('h3')).toHaveText(['Paper 2610.00005']);
 	expect(errs).toEqual([]);
 });
+
+test('the arXiv feed: dismiss (with undo), and restore from the dismissed ones', async ({ page }) => {
+	const errs = errors(page);
+	await startLibrary(page);
+	const fp = (id: string) => ({ id, title: `Paper ${id}`, authors: [], abstract: '', categories: ['cs.PL'], topics: ['mlir'], published: '2026-10-02', priority: 1, firstSeen: '' });
+	await writeLibraryFiles(page, { '.xivly/feed/papers/2026-10.json': { version: 1, papers: { '2610.00001': fp('2610.00001'), '2610.00002': fp('2610.00002') } } });
+	await page.reload();
+	await page.getByRole('button', { name: /arXiv feed/ }).click();
+	const cards = page.locator('article.feed-card');
+	await expect(cards).toHaveCount(2);
+
+	await page.getByRole('button', { name: 'Dismiss Paper 2610.00001' }).click();
+	await expect(cards).toHaveCount(1);
+	await page.getByRole('button', { name: 'Undo' }).click();
+	await expect(cards).toHaveCount(2);
+
+	await page.getByRole('button', { name: 'Dismiss Paper 2610.00001' }).click();
+	await expect(cards).toHaveCount(1);
+	// Kept after a reload (written to the feed file).
+	await page.reload();
+	await page.getByRole('button', { name: /arXiv feed/ }).click();
+	await expect(cards).toHaveCount(1);
+	await page.getByRole('button', { name: /Dismissed 1/ }).click();
+	await page.getByRole('button', { name: 'Restore Paper 2610.00001' }).click();
+	await expect(cards).toHaveCount(0);
+	await page.getByRole('button', { name: /Dismissed/ }).click();
+	await expect(cards).toHaveCount(2);
+	expect(errs).toEqual([]);
+});
