@@ -35,8 +35,10 @@
 	// The margin shows the notes written so far: a comment, or a label other than a box's
 	// (as svelte-pdf-mini does). A note still being written stays in its popover.
 	const inMargin = (a: Annotation) => !a.inReplyTo && !a.hidden && !!(a.contents?.trim() || (a.label && a.kind !== 'area'));
-	// Room beside the pages only when the margin has something to show: otherwise
-	// "Page width" would leave a quarter of the view empty for nothing.
+	// Room right of the pages (where the notes go) only when the margin has something to
+	// show: otherwise "Page width" fills the view. The pages then sit left of center, the
+	// right padding holding the notes (at most a quarter of the view). Needs the patched
+	// svelte-pdf-mini (patches/), whose margin measures the room on its own side.
 	const marginNotes = $derived(s.sideNotes && store.annotations.some(inMargin));
 </script>
 
@@ -44,7 +46,7 @@
 	<div class="relative min-w-0 flex-1">
 		<PdfContextMenu onOpenReference={openReference} {saveFile} {moreActions}>
 			{#snippet trigger({ props })}
-				<Viewer.Viewport {...props} style={s.pageFrame === 'none' ? `background:${swatch}` : undefined} class="h-full bg-stone-100 transition-colors dark:bg-stone-950 [--pdf-page-gap:22px] [--pdf-pages-padding:28px] {marginNotes ? '[--pdf-pages-aside:252px]' : ''}">
+				<Viewer.Viewport {...props} style={s.pageFrame === 'none' ? `background:${swatch}` : undefined} class="h-full bg-stone-100 transition-colors dark:bg-stone-950 [--pdf-page-gap:22px] {marginNotes ? '[--pdf-pages-padding:28px_min(280px,25%)_28px_28px]' : '[--pdf-pages-padding:28px]'}">
 					<Viewer.Pages class={restoring ? 'opacity-0' : 'transition-opacity duration-150'}>
 						{#snippet children({ pageNumber })}
 							<Viewer.Page {pageNumber}>

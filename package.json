@@ -68,5 +68,8 @@
   },
   "imports": {
     "#lib/*": "./src/lib/*"
+  },
+  "patchedDependencies": {
+    "svelte-pdf-mini@0.9.0": "patches/svelte-pdf-mini@0.9.0.patch"
   }
 }

@@ -619,7 +619,7 @@ test('notes: images — a pasted image is kept next to the paper and shown again
 	expect(errs).toEqual([]);
 });
 
-test('page width uses the whole view, leaving room for side notes only once there are some', async ({ page, context }) => {
+test('page width uses the whole view, leaving room on the right for side notes only once there are some', async ({ page, context }) => {
 	const reader = await addPaper(page, context);
 	await reader.setViewportSize({ width: 1280, height: 800 });
 	const errs = errors(reader);
@@ -648,6 +648,11 @@ test('page width uses the whole view, leaving room for side notes only once ther
 	await reader.mouse.up();
 	await reader.keyboard.type('A note for the margin');
 	await reader.keyboard.press('Enter');
-	await expect.poll(share).toBeLessThan(0.8);
+	// The room is on the right only (where the notes go): the page keeps the left edge.
+	await expect.poll(share).toBeLessThan(0.85);
+	const [p, v] = await Promise.all([firstPage.boundingBox(), viewport.boundingBox()]);
+	expect(p!.x - v!.x).toBeCloseTo(28, 0);
+	expect(v!.x + v!.width - (p!.x + p!.width)).toBeGreaterThan(250);
+	await expect(reader.locator('[data-pdf-page]').first().getByText('A note for the margin')).toBeVisible();
 	expect(errs).toEqual([]);
 });

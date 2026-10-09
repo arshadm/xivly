@@ -1,0 +1,114 @@
+diff --git a/dist/components/annotations/annotations-margin.svelte b/dist/components/annotations/annotations-margin.svelte
+index c09a1dfd5c087754cdd2d95b477ff5734ba10d2b..737fad56052f3ade7bca0ee97257750f75b2d5ac 100644
+--- a/dist/components/annotations/annotations-margin.svelte
++++ b/dist/components/annotations/annotations-margin.svelte
+@@ -84,17 +84,19 @@
+ 	});
+ 	/** A comfortable note width: notes only cover the page margin to get this wide. */
+ 	const COMFORT = 180;
++	/** Free room beside the page on this margin's side. */
++	const room = $derived(side === 'left' ? page.viewer.sideRoomLeft : page.viewer.sideRoomRight);
+ 	/**
+ 	 * Width a note takes: the room beside the page, or, when that is narrower than
+ 	 * comfortable, as much of the blank page margin as it takes to get there.
+ 	 */
+ 	const width = $derived.by(() => {
+-		const outside = Math.min(maxWidth, page.viewer.sideRoom - offset - edge);
++		const outside = Math.min(maxWidth, room - offset - edge);
+ 		const target = Math.min(maxWidth, COMFORT);
+-		return outside >= target ? outside : Math.min(target, page.viewer.sideRoom - edge + blank);
++		return outside >= target ? outside : Math.min(target, room - edge + blank);
+ 	});
+ 	/** Distance from the page edge to the notes: `offset` when they fit outside, negative when they overlap the page. */
+-	const shift = $derived(Math.min(offset, page.viewer.sideRoom - edge - width));
++	const shift = $derived(Math.min(offset, room - edge - width));
+ 	/** Another page right beside on this side (a spread): only markers fit, in the gap. */
+ 	const neighbor = $derived(page.viewer.hasNeighbor(page.pageNumber, side));
+ 	/** Full notes when they fit, else compact markers (unless forced). */
+@@ -107,10 +109,10 @@
+ 	// next to another page, just past this page's edge, over the neighbor's blank margin.
+ 	const markerPlacement = $derived.by(() => {
+ 		if (neighbor) return 'gap';
+-		return page.viewer.sideRoom >= MARKER + 8 ? 'outside' : 'inside';
++		return room >= MARKER + 8 ? 'outside' : 'inside';
+ 	});
+ 	/** Gap between the page and outside markers: centered in the room, at most `offset`. */
+-	const markerGap = $derived(Math.min(offset, (page.viewer.sideRoom - MARKER) / 2));
++	const markerGap = $derived(Math.min(offset, (room - MARKER) / 2));
+ 
+ 	// Measured note heights → stacked positions without overlaps.
+ 	let heights = $state<Record<string, number>>({});
+diff --git a/dist/state/viewer.svelte.d.ts b/dist/state/viewer.svelte.d.ts
+index 523cc7f500e6a76c8b66fb424a25b0d04c204e38..be0602274331615c45bf7aeeb53f71f490593775 100644
+--- a/dist/state/viewer.svelte.d.ts
++++ b/dist/state/viewer.svelte.d.ts
+@@ -280,6 +280,10 @@ export declare class ViewerState {
+      * frame; side content (margin notes) sizes itself from it.
+      */
+     readonly sideRoom: number;
++    /** Free width (CSS px) left of the pages. */
++    readonly sideRoomLeft: number;
++    /** Free width (CSS px) right of the pages. */
++    readonly sideRoomRight: number;
+     /** Pages to mount: all of them, except in single-page mode (the current spread). */
+     get mountedPages(): number[];
+     /** Spread on a page shell. Sizes follow `--pdf-scale`, so zooming only touches one style. */
+diff --git a/dist/state/viewer.svelte.js b/dist/state/viewer.svelte.js
+index 622302f971f74340557c30c68d0ba89e8a3ae2b8..ea524408c8d4529bbb57b031e087a38d4439c4a8 100644
+--- a/dist/state/viewer.svelte.js
++++ b/dist/state/viewer.svelte.js
+@@ -61,6 +61,9 @@ export class ViewerState {
+     aside = $state(0);
+     /** Horizontal padding of the pages container (total), measured. */
+     #padX = $state(32);
++    /** Its left and right parts (they differ when one side keeps room for side content). */
++    #padLeft = $state(16);
++    #padRight = $state(16);
+     /** Pages close enough to the view to be rendered. */
+     nearPages = $state.raw(new Set());
+     /** Pages currently intersecting the view. */
+@@ -724,18 +727,25 @@ export class ViewerState {
+         return w;
+     });
+     /**
+-     * Free width (CSS px) on each side of the centered pages, from the edge of
+-     * the widest row to the edge of the view. Follows zoom animations frame by
+-     * frame; side content (margin notes) sizes itself from it.
++     * Free width (CSS px) beside the pages, from the edge of the widest row to the
++     * edge of the view: on the left, and on the right. The pages are centered in the
++     * room left by the container's padding, so uneven padding (more on one side, for
++     * side content) gives uneven room. Follows zoom animations frame by frame; side
++     * content (margin notes) sizes itself from it.
+      */
+-    sideRoom = $derived.by(() => {
++    #sideRooms = $derived.by(() => {
+         const mode = this.scrollMode;
+         if (mode === 'horizontal' || mode === 'wrapped')
+-            return 0;
++            return { left: 0, right: 0 };
+         const cols = this.effectiveColumns;
+         const row = this.#widestPage * cols * this.scale + this.gap * (cols - 1);
+-        return Math.max(0, (this.available.width + this.#padX - row) / 2);
++        const half = (this.available.width - row) / 2;
++        return { left: Math.max(0, half + this.#padLeft), right: Math.max(0, half + this.#padRight) };
+     });
++    sideRoomLeft = $derived(this.#sideRooms.left);
++    sideRoomRight = $derived(this.#sideRooms.right);
++    /** The room on the right (the side margin notes take by default); the same on both sides with even padding. */
++    sideRoom = $derived(this.#sideRooms.right);
+     /** Pages to mount: all of them, except in single-page mode (the current spread). */
+     get mountedPages() {
+         const n = this.document.numPages;
+@@ -1138,6 +1148,12 @@ export class ViewerState {
+             this.aside = aside;
+         if (padX !== this.#padX)
+             this.#padX = padX;
++        const padLeft = cs ? parseFloat(cs.paddingLeft) : 0;
++        const padRight = cs ? parseFloat(cs.paddingRight) : 0;
++        if (padLeft !== this.#padLeft)
++            this.#padLeft = padLeft;
++        if (padRight !== this.#padRight)
++            this.#padRight = padRight;
+         if (Number.isFinite(gap) && gap !== this.gap)
+             this.gap = gap;
+     }
