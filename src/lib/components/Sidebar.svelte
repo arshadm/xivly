@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { feed } from '#lib/feed/feed.svelte.js';
 	import { iconButton, mutedIcon } from '#lib/ui/button.js';
 	import { paperColors } from 'svelte-pdf-mini';
 	import { ARCHIVED, categoryColor, library, type View } from '#lib/library.svelte.js';
@@ -83,6 +84,11 @@
 
 	const item = 'flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-[13px] hover:bg-stone-200/60 data-[active]:bg-stone-200 dark:hover:bg-stone-800/60 dark:data-[active]:bg-stone-800';
 	const iconBtn = iconButton(6, mutedIcon);
+
+	// The feed's count (P1–P3 still to look at), read once the library is open.
+	$effect(() => {
+		if (library.repo && !feed.loaded) void feed.load();
+	});
 </script>
 
 <aside class="flex h-full w-56 shrink-0 flex-col border-r border-stone-200 bg-stone-100/70 dark:border-stone-800 dark:bg-stone-900/70">
@@ -100,6 +106,10 @@
 		<button class={item} data-active={isView({ kind: 'uncategorized' }) || undefined} aria-current={isView({ kind: 'uncategorized' }) ? 'page' : undefined} onclick={() => (library.view = isView({ kind: 'uncategorized' }) ? { kind: 'all' } : { kind: 'uncategorized' })}>
 			<span class="icon-[lucide--inbox] size-4 text-stone-500"></span><span class="flex-1">Uncategorized</span>
 			<span class="text-xs text-muted tabular-nums">{count((p) => !library.category(p.category))}</span>
+		</button>
+		<button class={item} data-active={isView({ kind: 'feed' }) || undefined} aria-current={isView({ kind: 'feed' }) ? 'page' : undefined} onclick={() => (library.view = isView({ kind: 'feed' }) ? { kind: 'all' } : { kind: 'feed' })}>
+			<span class="icon-[lucide--rss] size-4 text-stone-500"></span><span class="flex-1">arXiv feed</span>
+			{#if feed.triage}<span class="text-xs text-muted tabular-nums" title="P1–P3 papers not added or dismissed">{feed.triage}</span>{/if}
 		</button>
 
 		<div class="mt-5 mb-1 flex items-center justify-between px-2 text-[11px] font-medium tracking-wide text-muted uppercase">

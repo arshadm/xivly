@@ -656,3 +656,62 @@ test('page width uses the whole view, leaving room on the right for side notes o
 	await expect(reader.locator('[data-pdf-page]').first().getByText('A note for the margin')).toBeVisible();
 	expect(errs).toEqual([]);
 });
+
+/** Write files into the browser-storage library (OPFS), as if synced from elsewhere. */
+async function writeLibraryFiles(page: Page, files: Record<string, unknown>) {
+	await page.evaluate(async (files) => {
+		for (const [path, value] of Object.entries(files)) {
+			const parts = path.split('/');
+			let dir = await navigator.storage.getDirectory();
+			for (const p of parts.slice(0, -1)) dir = await dir.getDirectoryHandle(p, { create: true });
+			const w = await (await dir.getFileHandle(parts.at(-1)!, { create: true })).createWritable();
+			await w.write(JSON.stringify(value));
+			await w.close();
+		}
+	}, files);
+}
+
+test('the arXiv feed: P1–P3 by default, newest day first, chips, search, abstracts, dismissed ones apart', async ({ page }) => {
+	const errs = errors(page);
+	await startLibrary(page);
+	const fp = (id: string, published: string, priority: number | null, topics: string[], extra: object = {}) => ({ id, title: `Paper ${id}`, authors: ['Ada Lovelace'], abstract: `Abstract of ${id}.`, categories: ['cs.PL'], topics, published, priority, rationale: priority ? `Why P${priority}` : undefined, firstSeen: '2026-10-02T00:00:00Z', ...extra });
+	await writeLibraryFiles(page, {
+		'.xivly/feed/papers/2026-10.json': {
+			version: 1,
+			papers: Object.fromEntries(
+				[fp('2610.00001', '2026-10-02', 1, ['mlir']), fp('2610.00002', '2026-10-02', 3, ['risc-v']), fp('2610.00003', '2026-10-01', 2, ['mlir', 'risc-v']), fp('2610.00004', '2026-10-01', 5, ['mlir']), fp('2610.00005', '2026-10-01', 1, ['mlir'], { dismissed: '2026-10-03T00:00:00Z' })].map((p) => [p.id, p])
+			)
+		}
+	});
+	await page.reload();
+	const feedLink = page.getByRole('button', { name: /arXiv feed/ });
+	await expect(feedLink).toContainText('3');
+	await feedLink.click();
+	const cards = page.locator('article.feed-card');
+	await expect(cards).toHaveCount(3);
+	// Newest day first, then by priority.
+	await expect(cards.locator('h3')).toHaveText(['Paper 2610.00001', 'Paper 2610.00002', 'Paper 2610.00003']);
+	await expect(page.getByRole('button', { name: 'P5 1' })).toHaveAttribute('aria-pressed', 'false');
+
+	// Chips: P5 on; a topic narrows.
+	await page.getByRole('button', { name: 'P5 1' }).click();
+	await expect(cards).toHaveCount(4);
+	await page.getByRole('button', { name: 'risc-v', exact: true }).click();
+	await expect(cards.locator('h3')).toHaveText(['Paper 2610.00002', 'Paper 2610.00003']);
+	await page.getByRole('button', { name: 'risc-v', exact: true }).click();
+
+	// Search (the reason counts), sort by priority, abstracts on demand.
+	await page.getByRole('textbox', { name: 'Search the feed' }).fill('why p3');
+	await expect(cards.locator('h3')).toHaveText(['Paper 2610.00002']);
+	await page.getByRole('textbox', { name: 'Search the feed' }).fill('');
+	await page.getByRole('radio', { name: 'Priority' }).click();
+	await expect(cards.first().locator('h3')).toHaveText('Paper 2610.00001');
+	await expect(cards.last().locator('h3')).toHaveText('Paper 2610.00004');
+	await cards.first().getByRole('button', { name: 'Abstract' }).click();
+	await expect(cards.first()).toContainText('Abstract of 2610.00001.');
+
+	// The dismissed one, apart.
+	await page.getByRole('button', { name: /Dismissed 1/ }).click();
+	await expect(cards.locator('h3')).toHaveText(['Paper 2610.00005']);
+	expect(errs).toEqual([]);
+});

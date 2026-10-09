@@ -23,6 +23,7 @@
 	import { starter } from '#lib/onboarding/starter.svelte.js';
 	import ToggleGroup from '#lib/ui/ToggleGroup.svelte';
 	import VirtualGrid from '#lib/ui/VirtualGrid.svelte';
+	import FeedView from '#lib/feed/FeedView.svelte';
 	import { disjointViewKey } from '#lib/ui/view-key.js';
 	import { button } from '#lib/ui/button.js';
 	import { ARCHIVED } from '#lib/library.svelte.js';
@@ -35,7 +36,7 @@
 	const title = $derived.by(() => {
 		const v = library.view;
 		if (v.kind === 'category') return library.category(v.id)?.name ?? '';
-		return { all: 'All papers', recent: 'Recent', uncategorized: 'Uncategorized' }[v.kind];
+		return { all: 'All papers', recent: 'Recent', uncategorized: 'Uncategorized', feed: 'arXiv feed' }[v.kind];
 	});
 	$effect(() => void setWindowTitle(library.name ? `Xivly — ${library.name}` : 'Xivly'));
 	// Web: a reader opened from this tab switches back to it (showLibrary).
@@ -172,6 +173,9 @@
 <div class="flex h-full">
 	<Sidebar onNewCategory={newCategory} />
 
+	{#if library.view.kind === 'feed'}
+		<FeedView />
+	{:else}
 	<main class="flex min-w-0 flex-1 flex-col">
 		<!-- A container: at narrow widths labels and the read filter fold away (720px windows). -->
 		<header class="@container flex h-12 shrink-0 items-center gap-3 px-6 max-lg:gap-2" data-tauri-drag-region>
@@ -254,5 +258,6 @@
 			{/if}
 		</div>
 	</main>
+	{/if}
 </div>
 

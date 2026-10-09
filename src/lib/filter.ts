@@ -2,7 +2,8 @@
 import type { SortKey } from './settings.svelte';
 import type { Paper } from './types';
 
-export type View = { kind: 'all' } | { kind: 'recent' } | { kind: 'uncategorized' } | { kind: 'category'; id: string };
+/** `feed`: the arXiv feed (its own view, not papers of the library). */
+export type View = { kind: 'all' } | { kind: 'recent' } | { kind: 'uncategorized' } | { kind: 'category'; id: string } | { kind: 'feed' };
 
 export interface FilterOptions {
 	view: View;
