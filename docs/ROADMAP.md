@@ -48,7 +48,11 @@ Planned features for this fork: split-view notes, a mind map per paper, named bo
 
 - [x] **2.1 Move the reader's viewer area into its own component** (`src/routes/read/+page.svelte` is ~900 lines), without changing behaviour. *Test:* the e2e test passes.
 - [x] **2.2 Resizable split pane** on the right, the full height of the window (`SplitPane.svelte`), toggled with ⌘E, the header's notebook button or View › Notes pane. Drag its left edge (or ← → when focused; double-click for the default width). The width (280px up to 60% of the window) and open state are remembered in settings.
-- [ ] **2.3 Editor in the right pane** (TipTap/ProseMirror): headings, bold and italic, lists, quotes, code, links and undo. No saving yet. Its keyboard shortcuts must not clash with the reader's.
+- [x] **2.3 Editor in the right pane** (TipTap 3, `src/lib/notes/NotesEditor.svelte`):
+  - A formatting bar: bold, italic, underline, strikethrough, inline code, links, headings 1–3, lists, quotes, code blocks, undo and redo.
+  - Markdown shortcuts as you type (`#`, `-`, `>`, backticks, `**bold**`). ⌘-click opens a link.
+  - Keys the editor uses (⌘B, ⌘I, ⌥⌘1–3…) don't reach the reader. ⌘E still toggles the pane, so inline code has no shortcut.
+  - No saving yet.
 - [ ] **2.4 Save `notes.json`** (`{version, doc, updated}`) a short time after you stop typing, and also on close (`onFlush`). The save state shows in `SaveStatus`.
 - [ ] **2.5 The same paper open in two windows:** one window edits and the other is read-only, or reloads when the file changes (`broadcast.ts`, `ReaderLock`).
 - [ ] **2.6 Links to the paper:** "Link to current page" inserts a chip you click to jump. "Quote selection into notes" copies the selected text with its anchor.

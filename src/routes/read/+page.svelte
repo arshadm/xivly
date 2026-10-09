@@ -57,6 +57,7 @@
 	import BookmarksPanel from '#lib/pdf/BookmarksPanel.svelte';
 	import ReaderPages from '#lib/pdf/ReaderPages.svelte';
 	import SplitPane from '#lib/pdf/SplitPane.svelte';
+	import NotesEditor from '#lib/notes/NotesEditor.svelte';
 	import BookmarkPicker from '#lib/pdf/BookmarkPicker.svelte';
 	import { jumpTo } from '#lib/anchor.js';
 	import { prompts } from '#lib/ui/prompt.svelte.js';
@@ -532,7 +533,11 @@
 		])
 	);
 
+	/** A key the notes editor used (⌘B bold, ⌥⌘1 heading…): not a reader shortcut then. */
+	const inNotes = (e: KeyboardEvent) => !!(e.target as Element | null)?.closest?.('[data-notes-editor]');
+
 	function onkeydown(e: KeyboardEvent) {
+		if (e.defaultPrevented && inNotes(e)) return;
 		if (matches(e, keys.save)) (e.preventDefault(), void save({ explicit: true }));
 		else if (matches(e, keys.find)) (e.preventDefault(), openPanel('search'));
 		else if (matches(e, keys.panel) || matches(e, keys.panelAlt)) (e.preventDefault(), (panelOpen = !panelOpen));
@@ -555,7 +560,7 @@
 	// phase: runs before the viewer's own V, which would make Select current either way.
 	function onSelectKey(e: KeyboardEvent) {
 		// ⌘S while typing a note: the field keeps its keys, and commits its text when it loses focus.
-		if (matches(e, keys.save) && isEditable(e.target)) {
+		if (matches(e, keys.save) && isEditable(e.target) && !inNotes(e)) {
 			e.preventDefault();
 			e.stopPropagation();
 			e.target.blur();
@@ -838,7 +843,7 @@
 												{#snippet child({ props })}<button {...props} class={iconBtn} aria-label="Hide notes" onclick={() => settings.set('notesPane', false)}><span class="icon-[lucide--x] size-4"></span></button>{/snippet}
 											</Tip>
 										</div>
-										<div class="min-h-0 flex-1 overflow-y-auto px-4 pb-4 text-muted">Notes for this paper will be written here.</div>
+										<div class="min-h-0 flex-1 border-t border-stone-200 bg-white dark:border-stone-800 dark:bg-stone-900"><NotesEditor content={null} /></div>
 									</SplitPane>
 								{/if}
 							</div>

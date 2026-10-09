@@ -41,6 +41,17 @@ async function startLibrary(page: Page) {
 	await page.getByRole('button', { name: 'Start empty' }).click();
 }
 
+/** A new library with the test paper in it, and the paper's reader tab (adding it by a click opens it). */
+async function addPaper(page: Page, context: BrowserContext) {
+	await startLibrary(page);
+	await page.getByRole('button', { name: 'Add papers' }).click();
+	const chooser = page.waitForEvent('filechooser');
+	await page.getByRole('button', { name: /Drop PDF files/ }).click();
+	await (await chooser).setFiles(`${test.info().project.testDir}/fixtures/paper.pdf`);
+	await expect(page.getByRole('button', { name: new RegExp(title) })).toBeVisible();
+	return readerTab(context);
+}
+
 test('the library loads without console errors', async ({ page }) => {
 	const errs = errors(page);
 	await startLibrary(page);
@@ -88,13 +99,7 @@ test('add a paper, annotate, save, reload: the annotation stays', async ({ page,
 });
 
 test('a note keeps its emoji: key 4 with the note tool, save, reload', async ({ page, context }) => {
-	await startLibrary(page);
-	await page.getByRole('button', { name: 'Add papers' }).click();
-	const chooser = page.waitForEvent('filechooser');
-	await page.getByRole('button', { name: /Drop PDF files/ }).click();
-	await (await chooser).setFiles(`${test.info().project.testDir}/fixtures/paper.pdf`);
-	await page.getByRole('button', { name: new RegExp(title) }).click();
-	const reader = await readerTab(context);
+	const reader = await addPaper(page, context);
 	const errs = errors(reader);
 	const firstPage = reader.locator('[data-pdf-page]').first();
 	await expect(firstPage.locator('[data-pdf-canvas]')).toBeVisible();
@@ -117,13 +122,7 @@ test('a note keeps its emoji: key 4 with the note tool, save, reload', async ({ 
 });
 
 test('a text box is handwritten by default, and stays so after save and reload', async ({ page, context }) => {
-	await startLibrary(page);
-	await page.getByRole('button', { name: 'Add papers' }).click();
-	const chooser = page.waitForEvent('filechooser');
-	await page.getByRole('button', { name: /Drop PDF files/ }).click();
-	await (await chooser).setFiles(`${test.info().project.testDir}/fixtures/paper.pdf`);
-	await page.getByRole('button', { name: new RegExp(title) }).click();
-	const reader = await readerTab(context);
+	const reader = await addPaper(page, context);
 	const errs = errors(reader);
 	const firstPage = reader.locator('[data-pdf-page]').first();
 	await expect(firstPage.locator('[data-pdf-canvas]')).toBeVisible();
@@ -228,13 +227,7 @@ test('a library of 1500 papers stays fast: only the cards on screen are rendered
 });
 
 test('bookmarks: add one, see it in the panel after a reload, jump to it from ⌘J', async ({ page, context }) => {
-	await startLibrary(page);
-	await page.getByRole('button', { name: 'Add papers' }).click();
-	const chooser = page.waitForEvent('filechooser');
-	await page.getByRole('button', { name: /Drop PDF files/ }).click();
-	await (await chooser).setFiles(`${test.info().project.testDir}/fixtures/paper.pdf`);
-	await page.getByRole('button', { name: new RegExp(title) }).click();
-	const reader = await readerTab(context);
+	const reader = await addPaper(page, context);
 	const errs = errors(reader);
 	await expect(reader.locator('[data-pdf-page]').first().locator('[data-pdf-canvas]')).toBeVisible();
 
@@ -286,13 +279,7 @@ test('bookmarks: add one, see it in the panel after a reload, jump to it from �
 });
 
 test('the highlighter stays on, highlights selected text at once in its color, and remembers that color', async ({ page, context }) => {
-	await startLibrary(page);
-	await page.getByRole('button', { name: 'Add papers' }).click();
-	const chooser = page.waitForEvent('filechooser');
-	await page.getByRole('button', { name: /Drop PDF files/ }).click();
-	await (await chooser).setFiles(`${test.info().project.testDir}/fixtures/paper.pdf`);
-	await page.getByRole('button', { name: new RegExp(title) }).click();
-	const reader = await readerTab(context);
+	const reader = await addPaper(page, context);
 	const errs = errors(reader);
 	const firstPage = reader.locator('[data-pdf-page]').first();
 	await expect(firstPage.locator('[data-pdf-canvas]')).toBeVisible();
@@ -331,13 +318,7 @@ test('the highlighter stays on, highlights selected text at once in its color, a
 });
 
 test('the notes pane: ⌘E opens it, its edge resizes it, and it stays as it was after a reload', async ({ page, context }) => {
-	await startLibrary(page);
-	await page.getByRole('button', { name: 'Add papers' }).click();
-	const chooser = page.waitForEvent('filechooser');
-	await page.getByRole('button', { name: /Drop PDF files/ }).click();
-	await (await chooser).setFiles(`${test.info().project.testDir}/fixtures/paper.pdf`);
-	await page.getByRole('button', { name: new RegExp(title) }).click();
-	const reader = await readerTab(context);
+	const reader = await addPaper(page, context);
 	await reader.setViewportSize({ width: 1280, height: 800 });
 	const errs = errors(reader);
 	await expect(reader.locator('[data-pdf-page]').first().locator('[data-pdf-canvas]')).toBeVisible();
@@ -364,5 +345,36 @@ test('the notes pane: ⌘E opens it, its edge resizes it, and it stays as it was
 	await expect(edge).toHaveAttribute('aria-valuenow', '540');
 	await reader.getByRole('button', { name: 'Hide notes' }).last().click();
 	await expect(edge).toBeHidden();
+	expect(errs).toEqual([]);
+});
+
+test('notes: rich text typed in the pane; its keys never reach the reader', async ({ page, context }) => {
+	const reader = await addPaper(page, context);
+	const errs = errors(reader);
+	await expect(reader.locator('[data-pdf-page]').first().locator('[data-pdf-canvas]')).toBeVisible();
+
+	await reader.keyboard.press('ControlOrMeta+e');
+	const notes = reader.getByRole('textbox', { name: 'Notes' });
+	await notes.click();
+	// Markdown shortcuts: "## " makes a heading, "- " a list. Letters and digits that are
+	// reader shortcuts (h, v, 1…) are just text here.
+	await reader.keyboard.type('## Method highlights\n');
+	await reader.keyboard.type('- uses 1 trick\nvery handy');
+	// Enter on an empty item leaves the list.
+	await reader.keyboard.press('Enter');
+	await reader.keyboard.press('Enter');
+	await expect(notes.locator('h2')).toHaveText('Method highlights');
+	await expect(notes.locator('ul > li')).toHaveCount(2);
+	await expect(reader.getByRole('button', { name: 'Select', exact: true })).toHaveAttribute('data-active');
+
+	// ⌘B is bold here, not the side panel.
+	await reader.keyboard.press('ControlOrMeta+b');
+	await reader.keyboard.type('key idea');
+	await expect(notes.locator('strong')).toHaveText('key idea');
+	await expect(reader.getByRole('tablist')).toBeHidden();
+
+	// ⌘E still hides the pane.
+	await reader.keyboard.press('ControlOrMeta+e');
+	await expect(notes).toBeHidden();
 	expect(errs).toEqual([]);
 });
