@@ -56,6 +56,7 @@
 	import SaveStatus from '#lib/pdf/SaveStatus.svelte';
 	import BookmarksPanel from '#lib/pdf/BookmarksPanel.svelte';
 	import ReaderPages from '#lib/pdf/ReaderPages.svelte';
+	import SplitPane from '#lib/pdf/SplitPane.svelte';
 	import BookmarkPicker from '#lib/pdf/BookmarkPicker.svelte';
 	import { jumpTo } from '#lib/anchor.js';
 	import { prompts } from '#lib/ui/prompt.svelte.js';
@@ -481,6 +482,7 @@
 	];
 
 	const viewItems = (): MenuItem[] => [
+		{ label: 'Notes pane', icon: 'icon-[lucide--notebook-pen]', shortcut: keys.notesPane, checked: s.notesPane, onSelect: () => settings.set('notesPane', !s.notesPane) },
 		{ label: 'Minimap', icon: icons.map, shortcut: keys.minimap, checked: s.minimap, onSelect: () => settings.set('minimap', !s.minimap) },
 		{ label: 'Section rail', icon: 'icon-[lucide--git-commit-vertical]', checked: s.tocRail, onSelect: () => settings.set('tocRail', !s.tocRail) },
 		{ label: 'Reading progress', icon: 'icon-[lucide--minus]', checked: s.progressBar, onSelect: () => settings.set('progressBar', !s.progressBar) },
@@ -536,6 +538,7 @@
 		else if (matches(e, keys.panel) || matches(e, keys.panelAlt)) (e.preventDefault(), (panelOpen = !panelOpen));
 		else if (matches(e, keys.closeWindow)) (e.preventDefault(), closeWindow());
 		else if (matches(e, keys.addBookmark)) (e.preventDefault(), void addBookmark());
+		else if (matches(e, keys.notesPane)) (e.preventDefault(), settings.set('notesPane', !s.notesPane));
 		else if (matches(e, keys.goToBookmark)) (e.preventDefault(), (bookmarkPicker = true));
 		else if (panelKeys.some(([k]) => matches(e, k))) (e.preventDefault(), togglePanel(panelKeys.find(([k]) => matches(e, k))![1]));
 		else if (matches(e, keys.scrollContinuous)) (e.preventDefault(), settings.set('scrollMode', 'vertical'));
@@ -786,6 +789,9 @@
 											<Tip label="Find in paper" shortcut={keys.find}>
 												{#snippet child({ props })}<button {...props} class={iconBtn} aria-label="Find" data-active={(panelOpen && panel === 'search') || undefined} onclick={() => (panelOpen && panel === 'search' ? (panelOpen = false) : openPanel('search'))}><span class="{icons.search} size-4"></span></button>{/snippet}
 											</Tip>
+											<Tip label={s.notesPane ? 'Hide notes' : 'Show notes'} shortcut={keys.notesPane}>
+												{#snippet child({ props })}<button {...props} class={iconBtn} aria-label="Notes pane" aria-pressed={s.notesPane} data-active={s.notesPane || undefined} onclick={() => settings.set('notesPane', !s.notesPane)}><span class="icon-[lucide--notebook-pen] size-4"></span></button>{/snippet}
+											</Tip>
 											<Tip label="View">
 												{#snippet child({ props })}<button {...props} class={iconBtn} aria-label="View options" onclick={showMenu(viewItems)}><span class="{icons.eye} size-4"></span></button>{/snippet}
 											</Tip>
@@ -822,6 +828,19 @@
 
 									<ReaderPages {swatch} {restoring} {paperState} bind:centerLocked {openReference} {pageActions} />
 								</div>
+
+								<!-- ── Notes pane (⌘E) ── -->
+								{#if s.notesPane}
+									<SplitPane class="text-[13px] {chrome}">
+										<div class="flex h-11 shrink-0 items-center gap-1 pr-2 pl-4" data-tauri-drag-region>
+											<p class="flex-1 text-[11px] font-medium tracking-wide text-muted uppercase" data-tauri-drag-region>Notes</p>
+											<Tip label="Hide notes" shortcut={keys.notesPane}>
+												{#snippet child({ props })}<button {...props} class={iconBtn} aria-label="Hide notes" onclick={() => settings.set('notesPane', false)}><span class="icon-[lucide--x] size-4"></span></button>{/snippet}
+											</Tip>
+										</div>
+										<div class="min-h-0 flex-1 overflow-y-auto px-4 pb-4 text-muted">Notes for this paper will be written here.</div>
+									</SplitPane>
+								{/if}
 							</div>
 
 							<!-- ── Floating UI ──────────────────────────────────── -->

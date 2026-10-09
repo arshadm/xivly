@@ -43,6 +43,9 @@ const defaults = {
 
 	// Reading: panels & aids
 	sidePanel: false,
+	/** The notes pane, right of the pages (⌘E), and its width in px. */
+	notesPane: false,
+	notesPaneWidth: 420,
 	minimap: false,
 	minimapVariant: 'pages' as MinimapVariant,
 	tocRail: false,

@@ -31,6 +31,7 @@ export const keys = {
 	panelBookmarks: `${alt}${mod}6`,
 	panelInfo: `${mod}I`,
 	addBookmark: `${mod}D`,
+	notesPane: `${mod}E`,
 	goToBookmark: `${mod}J`,
 	scrollContinuous: mac ? `${ctrl}${mod}1` : 'Ctrl+Shift+1',
 	scrollPaged: mac ? `${ctrl}${mod}2` : 'Ctrl+Shift+2',
@@ -79,6 +80,7 @@ export const shortcuts: Group[] = [
 			{ label: 'Bookmark this spot', keys: [keys.addBookmark] },
 			{ label: 'Go to bookmark', keys: [keys.goToBookmark] },
 			{ label: 'Paper info', keys: [keys.panelInfo] },
+			{ label: 'Notes pane', keys: [keys.notesPane] },
 			{ label: 'Close', keys: [keys.closeWindow] }
 		]
 	},

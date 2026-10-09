@@ -329,3 +329,40 @@ test('the highlighter stays on, highlights selected text at once in its color, a
 	await expect(swatch('Green')).toHaveAttribute('data-active');
 	expect(errs).toEqual([]);
 });
+
+test('the notes pane: ⌘E opens it, its edge resizes it, and it stays as it was after a reload', async ({ page, context }) => {
+	await startLibrary(page);
+	await page.getByRole('button', { name: 'Add papers' }).click();
+	const chooser = page.waitForEvent('filechooser');
+	await page.getByRole('button', { name: /Drop PDF files/ }).click();
+	await (await chooser).setFiles(`${test.info().project.testDir}/fixtures/paper.pdf`);
+	await page.getByRole('button', { name: new RegExp(title) }).click();
+	const reader = await readerTab(context);
+	await reader.setViewportSize({ width: 1280, height: 800 });
+	const errs = errors(reader);
+	await expect(reader.locator('[data-pdf-page]').first().locator('[data-pdf-canvas]')).toBeVisible();
+
+	const edge = reader.getByRole('separator', { name: 'Resize the notes pane' });
+	await expect(edge).toBeHidden();
+	await reader.keyboard.press('ControlOrMeta+e');
+	await expect(edge).toBeVisible();
+	await expect(edge).toHaveAttribute('aria-valuenow', '420');
+
+	// Drag the edge 100px to the left: 100px wider.
+	const box = (await edge.boundingBox())!;
+	await reader.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+	await reader.mouse.down();
+	await reader.mouse.move(box.x + box.width / 2 - 100, box.y + box.height / 2, { steps: 5 });
+	await reader.mouse.up();
+	await expect(edge).toHaveAttribute('aria-valuenow', '520');
+	// Keys too: ← widens by 20px.
+	await edge.focus();
+	await reader.keyboard.press('ArrowLeft');
+	await expect(edge).toHaveAttribute('aria-valuenow', '540');
+
+	await reader.reload();
+	await expect(edge).toHaveAttribute('aria-valuenow', '540');
+	await reader.getByRole('button', { name: 'Hide notes' }).last().click();
+	await expect(edge).toBeHidden();
+	expect(errs).toEqual([]);
+});
