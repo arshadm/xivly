@@ -8,6 +8,8 @@
 	import Code from '@tiptap/extension-code';
 	import { TaskItem, TaskList } from '@tiptap/extension-list';
 	import { TableKit } from '@tiptap/extension-table';
+	import type { Node as PMNode } from '@tiptap/pm/model';
+	import 'katex/dist/katex.min.css';
 	import { Placeholder } from '@tiptap/extensions';
 	import StarterKit from '@tiptap/starter-kit';
 	import { onDestroy, tick, untrack } from 'svelte';
@@ -20,6 +22,7 @@
 	import type { PaperAnchor } from '#lib/types.js';
 	import { PaperLink, paperLinkNode, toAnchor } from './paper-link';
 	import { findMatches, findStep, NotesFind, setFindQuery } from './find';
+	import { NotesBlockMath, NotesInlineMath } from './maths';
 
 	let {
 		content,
@@ -107,7 +110,10 @@
 				NotesFind,
 				TaskList,
 				TaskItem.configure({ nested: true }),
-				TableKit.configure({ table: { resizable: false } })
+				TableKit.configure({ table: { resizable: false } }),
+				// A formula with an error shows as its source (red), never breaks the notes.
+				NotesInlineMath.configure({ katexOptions: { throwOnError: false }, onClick: (node, pos) => void editMath(node, pos) }),
+				NotesBlockMath.configure({ katexOptions: { throwOnError: false, displayMode: true }, onClick: (node, pos) => void editMath(node, pos) })
 			],
 			editorProps: {
 				attributes: { class: 'notes-editor min-h-full px-5 py-4 outline-none', role: 'textbox', 'aria-multiline': 'true', 'aria-label': 'Notes', 'data-notes-editor': '' },
@@ -153,6 +159,40 @@
 		run((c) => c.extendMarkRange('link').setLink({ href: url.trim() }));
 	}
 
+	// ── Maths ─────────────────────────────────────────────────────────────
+	const askLatex = (title: string, value = '') => prompts.ask(title, { value, placeholder: 'LaTeX, e.g. E = mc^2', confirmLabel: value ? 'Save' : 'Insert' });
+
+	/** Click a formula: edit its LaTeX (emptied: removed). */
+	async function editMath(node: PMNode, pos: number) {
+		if (!editor?.isEditable) return;
+		const latex = await askLatex('Edit equation', String(node.attrs.latex ?? ''));
+		if (latex === null) return editor.commands.focus();
+		editor
+			.chain()
+			.focus()
+			.command(({ tr }) => {
+				if (latex.trim()) tr.setNodeMarkup(pos, undefined, { ...node.attrs, latex: latex.trim() });
+				else tr.delete(pos, pos + node.nodeSize);
+				return true;
+			})
+			.run();
+	}
+
+	/** Inline maths: the selected text becomes the formula, else ask for one. */
+	async function inlineMath() {
+		if (!editor) return;
+		const { from, to, empty } = editor.state.selection;
+		const latex = empty ? await askLatex('Insert equation') : editor.state.doc.textBetween(from, to, ' ');
+		if (!latex?.trim()) return editor.commands.focus();
+		run((c) => c.insertContentAt({ from, to }, { type: 'inlineMath', attrs: { latex: latex.trim() } }));
+	}
+
+	async function blockMath() {
+		const latex = await askLatex('Insert equation block');
+		if (!latex?.trim()) return editor?.commands.focus();
+		run((c) => c.insertContent({ type: 'blockMath', attrs: { latex: latex.trim() } }));
+	}
+
 	function linkHere() {
 		const a = anchor?.();
 		if (a) run((c) => c.insertContent([paperLinkNode(a), { type: 'text', text: ' ' }]));
@@ -184,7 +224,9 @@
 			{ label: 'Checklist', icon: 'icon-[lucide--list-checks]', keys: `${mod}${shift}9`, on: () => run((c) => c.toggleTaskList()), isActive: () => active('taskList') },
 			{ label: 'Quote', icon: 'icon-[lucide--text-quote]', keys: `${mod}${shift}B`, on: () => run((c) => c.toggleBlockquote()), isActive: () => active('blockquote') },
 			{ label: 'Code block', icon: 'icon-[lucide--square-code]', keys: `${alt}${mod}C`, on: () => run((c) => c.toggleCodeBlock()), isActive: () => active('codeBlock') },
-			{ label: 'Table', icon: 'icon-[lucide--table]', on: () => run((c) => c.insertTable({ rows: 3, cols: 3, withHeaderRow: true })), isActive: () => active('table') }
+			{ label: 'Table', icon: 'icon-[lucide--table]', on: () => run((c) => c.insertTable({ rows: 3, cols: 3, withHeaderRow: true })), isActive: () => active('table') },
+			{ label: 'Equation ($…$)', icon: 'icon-[lucide--sigma]', on: inlineMath },
+			{ label: 'Equation block ($$…$$)', icon: 'icon-[lucide--square-sigma]', on: blockMath }
 		],
 		[
 			{ label: 'Undo', icon: 'icon-[lucide--undo-2]', keys: `${mod}Z`, on: () => run((c) => c.undo()), disabled: () => !can((e) => e.can().undo()) },
@@ -435,6 +477,27 @@
 	}
 	:global(.dark .notes-editor th) {
 		background: rgb(255 255 255 / 0.05);
+	}
+	/* Maths (KaTeX): click to edit. */
+	:global(.notes-editor .tiptap-mathematics-render) {
+		border-radius: 4px;
+		padding: 0 0.15em;
+	}
+	:global(.notes-editor .tiptap-mathematics-render--editable) {
+		cursor: pointer;
+	}
+	:global(.notes-editor .tiptap-mathematics-render--editable:hover) {
+		background: rgb(14 165 233 / 0.1);
+	}
+	:global(.notes-editor [data-type='block-math']) {
+		display: block;
+		text-align: center;
+		padding: 0.4em 0;
+		overflow-x: auto;
+	}
+	:global(.notes-editor .ProseMirror-selectednode.tiptap-mathematics-render),
+	:global(.notes-editor .ProseMirror-selectednode .tiptap-mathematics-render) {
+		outline: 2px solid rgb(14 165 233 / 0.6);
 	}
 	/* Find in the notes. */
 	:global(.notes-editor .notes-match) {

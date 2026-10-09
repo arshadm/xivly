@@ -569,3 +569,27 @@ test('notes: tables — insert one, Tab from cell to cell, add a row, and it sta
 	await expect(reloaded.locator('table tr')).toHaveCount(4);
 	expect(errs).toEqual([]);
 });
+
+test('notes: maths — $x$ inline and $$x$$ blocks rendered by KaTeX, click to edit, kept', async ({ page, context }) => {
+	const { reader, notes } = await openNotes(page, context);
+	const errs = errors(reader);
+	await reader.keyboard.type('Energy $E=mc^2$ and a price of $5 or $6.\n$$\\int_0^1 x\\,dx$$');
+	const inline = notes.locator('[data-type="inline-math"]');
+	await expect(inline).toHaveCount(1);
+	await expect(inline.locator('.katex')).toBeVisible();
+	await expect(notes).toContainText('a price of $5 or $6.');
+	await expect(notes.locator('[data-type="block-math"] .katex-display')).toBeVisible();
+
+	// Click a formula: its LaTeX, to edit.
+	await inline.click();
+	const ask = reader.getByRole('dialog', { name: 'Edit equation' }).getByRole('textbox');
+	await expect(ask).toHaveValue('E=mc^2');
+	await ask.fill('E=mc^3');
+	await ask.press('Enter');
+	await expect(inline).toHaveAttribute('data-latex', 'E=mc^3');
+
+	const reloaded = await reloadNotes(reader);
+	await expect(reloaded.locator('[data-type="inline-math"]')).toHaveAttribute('data-latex', 'E=mc^3');
+	await expect(reloaded.locator('[data-type="block-math"]')).toHaveAttribute('data-latex', '\\int_0^1 x\\,dx');
+	expect(errs).toEqual([]);
+});
