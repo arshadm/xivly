@@ -1,6 +1,7 @@
 // The library on disk, shared by desktop and web. See templates/AGENTS.md
 // for the layout. paper.json / library.json are merged, never rewritten
 // from scratch, so fields added by users, hooks or agents survive.
+import { parseBookmarks } from './bookmarks';
 import type { HookEvent, LibraryFs, Platform } from './platform';
 import agentsMd from './templates/AGENTS.md?raw';
 import sampleHook from './templates/paper-added.sample?raw';
@@ -83,6 +84,7 @@ export function normalizePaper(id: string, meta: Json): Paper {
 		// Read: a timestamp; any other truthy value still counts as read.
 		read: str(meta.read) ?? (meta.read ? String(meta.read) : undefined),
 		position: num(meta.position),
+		bookmarks: parseBookmarks(meta.bookmarks),
 		abstract: str(meta.abstract),
 		doi: str(meta.doi),
 		arxiv: str(meta.arxiv),

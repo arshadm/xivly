@@ -35,12 +35,14 @@ Planned features for this fork: split-view notes, a mind map per paper, named bo
 
 ## Phase 1: Named bookmarks
 
-- [ ] **1.1 Data model.**
-  - `bookmarks: {id, name, page, created}[]` in `paper.json`, plus `Repo` helpers to add, rename and remove.
-  - *Test:* Vitest with `MemoryFs`. Bookmarks round-trip, other fields survive, and two writes in a row lose nothing.
-- [ ] **1.2 Add a bookmark** with a keyboard shortcut and a right-click menu item, using the prompt dialog. It saves `viewer.position` with the name you type.
-- [ ] **1.3 Bookmarks tab** in the reader's side panel: click to jump; rename and delete inline.
-- [ ] **1.4 Quick-jump picker** that filters bookmarks as you type.
+- [x] **1.1 Data model.**
+  - `bookmarks: {id, name, page, created}[]` in `paper.json`, kept in page order (`src/lib/bookmarks.ts`).
+  - `library.addBookmark`, `renameBookmark` and `removeBookmark` apply each change to the list on disk.
+  - *Test:* `bookmarks.test.ts`, plus `library.test.ts` (other fields survive, and edits from another window and two adds at once are kept).
+- [x] **1.2 Add a bookmark** with ⌘D (the spot you're reading), "Add bookmark here…" when right-clicking a page (the clicked spot), or the app menu. The suggested name is the section there, else the page.
+- [x] **1.3 Bookmarks tab** in the side panel (⌥⌘6), with a count badge: click to jump (then "Back to page N"); rename and remove on hover.
+- [x] **1.4 Go to bookmark** (⌘J): filter as you type, ↑ ↓ to choose, ↵ to jump.
+  - *Test:* an e2e test in `tests/smoke.spec.ts` (add, reload, ⌘J).
 
 ## Phase 2: Split view and rich-text notes
 

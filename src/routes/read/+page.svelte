@@ -27,6 +27,9 @@
 		type Reference,
 		type ViewerState,
 		type KeymapAction,
+		type PdfAction,
+		type PdfContext,
+		type Section,
 		comboLabel
 	} from 'svelte-pdf-mini';
 	import { forgetCover } from '#lib/covers.js';
@@ -54,6 +57,10 @@
 	import ThemePopover from '#lib/pdf/ThemePopover.svelte';
 	import SaveStatus from '#lib/pdf/SaveStatus.svelte';
 	import BackPill from '#lib/pdf/BackPill.svelte';
+	import BookmarkPicker from '#lib/pdf/BookmarkPicker.svelte';
+	import { jumpTo } from '#lib/anchor.js';
+	import { prompts } from '#lib/ui/prompt.svelte.js';
+	import type { Bookmark } from '#lib/types.js';
 	import CenterControl from '#lib/pdf/CenterControl.svelte';
 	import { icons } from '#lib/pdf/icons.js';
 	import { emptyText, kindIcons, kindLabels } from '#lib/pdf/annotation-kinds.js';
@@ -96,7 +103,7 @@
 	let store = $state<AnnotationStore>();
 	let paperState = $state<PaperState>();
 	let annotations = $state.raw<Annotation[]>([]);
-	type Panel = 'contents' | 'pages' | 'figures' | 'references' | 'notes' | 'search' | 'info';
+	type Panel = 'contents' | 'pages' | 'figures' | 'references' | 'notes' | 'bookmarks' | 'search' | 'info';
 	let panel = $state<Panel>('contents');
 	let panelOpen = $state(untrack(() => settings.values.sidePanel));
 	let findInput = $state<HTMLInputElement | null>(null);
@@ -363,6 +370,7 @@
 		[keys.panelFigures, 'figures'],
 		[keys.panelReferences, 'references'],
 		[keys.panelNotes, 'notes'],
+		[keys.panelBookmarks, 'bookmarks'],
 		[keys.panelInfo, 'info']
 	];
 
@@ -392,6 +400,43 @@
 			toast(String(e), 'error');
 		}
 	}
+
+	// ── Bookmarks ────────────────────────────────────────────────────────
+	const bookmarks = $derived(paper?.bookmarks ?? []);
+	let bookmarkPicker = $state(false);
+
+	const sectionName = (sec: Section | null | undefined) => (sec ? [sec.number, sec.title].filter(Boolean).join(' ') : '');
+
+	/** Bookmark a position (default: where you're reading), named after its section unless you rename it. */
+	async function addBookmark(at?: { position: number; section?: Section | null }) {
+		if (!viewer || viewer.document.status !== 'ready' || !paper) return;
+		const position = at?.position ?? viewer.position;
+		const point = viewer.readingPoint;
+		const section = at ? at.section : paperState?.sections.length ? sectionAt(paperState.sections, point.page, point.y) : null;
+		const name = await prompts.ask('Add bookmark', { value: sectionName(section) || `Page ${Math.floor(position)}`, placeholder: 'Name', confirmLabel: 'Add' });
+		if (name === null) return;
+		await library.addBookmark(id, name, position).catch((e) => toast(String(e), 'error'));
+	}
+
+	/** The spot right-clicked on a page: its page plus how far down it is. */
+	function bookmarkAt(ctx: PdfContext) {
+		if (!ctx.page) return;
+		const el = ctx.source === 'pointer' ? document.elementFromPoint(ctx.clientX, ctx.clientY)?.closest('[data-pdf-page]') : null;
+		const rect = el?.getBoundingClientRect();
+		const fraction = rect?.height ? Math.min(Math.max((ctx.clientY - rect.top) / rect.height, 0), 0.99) : 0;
+		void addBookmark({ position: ctx.page + fraction, section: ctx.section });
+	}
+
+	const pageActions = (ctx: PdfContext): PdfAction[] => (ctx.page ? [{ id: 'page.bookmark', label: 'Add bookmark here…', keys: keys.addBookmark, run: () => bookmarkAt(ctx) }] : []);
+
+	async function renameBookmark(b: Bookmark) {
+		const name = await prompts.ask('Rename bookmark', { value: b.name, placeholder: 'Name', confirmLabel: 'Rename' });
+		if (name?.trim()) await library.renameBookmark(id, b.id, name).catch((e) => toast(String(e), 'error'));
+	}
+
+	const removeBookmark = (b: Bookmark) => library.removeBookmark(id, b.id).catch((e) => toast(String(e), 'error'));
+
+	const goToBookmark = (b: Bookmark) => viewer && jumpTo(viewer, b);
 
 	async function exportAnnotatedPdf() {
 		if (!store || !viewer) return;
@@ -454,6 +499,8 @@
 		setFallbackMenu(() => [
 			{ label: 'Save annotations', icon: 'icon-[lucide--save]', shortcut: keys.save, disabled: !dirty, onSelect: () => save({ explicit: true }) },
 			{ label: 'Find in paper', icon: icons.search, shortcut: keys.find, onSelect: () => openPanel('search') },
+			{ label: 'Add bookmark…', icon: 'icon-[lucide--bookmark-plus]', shortcut: keys.addBookmark, onSelect: () => addBookmark() },
+			{ label: 'Go to bookmark…', icon: 'icon-[lucide--bookmark]', shortcut: keys.goToBookmark, disabled: !bookmarks.length, onSelect: () => (bookmarkPicker = true) },
 			{ label: 'View', icon: icons.eye, separatorBefore: true, items: viewItems() },
 			{ label: 'Layout', icon: icons.columns, items: layoutItems() },
 			{ label: 'Export', icon: 'icon-[lucide--share]', items: exportItems() },
@@ -467,6 +514,8 @@
 		else if (matches(e, keys.find)) (e.preventDefault(), openPanel('search'));
 		else if (matches(e, keys.panel) || matches(e, keys.panelAlt)) (e.preventDefault(), (panelOpen = !panelOpen));
 		else if (matches(e, keys.closeWindow)) (e.preventDefault(), closeWindow());
+		else if (matches(e, keys.addBookmark)) (e.preventDefault(), void addBookmark());
+		else if (matches(e, keys.goToBookmark)) (e.preventDefault(), (bookmarkPicker = true));
 		else if (panelKeys.some(([k]) => matches(e, k))) (e.preventDefault(), togglePanel(panelKeys.find(([k]) => matches(e, k))![1]));
 		else if (matches(e, keys.scrollContinuous)) (e.preventDefault(), settings.set('scrollMode', 'vertical'));
 		else if (matches(e, keys.scrollPaged)) (e.preventDefault(), settings.set('scrollMode', 'page'));
@@ -507,6 +556,7 @@
 
 <svelte:window {onkeydown} onkeydowncapture={onSelectKey} />
 <svelte:document {onvisibilitychange} />
+<BookmarkPicker bind:open={bookmarkPicker} {bookmarks} onpick={goToBookmark} />
 
 {#snippet cornerButtons()}
 	<Tip label={panelOpen ? 'Hide side panel' : 'Show side panel'} shortcut={keys.panelAlt}>
@@ -585,6 +635,7 @@
 													{ value: 'figures', label: '', tip: 'Figures, tables & equations', shortcut: keys.panelFigures, icon: 'icon-[lucide--image]' },
 													{ value: 'references', label: '', tip: 'References', shortcut: keys.panelReferences, icon: 'icon-[lucide--quote]' },
 													{ value: 'notes', label: '', tip: 'Notes', shortcut: keys.panelNotes, badge: annotations.length || undefined, icon: icons.notes },
+													{ value: 'bookmarks', label: '', tip: 'Bookmarks', shortcut: keys.panelBookmarks, badge: bookmarks.length || undefined, icon: 'icon-[lucide--bookmark]' },
 													{ value: 'search', label: '', tip: 'Find', shortcut: keys.find, icon: icons.search },
 													{ value: 'info', label: '', tip: 'Paper info', shortcut: keys.panelInfo, icon: 'icon-[lucide--info]' }
 												]}
@@ -642,6 +693,28 @@
 																	<p class="flex flex-wrap items-center gap-1 p-2 text-muted">Select text, then press <Kbd>H</Kbd> to highlight (or <Kbd>1</Kbd>–<Kbd>9</Kbd> for a color).</p>
 																{/snippet}
 															</Annotations.List>
+														{:else if tab === 'bookmarks'}
+															<div class="flex items-center justify-between px-2 pt-1 pb-2">
+																<p class="text-[11px] font-medium tracking-wide text-muted uppercase">Bookmarks</p>
+																<Tip label="Bookmark this spot" shortcut={keys.addBookmark}>
+																	{#snippet child({ props })}<button {...props} class={iconButton(6)} aria-label="Bookmark this spot" onclick={() => addBookmark()}><span class="icon-[lucide--bookmark-plus] size-3.5"></span></button>{/snippet}
+																</Tip>
+															</div>
+															{#each bookmarks as b (b.id)}
+																<div class="group flex items-center rounded-md hover:bg-stone-200/70 dark:hover:bg-stone-800">
+																	<button class="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 text-left" onclick={() => goToBookmark(b)}>
+																		<span class="icon-[lucide--bookmark] size-3.5 shrink-0 text-muted"></span>
+																		<span class="min-w-0 flex-1 truncate font-medium">{b.name}</span>
+																		<span class="text-[11px] text-muted tabular-nums group-hover:hidden group-focus-within:hidden">p. {Math.floor(b.page)}</span>
+																	</button>
+																	<div class="hidden shrink-0 items-center pr-1 group-hover:flex group-focus-within:flex">
+																		<Tip label="Rename">{#snippet child({ props })}<button {...props} class={iconButton(6)} aria-label="Rename {b.name}" onclick={() => renameBookmark(b)}><span class="icon-[lucide--pencil] size-3.5"></span></button>{/snippet}</Tip>
+																		<Tip label="Remove">{#snippet child({ props })}<button {...props} class={iconButton(6)} aria-label="Remove {b.name}" onclick={() => removeBookmark(b)}><span class="icon-[lucide--trash-2] size-3.5"></span></button>{/snippet}</Tip>
+																	</div>
+																</div>
+															{:else}
+																<p class="flex flex-wrap items-center gap-1 p-2 text-muted">Press <Kbd>{keys.addBookmark}</Kbd> to bookmark the spot you're reading, or right-click a page.</p>
+															{/each}
 														{:else if tab === 'search'}
 															<div class="space-y-2 pt-1 pb-2">
 																<div class="flex items-center gap-1 rounded-md border border-edge bg-white px-2 focus-within:ring-2 focus-within:ring-blue-500 dark:focus-within:ring-blue-400 dark:bg-stone-900">
@@ -743,7 +816,7 @@
 									<div class="flex min-h-0 flex-1">
 										<!-- ── Pages ──────────────────────────────────────── -->
 										<div class="relative min-w-0 flex-1">
-											<PdfContextMenu onOpenReference={openReference} {saveFile}>
+											<PdfContextMenu onOpenReference={openReference} {saveFile} {pageActions}>
 												{#snippet trigger({ props })}
 													<Viewer.Viewport {...props} style={s.pageFrame === 'none' ? `background:${swatch}` : undefined} class="h-full bg-stone-100 transition-colors dark:bg-stone-950 [--pdf-page-gap:22px] [--pdf-pages-padding:28px] {s.sideNotes ? '[--pdf-pages-aside:252px]' : ''}">
 														<Viewer.Pages class={restoring ? 'opacity-0' : 'transition-opacity duration-150'}>

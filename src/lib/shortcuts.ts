@@ -28,7 +28,10 @@ export const keys = {
 	panelFigures: `${alt}${mod}3`,
 	panelReferences: `${alt}${mod}4`,
 	panelNotes: `${alt}${mod}5`,
+	panelBookmarks: `${alt}${mod}6`,
 	panelInfo: `${mod}I`,
+	addBookmark: `${mod}D`,
+	goToBookmark: `${mod}J`,
 	scrollContinuous: mac ? `${ctrl}${mod}1` : 'Ctrl+Shift+1',
 	scrollPaged: mac ? `${ctrl}${mod}2` : 'Ctrl+Shift+2',
 	scrollHorizontal: mac ? `${ctrl}${mod}3` : 'Ctrl+Shift+3',
@@ -72,6 +75,9 @@ export const shortcuts: Group[] = [
 			{ label: 'Figures, tables & equations', keys: [keys.panelFigures] },
 			{ label: 'References', keys: [keys.panelReferences] },
 			{ label: 'Notes', keys: [keys.panelNotes] },
+			{ label: 'Bookmarks', keys: [keys.panelBookmarks] },
+			{ label: 'Bookmark this spot', keys: [keys.addBookmark] },
+			{ label: 'Go to bookmark', keys: [keys.goToBookmark] },
 			{ label: 'Paper info', keys: [keys.panelInfo] },
 			{ label: 'Close', keys: [keys.closeWindow] }
 		]

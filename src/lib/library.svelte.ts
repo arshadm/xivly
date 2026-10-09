@@ -1,4 +1,5 @@
 import type { PaperColor } from 'svelte-pdf-mini';
+import { addBookmark, newBookmark, removeBookmark, renameBookmark } from './bookmarks';
 import { broadcast } from './broadcast';
 import { toast } from './components/Toasts.svelte';
 import { forgetCover, warmCovers } from './covers';
@@ -345,6 +346,23 @@ class Library {
 		return this.update(id, (cur) => {
 			const tags = cur.tags?.includes(tag) ? cur.tags.filter((t) => t !== tag) : [...(cur.tags ?? []), tag];
 			return { tags: tags.length ? tags : null };
+		});
+	}
+
+	// Bookmarks: each change applies to the list on disk, so edits from another window are kept.
+	addBookmark(id: string, name: string, position: number) {
+		const bookmark = newBookmark(name, position);
+		return this.update(id, (cur) => ({ bookmarks: addBookmark(cur.bookmarks, bookmark) })).then(() => bookmark);
+	}
+
+	renameBookmark(id: string, bookmarkId: string, name: string) {
+		return this.update(id, (cur) => ({ bookmarks: renameBookmark(cur.bookmarks, bookmarkId, name) }));
+	}
+
+	removeBookmark(id: string, bookmarkId: string) {
+		return this.update(id, (cur) => {
+			const bookmarks = removeBookmark(cur.bookmarks, bookmarkId);
+			return { bookmarks: bookmarks.length ? bookmarks : null };
 		});
 	}
 

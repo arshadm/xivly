@@ -226,3 +226,39 @@ test('a library of 1500 papers stays fast: only the cards on screen are rendered
 	await expect(page.locator('nav').getByRole('button', { name: /\d+ more/ })).toBeVisible();
 	expect(errs).toEqual([]);
 });
+
+test('bookmarks: add one, see it in the panel after a reload, jump to it from ⌘J', async ({ page, context }) => {
+	await startLibrary(page);
+	await page.getByRole('button', { name: 'Add papers' }).click();
+	const chooser = page.waitForEvent('filechooser');
+	await page.getByRole('button', { name: /Drop PDF files/ }).click();
+	await (await chooser).setFiles(`${test.info().project.testDir}/fixtures/paper.pdf`);
+	await page.getByRole('button', { name: new RegExp(title) }).click();
+	const reader = await readerTab(context);
+	const errs = errors(reader);
+	await expect(reader.locator('[data-pdf-page]').first().locator('[data-pdf-canvas]')).toBeVisible();
+
+	// ⌘D asks for a name, suggesting one.
+	await reader.keyboard.press('ControlOrMeta+d');
+	const name = reader.getByRole('dialog', { name: 'Add bookmark' }).getByRole('textbox');
+	await expect(name).not.toHaveValue('');
+	await name.fill('Main results');
+	await name.press('Enter');
+
+	await reader.keyboard.press('ControlOrMeta+Alt+6');
+	await expect(reader.getByRole('button', { name: /Main results/ })).toBeVisible();
+	await reader.reload();
+	await expect(reader.locator('[data-pdf-page]').first().locator('[data-pdf-canvas]')).toBeVisible();
+	await reader.keyboard.press('ControlOrMeta+Alt+6');
+	await expect(reader.getByRole('button', { name: /Main results/ })).toBeVisible();
+
+	// ⌘J: type part of the name, ↵ jumps and closes the picker.
+	await reader.keyboard.press('ControlOrMeta+j');
+	const picker = reader.getByRole('combobox', { name: 'Bookmark name' });
+	await expect(picker).toBeFocused();
+	await picker.fill('main');
+	await expect(reader.getByRole('option', { name: /Main results/ })).toBeVisible();
+	await picker.press('Enter');
+	await expect(picker).toBeHidden();
+	expect(errs).toEqual([]);
+});

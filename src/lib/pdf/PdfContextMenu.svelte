@@ -6,15 +6,34 @@
 <script lang="ts">
 	import { ContextMenu } from 'bits-ui';
 	import type { Snippet } from 'svelte';
-	import { AnnotationsContext, PaperContext, ViewerContext, contextActions, layoutExtractor, type PdfAction, type Reference } from 'svelte-pdf-mini';
+	import { AnnotationsContext, PaperContext, ViewerContext, contextActions, layoutExtractor, type PdfAction, type PdfActionGroup, type PdfContext, type Reference } from 'svelte-pdf-mini';
 	import Kbd from '../ui/Kbd.svelte';
 
-	let { trigger, onOpenReference, saveFile }: { trigger: Snippet<[{ props: Record<string, unknown> }]>; onOpenReference?: (r: Reference) => void; saveFile?: (file: Blob, name: string) => unknown } = $props();
+	let {
+		trigger,
+		onOpenReference,
+		saveFile,
+		pageActions
+	}: {
+		trigger: Snippet<[{ props: Record<string, unknown> }]>;
+		onOpenReference?: (r: Reference) => void;
+		saveFile?: (file: Blob, name: string) => unknown;
+		/** The app's own actions for the right-clicked page (bookmark it…), under "Page". */
+		pageActions?: (ctx: PdfContext) => PdfAction[];
+	} = $props();
 	const viewer = ViewerContext.get();
 	const store = AnnotationsContext.getOr(null);
 	const paper = PaperContext.getOr(null);
 	const extractor = layoutExtractor((n) => viewer.document.getPageText(n));
-	const groups = $derived(viewer.lastContext ? contextActions(viewer.lastContext, { viewer, annotations: store, paper, extractor, onOpenReference, saveFile }) : []);
+	const groups = $derived.by(() => {
+		const ctx = viewer.lastContext;
+		if (!ctx) return [];
+		const out: PdfActionGroup[] = contextActions(ctx, { viewer, annotations: store, paper, extractor, onOpenReference, saveFile });
+		const extra = pageActions?.(ctx) ?? [];
+		if (!extra.length) return out;
+		const page = out.find((g) => g.kind === 'page');
+		return page ? out.map((g) => (g === page ? { ...g, actions: [...g.actions, ...extra] } : g)) : [...out, { kind: 'page' as const, actions: extra }];
+	});
 	// WebKit (the desktop app) clears a text selection whenever focus moves outside
 	// it, and the menu focuses each item under the pointer: keep the right-clicked
 	// selection while the menu is open, so it stays visible and actions still see it.

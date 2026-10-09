@@ -28,7 +28,9 @@ papers/<slug>/*            anything else you add (summary.md, code/, ...) is kep
   "links": { "project": "...", "github": ["..."], "huggingface": ["..."] },
   "category": "language",          // id from .xivly/library.json
   "tags": ["transformers"],
-  "added": "2026-10-04T12:00:00Z"
+  "added": "2026-10-04T12:00:00Z",
+  // named places; page is fractional (3.42 = 42% down page 3)
+  "bookmarks": [{ "id": "1f3a9c2e", "name": "Main results", "page": 7.25, "created": "2026-10-09T12:00:00Z" }]
 }
 ```
 

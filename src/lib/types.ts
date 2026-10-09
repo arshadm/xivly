@@ -74,6 +74,8 @@ export interface Paper {
 	read?: string;
 	/** Reading position (fractional page) restored on open. */
 	position?: number;
+	/** Named places in the paper, in page order. */
+	bookmarks?: Bookmark[];
 	[extra: string]: unknown;
 }
 
@@ -87,4 +89,12 @@ export interface PaperAnchor {
 	/** Fractional page, as `ViewerState.position`: 3.42 = 42% into page 3. */
 	page: number;
 	label?: string;
+}
+
+/** A named place in a paper (`paper.json` › `bookmarks`). */
+export interface Bookmark extends PaperAnchor {
+	id: string;
+	name: string;
+	/** ISO timestamp. */
+	created: string;
 }

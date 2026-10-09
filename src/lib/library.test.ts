@@ -98,3 +98,34 @@ describe('reading a hand-edited paper.json', () => {
 		expect((await json(`papers/${p.id}/paper.json`)).links).toEqual({ github: ['https://github.com/a/b'], other: ['https://o.example'] });
 	});
 });
+
+describe('bookmarks', () => {
+	it('adds, renames and removes in paper.json, keeping its other fields', async () => {
+		const p = await repo.add(PDF, { title: 'Bookmarked', tags: ['ml'] });
+		await library.reload();
+		const first = await library.addBookmark(p.id, 'Method', 3.456);
+		await library.addBookmark(p.id, 'Intro', 1.2);
+		let file = await json(`papers/${p.id}/paper.json`);
+		expect(file.tags).toEqual(['ml']);
+		expect(file.bookmarks.map((x: { name: string; page: number }) => [x.name, x.page])).toEqual([['Intro', 1.2], ['Method', 3.46]]);
+		expect(library.get(p.id)?.bookmarks?.length).toBe(2);
+
+		await library.renameBookmark(p.id, first.id, 'Methods');
+		await library.removeBookmark(p.id, file.bookmarks[0].id);
+		file = await json(`papers/${p.id}/paper.json`);
+		expect(file.bookmarks.map((x: { name: string }) => x.name)).toEqual(['Methods']);
+
+		await library.removeBookmark(p.id, first.id);
+		expect('bookmarks' in (await json(`papers/${p.id}/paper.json`))).toBe(false);
+	});
+
+	it('keeps bookmarks added elsewhere meanwhile, and two added at once', async () => {
+		const p = await repo.add(PDF, { title: 'Bookmarked' });
+		await library.reload();
+		// Another window added one since this window loaded the paper.
+		await editOnDisk(p.id, { bookmarks: [{ id: 'other', name: 'From elsewhere', page: 7, created: '' }] });
+		await Promise.all([library.addBookmark(p.id, 'One', 2), library.addBookmark(p.id, 'Two', 5)]);
+		const file = await json(`papers/${p.id}/paper.json`);
+		expect(file.bookmarks.map((x: { name: string }) => x.name)).toEqual(['One', 'Two', 'From elsewhere']);
+	});
+});
