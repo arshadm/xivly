@@ -238,6 +238,10 @@ test('bookmarks: add one, see it in the panel after a reload, jump to it from âŒ
 	const errs = errors(reader);
 	await expect(reader.locator('[data-pdf-page]').first().locator('[data-pdf-canvas]')).toBeVisible();
 
+	// The toolbar's bookmark button asks for a name too (Cancel adds nothing).
+	await reader.getByRole('banner').getByRole('button', { name: 'Bookmark this spot' }).click();
+	await reader.getByRole('dialog', { name: 'Add bookmark' }).getByRole('button', { name: 'Cancel' }).click();
+
 	// âŒ˜D asks for a name, suggesting one.
 	await reader.keyboard.press('ControlOrMeta+d');
 	const name = reader.getByRole('dialog', { name: 'Add bookmark' }).getByRole('textbox');

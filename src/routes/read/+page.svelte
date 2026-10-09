@@ -423,6 +423,7 @@
 	// ── Bookmarks ────────────────────────────────────────────────────────
 	const bookmarks = $derived(paper?.bookmarks ?? []);
 	let bookmarkPicker = $state(false);
+	const pageBookmarked = $derived(!!viewer && bookmarks.some((b) => Math.floor(b.page) === viewer!.readingPoint.page));
 
 	const sectionName = (sec: Section | null | undefined) => (sec ? [sec.number, sec.title].filter(Boolean).join(' ') : '');
 
@@ -831,6 +832,9 @@
 											<Tip label="Zoom out" shortcut={viewKey('view.zoomOut')}>{#snippet child({ props })}<Zoom.Out {...props} class={iconBtn}><span class="{icons.zoomOut} size-4"></span></Zoom.Out>{/snippet}</Tip>
 											{#if viewer}<ZoomSlider {viewer} class="hidden w-28 shrink-0 @5xl:flex" /><ZoomSelect {viewer} class="hidden h-7 w-28 shrink-0 border-transparent bg-black/5 text-xs @3xl:inline-flex dark:bg-white/10" />{/if}
 											<Tip label="Zoom in" shortcut={viewKey('view.zoomIn')}>{#snippet child({ props })}<Zoom.In {...props} class={iconBtn}><span class="{icons.zoomIn} size-4"></span></Zoom.In>{/snippet}</Tip>
+											<Separator />
+											<!-- Checked when this page already has a bookmark. -->
+											<Tip label="Bookmark this spot" shortcut={keys.addBookmark}>{#snippet child({ props })}<button {...props} class={iconBtn} aria-label="Bookmark this spot" onclick={() => addBookmark()}><span class="{pageBookmarked ? 'icon-[lucide--bookmark-check]' : 'icon-[lucide--bookmark-plus]'} size-4"></span></button>{/snippet}</Tip>
 											<Separator />
 											<CycleButton title="Pages per row" options={rowModes} value={rowMode} onchange={setRowMode} />
 											<CycleButton title="Scrolling" options={scrollModes} value={s.scrollMode} onchange={(v) => settings.set('scrollMode', v)} />
