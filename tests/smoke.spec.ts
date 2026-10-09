@@ -52,6 +52,15 @@ async function addPaper(page: Page, context: BrowserContext) {
 	return readerTab(context);
 }
 
+/** Wait until the library's file writes are done (they run under Web Locks named after the file). */
+async function writesDone(page: Page) {
+	const writing = async () => {
+		const { held = [], pending = [] } = await navigator.locks.query();
+		return [...held, ...pending].filter((l) => l.name?.startsWith('xivly:papers/')).length;
+	};
+	await expect.poll(() => page.evaluate(writing)).toBe(0);
+}
+
 test('the library loads without console errors', async ({ page }) => {
 	const errs = errors(page);
 	await startLibrary(page);
@@ -742,5 +751,61 @@ test('the arXiv feed: dismiss (with undo), and restore from the dismissed ones',
 	await expect(cards).toHaveCount(0);
 	await page.getByRole('button', { name: /Dismissed/ }).click();
 	await expect(cards).toHaveCount(2);
+	expect(errs).toEqual([]);
+});
+
+test('library as a list: a header switch (kept), rows that open, read marks', async ({ page, context }) => {
+	const errs = errors(page);
+	const reader = await addPaper(page, context);
+	await reader.close();
+	await page.bringToFront();
+	const cards = page.locator('.card');
+	await expect(cards).toHaveCount(1);
+	const layout = page.getByRole('group', { name: 'Layout' });
+	await expect(layout.getByRole('radio', { name: 'Cards' })).toHaveAttribute('aria-checked', 'true');
+
+	await layout.getByRole('radio', { name: 'List' }).click();
+	const row = page.locator('.row');
+	await expect(row).toHaveCount(1);
+	await expect(cards).toHaveCount(0);
+	await expect(row).toContainText(title);
+	await expect(row).toContainText('Ada Lovelace, Alan Turing');
+	await row.getByRole('button', { name: 'Mark as read' }).click();
+	await expect(row).toHaveAttribute('data-read', '');
+	await writesDone(page);
+
+	await page.reload();
+	await expect(page.locator('.row')).toHaveCount(1);
+	await expect(page.locator('.row')).toHaveAttribute('data-read', '');
+	// A row opens its paper.
+	await page.locator('.row').getByRole('button', { name: new RegExp(title) }).click();
+	const again = await readerTab(context);
+	await expect(again.locator('[data-pdf-page]').first()).toBeVisible();
+	expect(errs).toEqual([]);
+});
+
+test('a list of 1500 papers only renders the rows on screen', async ({ page }) => {
+	const errs = errors(page);
+	await startLibrary(page);
+	await page.evaluate(async () => {
+		const papers = await (await navigator.storage.getDirectory()).getDirectoryHandle('papers', { create: true });
+		await Promise.all(
+			Array.from({ length: 1500 }, async (_, i) => {
+				const dir = await papers.getDirectoryHandle(`p-${i}`, { create: true });
+				const file = await (await dir.getFileHandle('paper.json', { create: true })).createWritable();
+				await file.write(JSON.stringify({ title: `Paper ${i}`, authors: ['A. Author'], year: 2000 + (i % 26), added: new Date(1700000000000 + i * 1000).toISOString() }));
+				await file.close();
+			})
+		);
+	});
+	await page.reload();
+	await page.getByRole('group', { name: 'Layout' }).getByRole('radio', { name: 'List' }).click();
+	const rows = page.locator('.row');
+	await expect(rows.first()).toBeVisible();
+	expect(await rows.count()).toBeLessThan(150);
+	// Newest added first; scrolling far down brings later rows.
+	await expect(rows.first()).toContainText('Paper 1499');
+	await page.locator('main .overflow-y-auto').evaluate((el) => (el.scrollTop = el.scrollHeight));
+	await expect(rows.getByText('Paper 0', { exact: true })).toBeVisible();
 	expect(errs).toEqual([]);
 });

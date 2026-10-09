@@ -87,6 +87,8 @@ const defaults = {
 
 	// Library
 	cardSize: 'medium' as 'small' | 'medium' | 'large',
+	/** The library as cards (covers) or as a list of rows. */
+	libraryLayout: 'cards' as 'cards' | 'list',
 	/** The example library was offered (first start). */
 	starterOffered: false,
 	/** How paper cards look in the library. */
@@ -253,6 +255,7 @@ export function overrideOf<K extends SettingKey>(key: K, value: Settings[K]): Se
 /** Settings with a closed set of values: anything else falls back to the default. */
 const validators: Partial<Record<string, (v: unknown) => boolean>> = {
 	coverStyle: (v) => coverStyles.some((c) => c.value === v),
+	libraryLayout: (v) => v === 'cards' || v === 'list',
 	recentWindow: (v) => typeof v === 'string' && v in recentWindows,
 	freetextFont: (v) => FREETEXT_FONT_FAMILIES.includes(v as FreeTextFontFamily),
 	noteEmojis: (v) => Array.isArray(v) && v.length === defaultNoteEmojis.length && v.every((e) => typeof e === 'string' && isSingleEmoji(e))

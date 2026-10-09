@@ -23,6 +23,7 @@
 	import { starter } from '#lib/onboarding/starter.svelte.js';
 	import ToggleGroup from '#lib/ui/ToggleGroup.svelte';
 	import VirtualGrid from '#lib/ui/VirtualGrid.svelte';
+	import PaperRow from '#lib/components/PaperRow.svelte';
 	import FeedView from '#lib/feed/FeedView.svelte';
 	import { disjointViewKey } from '#lib/ui/view-key.js';
 	import { button } from '#lib/ui/button.js';
@@ -195,6 +196,15 @@
 			{:else}
 				<CycleButton title="Recent" options={recentOptions} value={settings.values.recentWindow} onchange={(v) => settings.set('recentWindow', v)} showLabel labelClass="@max-4xl:hidden" class="h-8" />
 			{/if}
+			<ToggleGroup
+				label="Layout"
+				value={settings.values.libraryLayout}
+				onValueChange={(v) => settings.set('libraryLayout', v)}
+				items={[
+					{ value: 'cards', label: '', title: 'Cards', icon: 'icon-[lucide--layout-grid]' },
+					{ value: 'list', label: '', title: 'List', icon: 'icon-[lucide--list]' }
+				]}
+			/>
 			<ToggleGroup class="@max-2xl:hidden" label="Show papers" value={settings.values.readFilter} onValueChange={(v) => settings.set('readFilter', v)} items={readOptions.map((o) => ({ value: o.value, label: o.value === 'all' ? 'All' : o.label }))} />
 			<label class="flex h-8 w-64 min-w-28 shrink-[4] items-center gap-2 rounded-lg bg-stone-200/60 pr-1.5 pl-2.5 ring-blue-500 dark:ring-blue-400 focus-within:bg-white focus-within:ring-2 dark:bg-stone-800/60 dark:focus-within:bg-stone-900">
 				<span class="icon-[lucide--search] size-3.5 shrink-0 text-stone-400"></span>
@@ -229,7 +239,23 @@
 				<!-- Cards move (flip) between views that share papers, and as searching and
 				     tag filters re-flow; a view with none in common swaps the grid (a fade). -->
 				{#key gridKey}
-					{#if animated}
+					{#if settings.values.libraryLayout === 'list'}
+						<!-- The list: rows, same order and filters as the cards. -->
+						{#if animated}
+							<ul in:fade={{ duration: 160 * motion }}>
+								{#each library.filtered as paper (paper.id)}
+									<li animate:flip={{ duration: 220 * motion, easing: cubicOut }} in:fade={{ duration: 160 * motion }} out:fade={{ duration: 100 * motion }}>
+										<PaperRow {paper} />
+									</li>
+								{/each}
+							</ul>
+						{:else}
+							<!-- One column: only the rows on screen are rendered. -->
+							<VirtualGrid items={library.filtered} key={(p) => p.id} min={100_000} gap={0} {scroller}>
+								{#snippet cell(paper)}<PaperRow {paper} />{/snippet}
+							</VirtualGrid>
+						{/if}
+					{:else if animated}
 						<ul class="grid gap-5" style:grid-template-columns="repeat(auto-fill, minmax({minCard}px, 1fr))" in:fade={{ duration: 160 * motion }}>
 							{#each library.filtered as paper (paper.id)}
 								<li animate:flip={{ duration: 260 * motion, easing: cubicOut }} in:fade={{ duration: 160 * motion }} out:scale={{ start: 0.96, duration: 120 * motion }}>
