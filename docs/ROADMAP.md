@@ -13,7 +13,7 @@ Planned features for this fork: split-view notes, a mind map per paper, named bo
 | Notes | Rich text, stored as editor JSON in `papers/<id>/notes.json`. |
 | Mind map | One per paper, in the split view. |
 | Bookmarks | A named spot (fractional page) inside one paper. |
-| arXiv | Saved searches, plus a "new since" feed for each. |
+| arXiv | Port `tools/arxiv/arxiv_fetch.py`: catchup fetching, topic matching, Claude P1–P5 scoring, a feed in the library. Papers are added by hand; checks run on demand. |
 
 ## Conventions
 
@@ -77,14 +77,31 @@ Planned features for this fork: split-view notes, a mind map per paper, named bo
   - The library's search also matches what a paper's notes say (its `notes.md`, read once a search starts, at most every 10 s).
   - *Test:* `find.test.ts`, `filter.test.ts`, `repo.test.ts`, and the e2e search test.
 
-## Phase 3: arXiv search, saved searches, "new since"
+## Phase 3: arXiv feed (fetch, score with Claude, add to library)
 
-- [ ] **3.1 API client** for `export.arxiv.org/api/query` (already allowed by the CSP). It parses the Atom XML into results, at most one request every 3 seconds. *Test:* Vitest with a saved Atom XML file.
-- [ ] **3.2 Query builder:** keywords, author, category, date range and sort order, converted into arXiv's `search_query` syntax. *Test:* unit tests.
-- [ ] **3.3 Search screen** in the library. Results already in the library are marked (by `paper.arxiv`). Import one or several selected results with `addFromArxiv`.
-- [ ] **3.4 Saved searches** in `.xivly/searches.json`: save, rename, delete and run again.
-- [ ] **3.5 "New since":** `seen` ids (capped) and `lastChecked` for each search, an unread count, and "mark all seen". Checked when the app starts and every few hours.
-- [ ] **3.6 Nice-to-haves:** the abstract on hover, a default category and tags for each search, notifications.
+This replaces the earlier "saved searches" plan. It ports the workflow of the `tools/arxiv/arxiv_fetch.py` script into Xivly:
+- **Fetch:** read arXiv's daily `catchup` pages. arXiv's robots.txt disallows `/api` and `/search`, which explains the 429 errors; catchup is allowed with 15 seconds between requests and covers the last 90 days.
+- **Match:** filter by your categories and topics.
+- **Score:** P1–P5 with a reason, using `claude -p` against your subscription.
+- **Show:** a feed in the library. You add papers to the library yourself (nothing is added automatically), and checks only run when you ask (a button or menu item).
+
+Catchup pages don't allow cross-origin reads, so fetching (and running `claude`) happens on the Rust side: these features are desktop-only.
+
+**Storage** lives in the library folder, so it syncs:
+- `.xivly/feed/config.json`: categories, topics (term lists), search field, profile, rubric, model, batch size.
+- `.xivly/feed/state.json`: the end of the last successful run's window, and recent runs.
+- `.xivly/feed/papers/<YYYY-MM>.json`: papers by announcement month (small files, fewer sync conflicts). Each has its metadata, topics, priority and reason, when it was first seen, when it was dismissed, and which library paper it was added as.
+
+- [ ] **3.1 Feed model and storage:** types, normalizing (hand-edited files must not break the app), `Repo` read/write by month, merging a run's papers into what's stored (topics merged; scores and dismissals kept). *Test:* unit tests with `MemoryFs`.
+- [ ] **3.2 Import from `arxiv_fetch`:** a one-time import (Settings › arXiv feed › Import…) of `arxiv.db` (papers, scores, reasons, dismissals, run windows) and `config.json` (categories, topics, profile, rubric). The SQLite file is read in Rust. *Test:* Rust test with a small fixture database; e2e of the feed afterwards.
+- [ ] **3.3 Feed view:** "arXiv feed" in the library sidebar, with priority chips (P1–P3 on by default, with counts), topic chips, search (title, abstract, authors, reason), newest-first grouped by day or by priority, cards showing the priority badge, reason, metadata and an expandable abstract, and links to arXiv and the PDF.
+- [ ] **3.4 Add to library, dismiss and restore:** "Add" imports the paper through the existing arXiv import, keeps its topics as tags, and links the card to the library paper ("Open"). Dismiss with undo; a Dismissed view to restore.
+- [ ] **3.5 Claude bridge (shared with Phase 4):** Rust finds `claude` (through the login shell, or a path set in Settings) and runs `claude -p --output-format json` with a prompt on stdin, a timeout and no MCP or settings. Cancellable. *Test:* Rust test with a fake `claude` script.
+- [ ] **3.6 Scoring:** the prompt (profile and rubric, batches of 20, `<paper>` blocks), reading a JSON array out of the reply, retries, and caching (scored papers aren't scored again; "Rescore" in a menu). *Test:* the prompt builder and reply parser have unit tests.
+- [ ] **3.7 Fetching catchup:** Rust fetches `arxiv.org/catchup/<archive>/<day>?abs=True` with the 15-second delay, retries and a 429 back-off. The HTML is parsed in TypeScript and matched to topics. The window runs from the last run (or 7 days) up to today, at most 90 days back. *Test:* the parser and matcher, with a saved catchup page as a fixture.
+- [ ] **3.8 "Check now":** a feed toolbar button and a menu item. Progress shows day and archive, then scoring; it can be cancelled, and gives a summary when done (found, new, scored). Runs are recorded in `state.json`.
+- [ ] **3.9 Settings › arXiv feed:** edit categories, topics, profile, rubric and model, with "Rescore all" after a profile change.
+- [ ] **3.10 Nice-to-haves:** unread counts in the sidebar, "new since last check" highlighting, keyword filters saved as views.
 
 ## Phase 4: Chat with Claude about a paper (desktop)
 
@@ -126,7 +143,7 @@ Use only your own installed and logged-in `claude` CLI. Never read or reuse its 
 
 1. **0 → 1:** quick wins that set up the anchor type.
 2. **2.1–2.6:** the core of the notes work.
-3. **3:** independent of the others.
+3. **3:** the arXiv feed. Its Claude bridge (3.5) is the base of Phase 4.
 4. **4:** builds on the notes tab.
 5. **5:** reuses the right pane and anchors.
 6. **6.1 early, the rest last:** 6.1 is cheap and prevents conflicts later.
