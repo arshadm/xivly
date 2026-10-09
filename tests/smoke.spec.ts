@@ -514,3 +514,35 @@ test('search: ⌘F in the notes finds in them; the library finds a paper by its 
 	await expect(card).toBeHidden();
 	expect(errs).toEqual([]);
 });
+
+/** The test paper's reader with its notes pane open, the cursor in the notes. */
+async function openNotes(page: Page, context: BrowserContext) {
+	const reader = await addPaper(page, context);
+	await expect(reader.locator('[data-pdf-page]').first().locator('[data-pdf-canvas]')).toBeVisible();
+	await reader.keyboard.press('ControlOrMeta+e');
+	const notes = reader.getByRole('textbox', { name: 'Notes' });
+	await notes.click();
+	return { reader, notes };
+}
+
+/** Reload once the notes are written (their Web Lock released), and reopen the notes. */
+async function reloadNotes(reader: Page) {
+	await expect(reader.getByText('Saved', { exact: true })).toBeVisible();
+	await reader.reload();
+	await expect(reader.locator('[data-pdf-page]').first().locator('[data-pdf-canvas]')).toBeVisible();
+	return reader.getByRole('textbox', { name: 'Notes' });
+}
+
+test('notes: checklists — "[ ] " starts one, a click ticks it, and it stays ticked', async ({ page, context }) => {
+	const { reader, notes } = await openNotes(page, context);
+	const errs = errors(reader);
+	await reader.keyboard.type('[ ] read the paper\nreproduce figure 2');
+	const boxes = notes.getByRole('checkbox');
+	await expect(boxes).toHaveCount(2);
+	await boxes.first().click();
+	await expect(notes.locator('li[data-checked="true"] > div')).toHaveText('read the paper');
+	const reloaded = await reloadNotes(reader);
+	await expect(reloaded.getByRole('checkbox').first()).toBeChecked();
+	await expect(reloaded.getByRole('checkbox').last()).not.toBeChecked();
+	expect(errs).toEqual([]);
+});

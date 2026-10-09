@@ -6,6 +6,7 @@
 <script lang="ts">
 	import { Editor, type JSONContent } from '@tiptap/core';
 	import Code from '@tiptap/extension-code';
+	import { TaskItem, TaskList } from '@tiptap/extension-list';
 	import { Placeholder } from '@tiptap/extensions';
 	import StarterKit from '@tiptap/starter-kit';
 	import { onDestroy, tick, untrack } from 'svelte';
@@ -102,7 +103,9 @@
 				Code.extend({ addKeyboardShortcuts: () => ({}) }),
 				Placeholder.configure({ placeholder: 'Write your notes about this paper…' }),
 				PaperLink,
-				NotesFind
+				NotesFind,
+				TaskList,
+				TaskItem.configure({ nested: true })
 			],
 			editorProps: {
 				attributes: { class: 'notes-editor min-h-full px-5 py-4 outline-none', role: 'textbox', 'aria-multiline': 'true', 'aria-label': 'Notes', 'data-notes-editor': '' },
@@ -176,6 +179,7 @@
 		[
 			{ label: 'Bulleted list', icon: 'icon-[lucide--list]', keys: `${mod}${shift}8`, on: () => run((c) => c.toggleBulletList()), isActive: () => active('bulletList') },
 			{ label: 'Numbered list', icon: 'icon-[lucide--list-ordered]', keys: `${mod}${shift}7`, on: () => run((c) => c.toggleOrderedList()), isActive: () => active('orderedList') },
+			{ label: 'Checklist', icon: 'icon-[lucide--list-checks]', keys: `${mod}${shift}9`, on: () => run((c) => c.toggleTaskList()), isActive: () => active('taskList') },
 			{ label: 'Quote', icon: 'icon-[lucide--text-quote]', keys: `${mod}${shift}B`, on: () => run((c) => c.toggleBlockquote()), isActive: () => active('blockquote') },
 			{ label: 'Code block', icon: 'icon-[lucide--square-code]', keys: `${alt}${mod}C`, on: () => run((c) => c.toggleCodeBlock()), isActive: () => active('codeBlock') }
 		],
@@ -275,6 +279,35 @@
 	}
 	:global(.notes-editor li > p) {
 		margin: 0.15em 0;
+	}
+	/* Checklists: a tick box, then the item; ticked ones struck through. */
+	:global(.notes-editor ul[data-type='taskList']) {
+		list-style: none;
+		padding-left: 0.1em;
+	}
+	:global(.notes-editor ul[data-type='taskList'] li) {
+		display: flex;
+		gap: 0.5em;
+		align-items: flex-start;
+	}
+	:global(.notes-editor ul[data-type='taskList'] li > label) {
+		flex-shrink: 0;
+		margin-top: 0.3em;
+		user-select: none;
+	}
+	:global(.notes-editor ul[data-type='taskList'] li > label input) {
+		width: 0.95em;
+		height: 0.95em;
+		accent-color: var(--color-stone-700, #44403c);
+		cursor: pointer;
+	}
+	:global(.notes-editor ul[data-type='taskList'] li > div) {
+		flex: 1;
+		min-width: 0;
+	}
+	:global(.notes-editor ul[data-type='taskList'] li[data-checked='true'] > div) {
+		color: var(--color-stone-400, #a8a29e);
+		text-decoration: line-through;
 	}
 	:global(.notes-editor blockquote) {
 		border-left: 3px solid var(--color-stone-300, #d6d3d1);
