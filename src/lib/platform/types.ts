@@ -20,6 +20,8 @@ export interface LibraryFs {
 	trash(path: string): Promise<void>;
 }
 
+import type { ArxivFetchExport } from '#lib/feed/import.js';
+
 export type HookEvent = 'paper-added' | 'paper-saved' | 'paper-updated' | 'paper-removed';
 
 export interface Platform {
@@ -37,4 +39,6 @@ export interface Platform {
 	reveal?(path: string): Promise<void>;
 	/** Desktop only: run `.xivly/hooks/<event>*` scripts. */
 	runHook?(event: HookEvent, paperId: string): Promise<void>;
+	/** Desktop only: pick an arxiv_fetch tool folder and read its database and config (null: cancelled). */
+	importArxivFetch?(): Promise<ArxivFetchExport | null>;
 }

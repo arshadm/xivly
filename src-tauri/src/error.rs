@@ -26,7 +26,13 @@ macro_rules! impl_from {
         }
     )*};
 }
-impl_from!(std::io::Error, serde_json::Error, tauri::Error, trash::Error);
+impl_from!(
+    std::io::Error,
+    serde_json::Error,
+    tauri::Error,
+    trash::Error,
+    rusqlite::Error
+);
 
 impl From<&str> for Error {
     fn from(e: &str) -> Self {

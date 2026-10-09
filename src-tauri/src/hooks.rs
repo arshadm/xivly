@@ -21,7 +21,12 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter};
 
 /// The events Xivly runs hooks for (`HookEvent` in src/lib/platform/types.ts).
-pub const EVENTS: [&str; 4] = ["paper-added", "paper-saved", "paper-updated", "paper-removed"];
+pub const EVENTS: [&str; 4] = [
+    "paper-added",
+    "paper-saved",
+    "paper-updated",
+    "paper-removed",
+];
 
 #[derive(Serialize, Clone)]
 pub struct HookResult {
@@ -65,7 +70,13 @@ pub fn run(app: &AppHandle, library: &Path, event: &str, paper_id: &str, paper_d
 
 /// Runs every hook for `event` and waits for them (e.g. `paper-removed`,
 /// which must see the folder before it goes to the Trash).
-pub fn run_blocking(app: &AppHandle, library: &Path, event: &str, paper_id: &str, paper_dir: &Path) {
+pub fn run_blocking(
+    app: &AppHandle,
+    library: &Path,
+    event: &str,
+    paper_id: &str,
+    paper_dir: &Path,
+) {
     let hooks = find_hooks(library, event);
     if hooks.is_empty() {
         return;
@@ -89,7 +100,11 @@ fn run_one(
     paper_dir: &Path,
     stdin_json: &[u8],
 ) -> HookResult {
-    let hook_name = hook.file_name().unwrap_or_default().to_string_lossy().to_string();
+    let hook_name = hook
+        .file_name()
+        .unwrap_or_default()
+        .to_string_lossy()
+        .to_string();
     let base = HookResult {
         event: event.into(),
         paper_id: paper_id.into(),
@@ -118,7 +133,12 @@ fn run_one(
         .spawn();
     let mut child = match child {
         Ok(c) => c,
-        Err(e) => return HookResult { output: e.to_string(), ..base },
+        Err(e) => {
+            return HookResult {
+                output: e.to_string(),
+                ..base
+            };
+        }
     };
 
     // Feed stdin and drain stdout/stderr on their own threads: writing
@@ -142,9 +162,21 @@ fn run_one(
     };
     // A background process the hook started may keep the pipes open after it
     // exits: take what was written so far rather than wait for it.
-    let joined = |rx: std::sync::mpsc::Receiver<Vec<u8>>| rx.recv_timeout(Duration::from_secs(2)).unwrap_or_default();
-    let out = drain(child.stdout.take().map(|p| Box::new(p) as Box<dyn Read + Send>));
-    let err = drain(child.stderr.take().map(|p| Box::new(p) as Box<dyn Read + Send>));
+    let joined = |rx: std::sync::mpsc::Receiver<Vec<u8>>| {
+        rx.recv_timeout(Duration::from_secs(2)).unwrap_or_default()
+    };
+    let out = drain(
+        child
+            .stdout
+            .take()
+            .map(|p| Box::new(p) as Box<dyn Read + Send>),
+    );
+    let err = drain(
+        child
+            .stderr
+            .take()
+            .map(|p| Box::new(p) as Box<dyn Read + Send>),
+    );
 
     let started = Instant::now();
     let status = loop {
@@ -163,8 +195,16 @@ fn run_one(
     let mut output = String::from_utf8_lossy(&joined(out)).into_owned();
     output.push_str(&String::from_utf8_lossy(&joined(err)));
     match status {
-        Some(s) => HookResult { success: s.success(), code: s.code(), output, ..base },
-        None => HookResult { output: format!("{output}\n(timed out after {}s)", TIMEOUT.as_secs()), ..base },
+        Some(s) => HookResult {
+            success: s.success(),
+            code: s.code(),
+            output,
+            ..base
+        },
+        None => HookResult {
+            output: format!("{output}\n(timed out after {}s)", TIMEOUT.as_secs()),
+            ..base
+        },
     }
 }
 
@@ -173,7 +213,11 @@ fn run_one(
 fn command_for(hook: &Path) -> std::result::Result<Command, String> {
     // Executables run directly (their shebang decides the interpreter);
     // everything else is run by /bin/sh.
-    let script = if is_executable(hook) { r#"exec "$XIVLY_HOOK""# } else { r#"exec /bin/sh "$XIVLY_HOOK""# };
+    let script = if is_executable(hook) {
+        r#"exec "$XIVLY_HOOK""#
+    } else {
+        r#"exec /bin/sh "$XIVLY_HOOK""#
+    };
     // macOS GUI apps get a bare PATH: an interactive login shell loads
     // .zprofile *and* .zshrc, so it matches the user's terminal. Linux
     // desktop sessions already pass the user's PATH.
@@ -194,14 +238,24 @@ fn command_for(hook: &Path) -> std::result::Result<Command, String> {
     use std::os::windows::process::CommandExt;
     // The app has no console: without this, each hook would flash a console window.
     const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-    let ext = hook.extension().and_then(|e| e.to_str()).map(str::to_ascii_lowercase);
+    let ext = hook
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(str::to_ascii_lowercase);
     let mut c = match ext.as_deref() {
         Some("ps1") => {
             // By full path: not whatever `powershell` an altered PATH finds first.
             let root = std::env::var_os("SystemRoot").unwrap_or_else(|| "C:\\Windows".into());
             let exe = Path::new(&root).join("System32\\WindowsPowerShell\\v1.0\\powershell.exe");
             let mut c = Command::new(exe);
-            c.args(["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File"]).arg(hook);
+            c.args([
+                "-NoProfile",
+                "-NonInteractive",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+            ])
+            .arg(hook);
             c
         }
         // Run directly: Rust quotes batch-file arguments safely (no `cmd /C` string).
@@ -215,14 +269,19 @@ fn command_for(hook: &Path) -> std::result::Result<Command, String> {
 #[cfg(unix)]
 fn is_executable(p: &Path) -> bool {
     use std::os::unix::fs::PermissionsExt;
-    p.metadata().map(|m| m.permissions().mode() & 0o111 != 0).unwrap_or(false)
+    p.metadata()
+        .map(|m| m.permissions().mode() & 0o111 != 0)
+        .unwrap_or(false)
 }
-
 
 fn log(library: &Path, r: &HookResult) {
     let dir = library.join(".xivly/logs");
     let _ = std::fs::create_dir_all(&dir);
-    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(dir.join("hooks.log")) {
+    if let Ok(mut f) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(dir.join("hooks.log"))
+    {
         let ts = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.as_secs())
@@ -230,7 +289,11 @@ fn log(library: &Path, r: &HookResult) {
         let _ = writeln!(
             f,
             "[{ts}] {} {} ({}) -> {:?}\n{}",
-            r.event, r.paper_id, r.hook, r.code, r.output.trim_end()
+            r.event,
+            r.paper_id,
+            r.hook,
+            r.code,
+            r.output.trim_end()
         );
     }
 }
@@ -249,16 +312,31 @@ mod tests {
         std::fs::create_dir_all(&paper).unwrap();
         std::fs::write(paper.join("paper.json"), r#"{"title":"T"}"#).unwrap();
         // Not executable: run by /bin/sh. Reads stdin and env.
-        std::fs::write(hooks.join("paper-added.sh"), "read json; echo \"$XIVLY_EVENT $XIVLY_PAPER_ID $json $(basename \"$PWD\")\"").unwrap();
+        std::fs::write(
+            hooks.join("paper-added.sh"),
+            "read json; echo \"$XIVLY_EVENT $XIVLY_PAPER_ID $json $(basename \"$PWD\")\"",
+        )
+        .unwrap();
         std::fs::write(hooks.join("paper-added.sample"), "exit 1").unwrap();
         std::fs::write(hooks.join("paper-addedx"), "exit 1").unwrap();
 
         let found = find_hooks(&lib, "paper-added");
         assert_eq!(found, vec![hooks.join("paper-added.sh")]);
 
-        let r = run_one(&found[0], &lib, "paper-added", "p1", &paper, br#"{"title":"T"}"#);
+        let r = run_one(
+            &found[0],
+            &lib,
+            "paper-added",
+            "p1",
+            &paper,
+            br#"{"title":"T"}"#,
+        );
         assert!(r.success, "{}", r.output);
-        assert!(r.output.contains(r#"paper-added p1 {"title":"T"} p1"#), "{}", r.output);
+        assert!(
+            r.output.contains(r#"paper-added p1 {"title":"T"} p1"#),
+            "{}",
+            r.output
+        );
         std::fs::remove_dir_all(lib).unwrap();
     }
 }

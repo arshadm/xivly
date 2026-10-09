@@ -1,5 +1,6 @@
 mod config;
 mod error;
+mod feed_import;
 mod hooks;
 mod library;
 
@@ -54,7 +55,9 @@ fn begin_quit(app: &tauri::AppHandle) -> bool {
     }
     let mut pending = PENDING.lock().unwrap_or_else(|e| e.into_inner());
     // A quit already in progress keeps waiting for its windows, unless it went stale.
-    let stale = pending.as_ref().is_some_and(|(_, at)| at.elapsed() > STALE_QUIT);
+    let stale = pending
+        .as_ref()
+        .is_some_and(|(_, at)| at.elapsed() > STALE_QUIT);
     if pending.is_none() || stale {
         *pending = Some((windows, Instant::now()));
         let _ = app.emit("quit-requested", ());
@@ -106,6 +109,7 @@ pub fn run() {
             library::fs_exists,
             library::fs_mkdir,
             library::fs_trash,
+            feed_import::feed_import_arxiv_fetch,
             library::fs_abs,
             library::run_hook,
         ])
@@ -120,7 +124,11 @@ pub fn run() {
                 }
             }
             // A window closed mid-quit (or mid library change) has nothing left to answer.
-            tauri::RunEvent::WindowEvent { label, event: tauri::WindowEvent::Destroyed, .. } => {
+            tauri::RunEvent::WindowEvent {
+                label,
+                event: tauri::WindowEvent::Destroyed,
+                ..
+            } => {
                 library::window_gone(app, &label);
                 let mut pending = PENDING.lock().unwrap_or_else(|e| e.into_inner());
                 if let Some((set, _)) = pending.as_mut() {

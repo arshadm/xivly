@@ -1,7 +1,7 @@
 <!-- Settings (⌘, / Ctrl+,): every option is live; stored per platform and synced across windows. -->
 <script module lang="ts">
 	export const settingsDialog = $state({ open: false, section: 'general' as Section });
-	type Section = 'general' | 'reading' | 'layout' | 'annotations' | 'saving' | 'research' | 'library' | 'hooks' | 'shortcuts';
+	type Section = 'general' | 'reading' | 'layout' | 'annotations' | 'saving' | 'research' | 'library' | 'feed' | 'hooks' | 'shortcuts';
 </script>
 
 <script lang="ts">
@@ -19,6 +19,8 @@
 	import { downloadStarter, hasStarter, removeStarter, starter, STARTER_TAG } from '#lib/onboarding/starter.svelte.js';
 	import { prompts } from '#lib/ui/prompt.svelte.js';
 	import { toast } from './Toasts.svelte';
+	import { importArxivFetch } from '#lib/feed/import.js';
+	import { FeedStore } from '#lib/feed/store.js';
 
 	async function removeExamples() {
 		const n = library.papers.filter((p) => p.tags?.includes(STARTER_TAG)).length;
@@ -43,10 +45,31 @@
 		{ id: 'saving', label: 'Saving', icon: 'icon-[lucide--save]' },
 		{ id: 'research', label: 'Research', icon: 'icon-[lucide--graduation-cap]' },
 		{ id: 'library', label: 'Library', icon: 'icon-[lucide--library]' },
+		{ id: 'feed', label: 'arXiv feed', icon: 'icon-[lucide--rss]', desktop: true },
 		{ id: 'hooks', label: 'Hooks', icon: 'icon-[lucide--webhook]', desktop: true },
 		{ id: 'shortcuts', label: 'Shortcuts', icon: 'icon-[lucide--keyboard]' }
 	];
 	const visible = $derived(sections.filter((x) => !x.desktop || platform.kind === 'desktop'));
+
+	// ── arXiv feed ────────────────────────────────────────────────────────
+	let importing = $state(false);
+	async function importFeed() {
+		if (!platform.importArxivFetch || !library.repo) return;
+		importing = true;
+		try {
+			const data = await platform.importArxivFetch();
+			if (!data) return;
+			const withConfig =
+				!!data.config &&
+				(await prompts.confirm('Use the tool’s settings too?', { message: 'Its categories, topics, profile and rubric (config.json) replace the feed’s.', confirmLabel: 'Use them' }));
+			const r = await importArxivFetch(new FeedStore(library.repo.fs), data, withConfig);
+			toast(`Imported ${r.papers.toLocaleString()} papers (${r.added.toLocaleString()} new to the feed, ${r.scored.toLocaleString()} scored, ${r.dismissed} dismissed)${r.config ? ', and the tool’s settings' : ''}`);
+		} catch (e) {
+			toast(`Import failed: ${e instanceof Error ? e.message : e}`, 'error');
+		} finally {
+			importing = false;
+		}
+	}
 </script>
 
 {#snippet row(label: string, hint: string, control: Snippet)}
@@ -179,6 +202,12 @@
 								{@render row('Example papers', starter.error ?? 'Annotated papers to explore the app (tagged #demo)', samplesCtl)}
 								{#snippet locCtl()}<button class={button('secondary')} onclick={() => library.choose()}>Change…</button>{/snippet}
 								{@render row('Library folder', library.name, locCtl)}
+							{:else if settingsDialog.section === 'feed'}
+								<p class="text-xs leading-relaxed text-muted">
+									The arXiv feed checks arXiv's daily listings for your categories and topics, scores new papers P1–P5 with Claude, and lists them in the library. It lives in <code>.xivly/feed/</code>, in the library folder.
+								</p>
+								{#snippet importCtl()}<button class={button('secondary')} disabled={importing} onclick={importFeed}>{importing ? 'Importing…' : 'Import…'}</button>{/snippet}
+								{@render row('Import from arxiv_fetch', 'Its papers, scores, dismissals and settings (the folder with arxiv.db)', importCtl)}
 							{:else if settingsDialog.section === 'hooks'}
 								{#snippet hookCtl()}<Select label="Hook notifications" value={s.hookToasts} onValueChange={set('hookToasts')} items={[{ value: 'errors', label: 'Failures only' }, { value: 'all', label: 'Every run' }, { value: 'off', label: 'Never' }]} />{/snippet}
 								{@render row('Notifications', 'When a hook script runs', hookCtl)}

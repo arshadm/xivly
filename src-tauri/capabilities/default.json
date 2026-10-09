@@ -20,6 +20,7 @@
     "opener:default",
     "opener:allow-reveal-item-in-dir",
     "dialog:allow-save",
+    "dialog:allow-open",
     "dialog:allow-message",
     "store:default",
     "fs:allow-write-file",

@@ -28,6 +28,8 @@ trash = "5.2.9"
 tauri-plugin-store = "2"
 tauri-plugin-fs = "2"
 tauri-plugin-clipboard-manager = "2"
+# Reads the arxiv_fetch tool's database (feed import), read-only.
+rusqlite = { version = "0.40.2", features = ["bundled"] }
 
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration

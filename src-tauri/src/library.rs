@@ -39,7 +39,10 @@ fn root(state: &State<AppState>, expected: &Path) -> Result<PathBuf> {
 fn same_root(current: Option<&Path>, expected: &Path) -> Result<PathBuf> {
     match current {
         Some(current) if current == expected => Ok(current.to_path_buf()),
-        Some(_) => Err("The library folder was changed: this window can't use the new one (reopen the paper)".into()),
+        Some(_) => Err(
+            "The library folder was changed: this window can't use the new one (reopen the paper)"
+                .into(),
+        ),
         None => Err("No library selected".into()),
     }
 }
@@ -48,10 +51,17 @@ fn same_root(current: Option<&Path>, expected: &Path) -> Result<PathBuf> {
 /// (`.` segments are dropped). Purely textual: see `resolve` for symlinks.
 fn join(root: &Path, rel: &str) -> Result<PathBuf> {
     let rel = Path::new(rel);
-    if !rel.components().all(|c| matches!(c, Component::Normal(_) | Component::CurDir)) {
+    if !rel
+        .components()
+        .all(|c| matches!(c, Component::Normal(_) | Component::CurDir))
+    {
         return Err(format!("Invalid path: {}", rel.display()).into());
     }
-    Ok(root.join(rel.components().filter(|c| matches!(c, Component::Normal(_))).collect::<PathBuf>()))
+    Ok(root.join(
+        rel.components()
+            .filter(|c| matches!(c, Component::Normal(_)))
+            .collect::<PathBuf>(),
+    ))
 }
 
 /// `join`, and the path must really be inside the library: a symlink in it
@@ -105,12 +115,18 @@ fn resolve_entry(root: &Path, rel: &str) -> Result<PathBuf> {
 /// in the user's Documents folder (OneDrive-redirected or localized included).
 fn default_library(home: &Path, documents: &Path) -> PathBuf {
     let icloud = home.join("Library/Mobile Documents/com~apple~CloudDocs");
-    if cfg!(target_os = "macos") && icloud.is_dir() { icloud.join("Xivly") } else { documents.join("Xivly") }
+    if cfg!(target_os = "macos") && icloud.is_dir() {
+        icloud.join("Xivly")
+    } else {
+        documents.join("Xivly")
+    }
 }
 
 /// Run blocking file IO off the async runtime's workers.
 async fn blocking<T: Send + 'static>(f: impl FnOnce() -> Result<T> + Send + 'static) -> Result<T> {
-    tauri::async_runtime::spawn_blocking(f).await.map_err(|e| e.to_string())?
+    tauri::async_runtime::spawn_blocking(f)
+        .await
+        .map_err(|e| e.to_string())?
 }
 
 /// The library folder. First launch: create the default one and remember it,
@@ -140,7 +156,10 @@ fn library_path(app: &AppHandle) -> Result<PathBuf> {
         return Ok(path.clone());
     }
     if let Some(err) = state.config_error.lock().unwrap().as_ref() {
-        return Err(format!("Couldn't read Xivly's settings ({err}): choose your library folder again").into());
+        return Err(format!(
+            "Couldn't read Xivly's settings ({err}): choose your library folder again"
+        )
+        .into());
     }
     let path = default_library(&app.path().home_dir()?, &app.path().document_dir()?);
     std::fs::create_dir_all(&path)?;
@@ -171,16 +190,27 @@ const STALE_CHANGE: Duration = Duration::from_secs(15);
 #[tauri::command]
 pub async fn change_library(app: AppHandle) -> Result<()> {
     use tauri_plugin_dialog::DialogExt;
-    let picked = app.dialog().file().set_title("Choose a folder for your Xivly library").blocking_pick_folder();
+    let picked = app
+        .dialog()
+        .file()
+        .set_title("Choose a folder for your Xivly library")
+        .blocking_pick_folder();
     let Some(library) = picked.and_then(|p| p.into_path().ok()) else {
         return Ok(());
     };
     let windows: HashSet<String> = app.webview_windows().into_keys().collect();
     let mut change = CHANGE.lock().unwrap_or_else(|e| e.into_inner());
-    if change.as_ref().is_some_and(|c| c.at.elapsed() < STALE_CHANGE) {
+    if change
+        .as_ref()
+        .is_some_and(|c| c.at.elapsed() < STALE_CHANGE)
+    {
         return Err("The library folder is already being changed".into());
     }
-    *change = Some(Change { windows, library, at: Instant::now() });
+    *change = Some(Change {
+        windows,
+        library,
+        at: Instant::now(),
+    });
     app.emit("library-change-requested", ())?;
     finish_change_if_done(&app, &mut change)
 }
@@ -217,7 +247,9 @@ fn finish_change_if_done(app: &AppHandle, change: &mut Option<Change>) -> Result
     if !change.as_ref().is_some_and(|c| c.windows.is_empty()) {
         return Ok(());
     }
-    let Some(Change { library, .. }) = change.take() else { return Ok(()) };
+    let Some(Change { library, .. }) = change.take() else {
+        return Ok(());
+    };
     let state = app.state::<AppState>();
     let mut cfg = state.config.lock().unwrap();
     cfg.library = Some(library);
@@ -238,7 +270,9 @@ fn refuse_hook(root: &Path, rel: &str) -> Result<()> {
     };
     let target = real_path(&join(root, rel)?)?;
     let sample = target.parent() == Some(hooks.as_path())
-        && target.file_name().is_some_and(|n| n.to_string_lossy().to_lowercase().ends_with(".sample"));
+        && target
+            .file_name()
+            .is_some_and(|n| n.to_string_lossy().to_lowercase().ends_with(".sample"));
     if target.starts_with(&hooks) && !sample {
         return Err(format!("Refusing to write a hook script ({rel})").into());
     }
@@ -251,7 +285,11 @@ fn refuse_hook_name(rel: &str) -> Result<()> {
     // The app never writes such names.
     if Path::new(rel).components().any(|c| {
         let name = c.as_os_str().to_string_lossy();
-        matches!(c, Component::Normal(_)) && (name.ends_with('.') || name.ends_with(' ') || name.contains('~') || name.contains(':'))
+        matches!(c, Component::Normal(_))
+            && (name.ends_with('.')
+                || name.ends_with(' ')
+                || name.contains('~')
+                || name.contains(':'))
     }) {
         return Err(format!("Refusing an ambiguous file name ({rel})").into());
     }
@@ -271,7 +309,11 @@ fn refuse_hook_name(rel: &str) -> Result<()> {
 
 /// Raw bytes (an `ArrayBuffer` in JS), or `null`-equivalent error if missing.
 #[tauri::command]
-pub async fn fs_read(state: State<'_, AppState>, root_dir: PathBuf, path: String) -> Result<tauri::ipc::Response> {
+pub async fn fs_read(
+    state: State<'_, AppState>,
+    root_dir: PathBuf,
+    path: String,
+) -> Result<tauri::ipc::Response> {
     let p = resolve(&root(&state, &root_dir)?, &path)?;
     match blocking(move || Ok(std::fs::read(&p))).await? {
         Ok(bytes) => Ok(tauri::ipc::Response::new(bytes)),
@@ -329,7 +371,9 @@ pub(crate) fn write_atomic(p: &Path, bytes: &[u8]) -> Result<()> {
         match std::fs::rename(&tmp, p) {
             Ok(()) => return Ok(()),
             // Access denied, sharing or lock violation (ERROR_ACCESS_DENIED / _SHARING_ / _LOCK_VIOLATION).
-            Err(e) if cfg!(windows) && tries < 5 && matches!(e.raw_os_error(), Some(5 | 32 | 33)) => {
+            Err(e)
+                if cfg!(windows) && tries < 5 && matches!(e.raw_os_error(), Some(5 | 32 | 33)) =>
+            {
                 tries += 1;
                 std::thread::sleep(std::time::Duration::from_millis(50 * tries));
             }
@@ -368,7 +412,11 @@ pub struct Entry {
 }
 
 #[tauri::command]
-pub async fn fs_list(state: State<'_, AppState>, root_dir: PathBuf, path: String) -> Result<Vec<Entry>> {
+pub async fn fs_list(
+    state: State<'_, AppState>,
+    root_dir: PathBuf,
+    path: String,
+) -> Result<Vec<Entry>> {
     let root = root(&state, &root_dir)?;
     blocking(move || list_dir(&root, &path)).await
 }
@@ -386,7 +434,9 @@ fn list_dir(root: &Path, rel: &str) -> Result<Vec<Entry>> {
             name: e.file_name().to_string_lossy().into_owned(),
             // Follows symlinks: a linked folder lists as a folder (reading it
             // is refused if it leads out of the library).
-            dir: std::fs::metadata(e.path()).map(|m| m.is_dir()).unwrap_or(false),
+            dir: std::fs::metadata(e.path())
+                .map(|m| m.is_dir())
+                .unwrap_or(false),
         })
         .collect())
 }
@@ -405,34 +455,66 @@ pub struct ChildFile {
 /// single call: a library of thousands of papers loads in one round trip
 /// instead of one per paper. Read in parallel; each path checked like `fs_read`.
 #[tauri::command]
-pub async fn fs_read_each(state: State<'_, AppState>, root_dir: PathBuf, dir: String, file: String) -> Result<Vec<ChildFile>> {
+pub async fn fs_read_each(
+    state: State<'_, AppState>,
+    root_dir: PathBuf,
+    dir: String,
+    file: String,
+) -> Result<Vec<ChildFile>> {
     let root = root(&state, &root_dir)?;
     blocking(move || read_each(&root, &dir, &file)).await
 }
 
 fn read_each(root: &Path, dir: &str, file: &str) -> Result<Vec<ChildFile>> {
-    let names: Vec<String> = list_dir(root, dir)?.into_iter().filter(|e| e.dir && !e.name.starts_with('.')).map(|e| e.name).collect();
+    let names: Vec<String> = list_dir(root, dir)?
+        .into_iter()
+        .filter(|e| e.dir && !e.name.starts_with('.'))
+        .map(|e| e.name)
+        .collect();
     let read = |name: &String| {
-        let text = resolve(root, &format!("{dir}/{name}/{file}")).and_then(|p| match std::fs::read(p) {
-            Ok(bytes) => String::from_utf8(bytes).map(Some).map_err(|e| e.to_string().into()),
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
-            Err(e) => Err(e.into()),
-        });
+        let text =
+            resolve(root, &format!("{dir}/{name}/{file}")).and_then(|p| match std::fs::read(p) {
+                Ok(bytes) => String::from_utf8(bytes)
+                    .map(Some)
+                    .map_err(|e| e.to_string().into()),
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
+                Err(e) => Err(e.into()),
+            });
         match text {
-            Ok(text) => ChildFile { name: name.clone(), text, error: false },
-            Err(_) => ChildFile { name: name.clone(), text: None, error: true },
+            Ok(text) => ChildFile {
+                name: name.clone(),
+                text,
+                error: false,
+            },
+            Err(_) => ChildFile {
+                name: name.clone(),
+                text: None,
+                error: true,
+            },
         }
     };
-    let threads = std::thread::available_parallelism().map_or(4, |n| n.get()).min(8);
+    let threads = std::thread::available_parallelism()
+        .map_or(4, |n| n.get())
+        .min(8);
     let chunk = names.len().div_ceil(threads).max(1);
     Ok(std::thread::scope(|s| {
-        let handles: Vec<_> = names.chunks(chunk).map(|part| s.spawn(move || part.iter().map(read).collect::<Vec<_>>())).collect();
-        handles.into_iter().flat_map(|h| h.join().unwrap_or_default()).collect()
+        let handles: Vec<_> = names
+            .chunks(chunk)
+            .map(|part| s.spawn(move || part.iter().map(read).collect::<Vec<_>>()))
+            .collect();
+        handles
+            .into_iter()
+            .flat_map(|h| h.join().unwrap_or_default())
+            .collect()
     }))
 }
 
 #[tauri::command]
-pub async fn fs_exists(state: State<'_, AppState>, root_dir: PathBuf, path: String) -> Result<bool> {
+pub async fn fs_exists(
+    state: State<'_, AppState>,
+    root_dir: PathBuf,
+    path: String,
+) -> Result<bool> {
     let p = resolve(&root(&state, &root_dir)?, &path)?;
     blocking(move || Ok(p.try_exists()?)).await
 }
@@ -466,14 +548,24 @@ pub async fn fs_trash(state: State<'_, AppState>, root_dir: PathBuf, path: Strin
 
 /// Absolute path, for "Show in Finder".
 #[tauri::command]
-pub async fn fs_abs(state: State<'_, AppState>, root_dir: PathBuf, path: String) -> Result<PathBuf> {
+pub async fn fs_abs(
+    state: State<'_, AppState>,
+    root_dir: PathBuf,
+    path: String,
+) -> Result<PathBuf> {
     resolve(&root(&state, &root_dir)?, &path)
 }
 
 /// `paper-removed` waits for its hooks (they need the folder, which is
 /// trashed right after); other events run in the background.
 #[tauri::command]
-pub async fn run_hook(app: AppHandle, state: State<'_, AppState>, root_dir: PathBuf, event: String, paper_id: String) -> Result<()> {
+pub async fn run_hook(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    root_dir: PathBuf,
+    event: String,
+    paper_id: String,
+) -> Result<()> {
     // Only the events Xivly fires (an empty name would match every dotfile in hooks/).
     if !hooks::EVENTS.contains(&event.as_str()) {
         return Err(format!("Unknown hook event: {event:?}").into());
@@ -481,9 +573,11 @@ pub async fn run_hook(app: AppHandle, state: State<'_, AppState>, root_dir: Path
     let r = root(&state, &root_dir)?;
     let dir = resolve_entry(&r, &format!("papers/{paper_id}"))?;
     if event == "paper-removed" {
-        tauri::async_runtime::spawn_blocking(move || hooks::run_blocking(&app, &r, &event, &paper_id, &dir))
-            .await
-            .map_err(|e| e.to_string())?;
+        tauri::async_runtime::spawn_blocking(move || {
+            hooks::run_blocking(&app, &r, &event, &paper_id, &dir)
+        })
+        .await
+        .map_err(|e| e.to_string())?;
     } else {
         hooks::run(&app, &r, &event, &paper_id, &dir);
     }
@@ -501,7 +595,8 @@ mod tests {
         fn new(name: &str) -> Self {
             static SEQ: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
             let n = SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-            let dir = std::env::temp_dir().join(format!("xivly-test-{name}-{}-{n}", std::process::id()));
+            let dir =
+                std::env::temp_dir().join(format!("xivly-test-{name}-{}-{n}", std::process::id()));
             let _ = std::fs::remove_dir_all(&dir);
             std::fs::create_dir_all(&dir).unwrap();
             TempDir(dir)
@@ -537,8 +632,14 @@ mod tests {
         assert!(join(root, "../etc").is_err());
         assert!(join(root, "papers/../../x").is_err());
         assert!(join(root, "/etc/passwd").is_err());
-        assert_eq!(join(root, "papers/a/paper.pdf").unwrap(), Path::new("/lib/papers/a/paper.pdf"));
-        assert_eq!(join(root, "./papers/./a").unwrap(), Path::new("/lib/papers/a"));
+        assert_eq!(
+            join(root, "papers/a/paper.pdf").unwrap(),
+            Path::new("/lib/papers/a/paper.pdf")
+        );
+        assert_eq!(
+            join(root, "./papers/./a").unwrap(),
+            Path::new("/lib/papers/a")
+        );
         let (_tmp, root, _) = library();
         assert!(resolve(&root, "../outside/secret.txt").is_err());
         assert!(resolve_entry(&root, "").is_err());
@@ -546,7 +647,10 @@ mod tests {
         assert!(resolve_entry(&root, "./").is_err());
         assert!(resolve_entry(&root, "papers/a").is_ok());
         // Not there yet (a write creates it, inside).
-        assert_eq!(resolve(&root, "papers/new/paper.pdf").unwrap(), root.join("papers/new/paper.pdf"));
+        assert_eq!(
+            resolve(&root, "papers/new/paper.pdf").unwrap(),
+            root.join("papers/new/paper.pdf")
+        );
     }
 
     #[cfg(unix)]
@@ -554,9 +658,21 @@ mod tests {
     fn rejects_symlinks_out_of_the_library() {
         let (_tmp, root, outside) = library();
         symlink(&outside, &root.join("papers/linked"));
-        symlink(&outside.join("secret.txt"), &root.join("papers/a/paper.pdf"));
-        symlink(&outside.join("missing.pdf"), &root.join("papers/a/dangling.pdf"));
-        for rel in ["papers/linked", "papers/linked/secret.txt", "papers/linked/new/paper.pdf", "papers/a/paper.pdf", "papers/a/dangling.pdf"] {
+        symlink(
+            &outside.join("secret.txt"),
+            &root.join("papers/a/paper.pdf"),
+        );
+        symlink(
+            &outside.join("missing.pdf"),
+            &root.join("papers/a/dangling.pdf"),
+        );
+        for rel in [
+            "papers/linked",
+            "papers/linked/secret.txt",
+            "papers/linked/new/paper.pdf",
+            "papers/a/paper.pdf",
+            "papers/a/dangling.pdf",
+        ] {
             assert!(resolve(&root, rel).is_err(), "{rel}");
         }
         assert!(write_file(&root, "papers/linked/paper.pdf", b"x").is_err());
@@ -591,7 +707,12 @@ mod tests {
         ] {
             assert!(refuse_hook(&root, rel).is_err(), "{rel}");
         }
-        for rel in [".xivly/hooks/paper-added.sample", ".xivly/library.json", "papers/hooks/x", "papers/a/paper.pdf"] {
+        for rel in [
+            ".xivly/hooks/paper-added.sample",
+            ".xivly/library.json",
+            "papers/hooks/x",
+            "papers/a/paper.pdf",
+        ] {
             assert!(refuse_hook(&root, rel).is_ok(), "{rel}");
         }
     }
@@ -602,7 +723,10 @@ mod tests {
         let (_tmp, root, _) = library();
         symlink(&root.join(".xivly/hooks"), &root.join("papers/h"));
         assert!(write_file(&root, "papers/h/paper-added", b"rm -rf ~").is_err());
-        symlink(&root.join(".xivly/hooks/paper-added"), &root.join(".xivly/hooks/x.sample"));
+        symlink(
+            &root.join(".xivly/hooks/paper-added"),
+            &root.join(".xivly/hooks/x.sample"),
+        );
         assert!(write_file(&root, ".xivly/hooks/x.sample", b"rm -rf ~").is_err());
         assert!(!root.join(".xivly/hooks/paper-added").exists());
     }
@@ -612,9 +736,16 @@ mod tests {
         let (_tmp, root, _) = library();
         write_file(&root, "papers/b/paper.pdf", b"one").unwrap();
         write_file(&root, "papers/b/paper.pdf", b"two").unwrap();
-        assert_eq!(std::fs::read(root.join("papers/b/paper.pdf")).unwrap(), b"two");
+        assert_eq!(
+            std::fs::read(root.join("papers/b/paper.pdf")).unwrap(),
+            b"two"
+        );
         // No temp file left behind.
-        let names: Vec<_> = list_dir(&root, "papers/b").unwrap().into_iter().map(|e| e.name).collect();
+        let names: Vec<_> = list_dir(&root, "papers/b")
+            .unwrap()
+            .into_iter()
+            .map(|e| e.name)
+            .collect();
         assert_eq!(names, ["paper.pdf"]);
         assert!(write_file(&root, "", b"x").is_err());
         assert!(write_file(&root, "../escape", b"x").is_err());
@@ -624,7 +755,11 @@ mod tests {
     #[test]
     fn lists_folders() {
         let (_tmp, root, _) = library();
-        let mut entries: Vec<_> = list_dir(&root, "papers").unwrap().into_iter().map(|e| (e.name, e.dir)).collect();
+        let mut entries: Vec<_> = list_dir(&root, "papers")
+            .unwrap()
+            .into_iter()
+            .map(|e| (e.name, e.dir))
+            .collect();
         entries.sort();
         assert_eq!(entries, [("a".to_string(), true)]);
         assert!(list_dir(&root, "papers/missing").unwrap().is_empty());
@@ -645,9 +780,17 @@ mod tests {
             symlink(&outside, &root.join("papers/linked"));
         }
         let _ = &outside;
-        let mut got: Vec<_> = read_each(&root, "papers", "paper.json").unwrap().into_iter().map(|f| (f.name, f.text, f.error)).collect();
+        let mut got: Vec<_> = read_each(&root, "papers", "paper.json")
+            .unwrap()
+            .into_iter()
+            .map(|f| (f.name, f.text, f.error))
+            .collect();
         got.sort();
-        let mut want = vec![("a".to_string(), Some(r#"{"title":"A"}"#.to_string()), false), ("b".to_string(), None, false), ("c".to_string(), None, true)];
+        let mut want = vec![
+            ("a".to_string(), Some(r#"{"title":"A"}"#.to_string()), false),
+            ("b".to_string(), None, false),
+            ("c".to_string(), None, true),
+        ];
         // A folder linked from outside the library is refused, like any read through it.
         if cfg!(unix) {
             want.push(("linked".to_string(), None, true));
@@ -671,13 +814,20 @@ mod tests {
         let docs = home.join("Documents");
         assert_eq!(default_library(home, &docs), docs.join("Xivly"));
         std::fs::create_dir_all(home.join("Library/Mobile Documents/com~apple~CloudDocs")).unwrap();
-        let expected = if cfg!(target_os = "macos") { home.join("Library/Mobile Documents/com~apple~CloudDocs/Xivly") } else { docs.join("Xivly") };
+        let expected = if cfg!(target_os = "macos") {
+            home.join("Library/Mobile Documents/com~apple~CloudDocs/Xivly")
+        } else {
+            docs.join("Xivly")
+        };
         assert_eq!(default_library(home, &docs), expected);
     }
 
     #[test]
     fn decodes_paths() {
-        assert_eq!(percent_decode("papers/%C3%A9t%C3%A9/paper.json"), "papers/été/paper.json");
+        assert_eq!(
+            percent_decode("papers/%C3%A9t%C3%A9/paper.json"),
+            "papers/été/paper.json"
+        );
         assert_eq!(percent_decode("a%2"), "a%2");
     }
 }
