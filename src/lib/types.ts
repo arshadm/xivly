@@ -78,3 +78,13 @@ export interface Paper {
 }
 
 export type PaperPatch = { [K in keyof Paper]?: Paper[K] | null };
+
+/**
+ * A place in a paper (bookmarks, links in notes, mind-map nodes, page
+ * citations). Helpers: `#lib/anchor.ts`.
+ */
+export interface PaperAnchor {
+	/** Fractional page, as `ViewerState.position`: 3.42 = 42% into page 3. */
+	page: number;
+	label?: string;
+}
