@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core';
+import { Channel, invoke } from '@tauri-apps/api/core';
 import { openUrl, revealItemInDir } from '@tauri-apps/plugin-opener';
 import type { LibraryFs, Platform } from './types';
 
@@ -59,5 +59,14 @@ export const tauriPlatform: Platform = {
 		const dir = await open({ directory: true, title: 'The arxiv_fetch folder (with arxiv.db)' });
 		return dir && !Array.isArray(dir) ? dir : null;
 	},
-	readArxivFetch: (dir) => invoke('feed_import_arxiv_fetch', { dir })
+	readArxivFetch: (dir) => invoke('feed_import_arxiv_fetch', { dir }),
+	claude: {
+		locate: (path) => invoke('claude_locate', { path: path || null }),
+		run(request, onEvent) {
+			const channel = new Channel<unknown>();
+			channel.onmessage = onEvent;
+			return invoke('claude_run', { request: { ...request, rootDir }, onEvent: channel });
+		},
+		cancel: (id) => invoke('claude_cancel', { id })
+	}
 };

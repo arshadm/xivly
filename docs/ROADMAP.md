@@ -102,13 +102,13 @@ Catchup pages don't allow cross-origin reads, so fetching (and running `claude`)
 
 ## Phase 4: Chat with Claude about a paper (desktop)
 
-- [ ] **4.1 Find `claude`.** Apps opened from Finder don't get your shell's PATH, so look it up through the login shell (`$SHELL -lc 'command -v claude'`), with a path in Settings as a fallback. Check it is installed and logged in.
-- [ ] **4.2 One question, one answer.**
-  - `src-tauri/src/llm.rs` starts `claude -p --output-format stream-json --verbose` with:
-    - the working directory set to the paper's folder;
-    - `--allowedTools Read`, so it can read but not edit or run anything.
-  - Events stream to the frontend through a Tauri `Channel`, with a cancel command.
-  - *Test:* a Rust test that uses a fake `claude` script.
+- [x] **4.1 Find `claude`** (`src-tauri/src/claude.rs`): through the login shell (a GUI app's PATH is bare), else the usual places, else a path set in **Settings › Claude**, which also shows the version found and has the model choice (Sonnet by default).
+- [x] **4.2 One question, one answer:**
+  - `claude -p --output-format stream-json --verbose --include-partial-messages`, run in the paper's folder (checked to be inside the library). The prompt goes on stdin.
+  - `--strict-mcp-config --setting-sources ""` (no MCP servers or user settings), `--tools`/`--allowedTools` limited to what Xivly allows, `--session-id` (new) or `--resume` (continued), the model, and an appended system prompt.
+  - Every event is streamed to the window through a Tauri `Channel`; `claude_cancel` stops a run.
+  - `src/lib/chat/events.ts` turns the events into an answer (text as it streams, "Reading paper.pdf…", session, cost, errors).
+  - *Test:* Rust tests (the arguments; a stand-in `claude` script for streaming and exit codes; an ignored test against the real CLI), and `events.test.ts`.
 - [ ] **4.3 Chat panel** as a right-pane tab, with streamed Markdown answers and a stop button.
 - [ ] **4.4 Conversations:** `--resume <session_id>` for follow-up questions. Chats are saved in `papers/<id>/chats/<timestamp>.json` and listed.
 - [ ] **4.5 Saved prompts** in `.xivly/prompts.json`, with placeholders such as `{{title}}`, `{{selection}}` and `{{notes}}`.

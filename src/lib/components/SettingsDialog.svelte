@@ -1,14 +1,14 @@
 <!-- Settings (⌘, / Ctrl+,): every option is live; stored per platform and synced across windows. -->
 <script module lang="ts">
 	export const settingsDialog = $state({ open: false, section: 'general' as Section });
-	type Section = 'general' | 'reading' | 'layout' | 'annotations' | 'saving' | 'research' | 'library' | 'feed' | 'hooks' | 'shortcuts';
+	type Section = 'general' | 'reading' | 'layout' | 'annotations' | 'saving' | 'research' | 'library' | 'feed' | 'claude' | 'hooks' | 'shortcuts';
 </script>
 
 <script lang="ts">
 	import { button, iconButton, mutedIcon } from '#lib/ui/button.js';
 	import { Dialog } from 'bits-ui';
 	import { defaultPalette } from 'svelte-pdf-mini/core';
-	import type { Snippet } from 'svelte';
+	import { untrack, type Snippet } from 'svelte';
 	import UiDialog from '#lib/ui/Dialog.svelte';
 	import { library } from '#lib/library.svelte.js';
 	import { platform } from '#lib/platform/index.js';
@@ -45,10 +45,21 @@
 		{ id: 'research', label: 'Research', icon: 'icon-[lucide--graduation-cap]' },
 		{ id: 'library', label: 'Library', icon: 'icon-[lucide--library]' },
 		{ id: 'feed', label: 'arXiv feed', icon: 'icon-[lucide--rss]', desktop: true },
+		{ id: 'claude', label: 'Claude', icon: 'icon-[lucide--sparkles]', desktop: true },
 		{ id: 'hooks', label: 'Hooks', icon: 'icon-[lucide--webhook]', desktop: true },
 		{ id: 'shortcuts', label: 'Shortcuts', icon: 'icon-[lucide--keyboard]' }
 	];
 	const visible = $derived(sections.filter((x) => !x.desktop || platform.kind === 'desktop'));
+
+	// ── Claude ────────────────────────────────────────────────────────────
+	let claudeFound = $state<{ path: string; version: string } | { error: string } | null>(null);
+	async function checkClaude() {
+		claudeFound = null;
+		claudeFound = await platform.claude!.locate(s.claudePath).catch((e) => ({ error: e instanceof Error ? e.message : String(e) }));
+	}
+	$effect(() => {
+		if (settingsDialog.open && settingsDialog.section === 'claude' && platform.claude) untrack(() => void checkClaude());
+	});
 
 </script>
 
@@ -190,6 +201,16 @@
 								{@render row('arxiv_fetch folder', s.feedToolDir || 'Not chosen yet (the folder with arxiv.db)', dirCtl)}
 								{#snippet refreshCtl()}<button class={button('secondary')} disabled={feed.refreshing} onclick={() => feed.refresh()}>{feed.refreshing ? 'Refreshing…' : 'Refresh now'}</button>{/snippet}
 								{@render row('Refresh', 'Bring in its papers, scores and settings', refreshCtl)}
+							{:else if settingsDialog.section === 'claude'}
+								<p class="text-xs leading-relaxed text-muted">
+									Ask Claude about the paper you're reading (the Chat tab, next to Notes). Xivly runs Claude Code (the <code>claude</code> command) in the paper's folder with your own login, so questions count against your Claude subscription; no API key is needed. Claude can only read the paper's files.
+								</p>
+								{#snippet foundCtl()}<button class={button('secondary')} onclick={checkClaude}>Check again</button>{/snippet}
+								{@render row('Claude Code', claudeFound === null ? 'Looking…' : 'error' in claudeFound ? claudeFound.error : `${claudeFound.version} — ${claudeFound.path}`, foundCtl)}
+								{#snippet pathCtl()}<input class="h-8 w-56 rounded-md border border-edge bg-transparent px-2 text-[13px] placeholder:text-muted" value={s.claudePath} placeholder="Found by itself" onchange={(e) => (settings.set('claudePath', e.currentTarget.value.trim()), void checkClaude())} />{/snippet}
+								{@render row('Path to claude', 'Only if it isn’t found (e.g. ~/.local/bin/claude)', pathCtl)}
+								{#snippet modelCtl()}<Select label="Model" value={['sonnet', 'opus', 'haiku'].includes(s.claudeModel) ? s.claudeModel : 'sonnet'} onValueChange={set('claudeModel')} items={[{ value: 'sonnet', label: 'Sonnet (balanced)' }, { value: 'opus', label: 'Opus (most capable)' }, { value: 'haiku', label: 'Haiku (fastest)' }]} />{/snippet}
+								{@render row('Model', 'For questions about papers', modelCtl)}
 							{:else if settingsDialog.section === 'hooks'}
 								{#snippet hookCtl()}<Select label="Hook notifications" value={s.hookToasts} onValueChange={set('hookToasts')} items={[{ value: 'errors', label: 'Failures only' }, { value: 'all', label: 'Every run' }, { value: 'off', label: 'Never' }]} />{/snippet}
 								{@render row('Notifications', 'When a hook script runs', hookCtl)}

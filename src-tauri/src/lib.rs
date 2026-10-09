@@ -1,3 +1,4 @@
+mod claude;
 mod config;
 mod error;
 mod feed_import;
@@ -92,6 +93,7 @@ pub fn run() {
                 config: std::sync::Mutex::new(config),
                 config_error: std::sync::Mutex::new(config_error),
             });
+            app.manage(claude::ClaudeState::default());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -108,6 +110,9 @@ pub fn run() {
             library::fs_mkdir,
             library::fs_trash,
             feed_import::feed_import_arxiv_fetch,
+            claude::claude_locate,
+            claude::claude_run,
+            claude::claude_cancel,
             library::fs_abs,
             library::run_hook,
         ])

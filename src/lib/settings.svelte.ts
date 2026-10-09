@@ -104,7 +104,11 @@ const defaults = {
 	// Desktop
 	hookToasts: 'errors' as 'all' | 'errors' | 'off',
 	/** The arxiv_fetch tool's folder (with arxiv.db) the feed refreshes from, on this computer. */
-	feedToolDir: ''
+	feedToolDir: '',
+	/** The claude CLI (Claude Code), when not found by itself (desktop). */
+	claudePath: '',
+	/** Claude model for questions about papers ("sonnet", "opus", "haiku", or a full model id). */
+	claudeModel: 'sonnet'
 };
 
 export type Settings = typeof defaults;

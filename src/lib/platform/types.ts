@@ -22,6 +22,32 @@ export interface LibraryFs {
 
 import type { ArxivFetchExport } from '#lib/feed/import.js';
 
+/** A question to Claude about a paper (`claude -p` in its folder). */
+interface ClaudeRequest {
+	/** This run's id (to cancel it). */
+	id: string;
+	/** The claude to run (from `locate`). */
+	claude: string;
+	paperId: string;
+	prompt: string;
+	/** The conversation: started with this id, or continued (`resume`). */
+	sessionId: string;
+	resume: boolean;
+	model?: string;
+	/** Added to Claude Code's system prompt. */
+	system?: string;
+	/** Tools Claude may use, e.g. ['Read']. */
+	tools: string[];
+}
+
+interface ClaudeCli {
+	/** Where claude is (`path`: the one set in Settings, else found) and its version; throws when there's none. */
+	locate(path?: string): Promise<{ path: string; version: string }>;
+	/** Start a run; `onEvent` gets each stream-json event, then `{ type: 'xivly_exit' }`. */
+	run(request: ClaudeRequest, onEvent: (event: unknown) => void): Promise<void>;
+	cancel(id: string): Promise<void>;
+}
+
 export type HookEvent = 'paper-added' | 'paper-saved' | 'paper-updated' | 'paper-removed';
 
 export interface Platform {
@@ -43,4 +69,6 @@ export interface Platform {
 	pickArxivFetchDir?(): Promise<string | null>;
 	/** Desktop only: read that folder's arxiv.db and config.json. */
 	readArxivFetch?(dir: string): Promise<ArxivFetchExport>;
+	/** Desktop only: the claude CLI (Claude Code), run in a paper's folder. */
+	claude?: ClaudeCli;
 }

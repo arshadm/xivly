@@ -32,7 +32,7 @@ pub struct AppState {
 /// The library root, if it is still `expected`, the one the calling window
 /// opened. After a library change, a window still open (it should have
 /// closed) must never read or write a same-named file of the new library.
-fn root(state: &State<AppState>, expected: &Path) -> Result<PathBuf> {
+pub(crate) fn root(state: &State<AppState>, expected: &Path) -> Result<PathBuf> {
     same_root(state.config.lock().unwrap().library.as_deref(), expected)
 }
 
@@ -59,7 +59,7 @@ fn join(root: &Path, rel: &str) -> Result<PathBuf> {
 /// must not lead reads and writes out of it. What exists of the path is
 /// resolved (symlinks, and on Windows 8.3 short names) and must stay under the
 /// resolved root; the rest doesn't exist yet, so it can't be a link.
-fn resolve(root: &Path, rel: &str) -> Result<PathBuf> {
+pub(crate) fn resolve(root: &Path, rel: &str) -> Result<PathBuf> {
     let p = join(root, rel)?;
     if !real_path(&p)?.starts_with(root.canonicalize()?) {
         return Err(format!("Refusing a path that leads out of the library ({rel:?})").into());
