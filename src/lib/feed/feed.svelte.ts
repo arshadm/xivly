@@ -3,6 +3,9 @@
 // and update the list here.
 import { toast } from '#lib/components/Toasts.svelte';
 import { library } from '#lib/library.svelte.js';
+import { platform } from '#lib/platform/index.js';
+import { settings } from '#lib/settings.svelte.js';
+import { importArxivFetch } from './import';
 import { openPaper } from '#lib/windows.js';
 import type { FeedConfig, FeedPaper, FeedState } from '#lib/types.js';
 import { feedTopics, filterFeed, priorityCounts, toTriage } from './filter';
@@ -71,6 +74,37 @@ class Feed {
 	/** A paper changed on disk: show its new version. */
 	replace(paper: FeedPaper) {
 		this.papers = this.papers.map((p) => (p.id === paper.id ? paper : p));
+	}
+
+	// ── Refresh from arxiv_fetch (desktop) ─────────────────────────────────
+	refreshing = $state(false);
+
+	/** Ask for the tool's folder (kept for later refreshes); false when cancelled. */
+	async chooseToolDir() {
+		const dir = await platform.pickArxivFetchDir?.();
+		if (!dir) return false;
+		settings.set('feedToolDir', dir);
+		return true;
+	}
+
+	/**
+	 * Bring in the tool's latest run: its papers (merged: what was decided here is kept)
+	 * and its settings. Asks for the folder the first time.
+	 */
+	async refresh() {
+		const store = this.store;
+		if (!store || !platform.readArxivFetch || this.refreshing) return;
+		if (!settings.values.feedToolDir && !(await this.chooseToolDir())) return;
+		this.refreshing = true;
+		try {
+			const r = await importArxivFetch(store, await platform.readArxivFetch(settings.values.feedToolDir), true);
+			await this.load();
+			toast(r.added ? `${r.added.toLocaleString()} new paper${r.added === 1 ? '' : 's'} from arxiv_fetch` : 'No new papers from arxiv_fetch');
+		} catch (e) {
+			toast(`Couldn’t refresh from arxiv_fetch: ${e instanceof Error ? e.message : e}`, 'error', { label: 'Choose folder', run: () => void this.chooseToolDir().then((ok) => (ok ? this.refresh() : undefined)) });
+		} finally {
+			this.refreshing = false;
+		}
 	}
 
 	/** Papers being added to the library (their PDF downloading). */

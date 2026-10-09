@@ -54,10 +54,10 @@ export const tauriPlatform: Platform = {
 	openUrl: (url) => openUrl(url),
 	reveal: async (path) => revealItemInDir(await invoke<string>('fs_abs', { rootDir, path })),
 	runHook: (event, paperId) => invoke('run_hook', { rootDir, event, paperId }),
-	async importArxivFetch() {
+	async pickArxivFetchDir() {
 		const { open } = await import('@tauri-apps/plugin-dialog');
 		const dir = await open({ directory: true, title: 'The arxiv_fetch folder (with arxiv.db)' });
-		if (!dir || Array.isArray(dir)) return null;
-		return invoke('feed_import_arxiv_fetch', { dir });
-	}
+		return dir && !Array.isArray(dir) ? dir : null;
+	},
+	readArxivFetch: (dir) => invoke('feed_import_arxiv_fetch', { dir })
 };

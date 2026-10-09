@@ -10,6 +10,8 @@
 	import { keys } from '#lib/shortcuts.js';
 	import { button, iconButton, mutedIcon } from '#lib/ui/button.js';
 	import Tip from '#lib/ui/Tip.svelte';
+	import { contextMenuState, type MenuItem } from '#lib/ui/context-menu.svelte.js';
+	import { settings } from '#lib/settings.svelte.js';
 	import ToggleGroup from '#lib/ui/ToggleGroup.svelte';
 	import FeedCard from './FeedCard.svelte';
 	import { feed } from './feed.svelte';
@@ -36,6 +38,23 @@
 	const chip = 'h-7 rounded-full border px-3 text-xs whitespace-nowrap transition-colors border-stone-300 text-stone-600 hover:bg-stone-200/60 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800 aria-pressed:border-stone-800 aria-pressed:bg-stone-800 aria-pressed:text-white dark:aria-pressed:border-stone-200 dark:aria-pressed:bg-stone-200 dark:aria-pressed:text-stone-900';
 	const openSettings = () => Object.assign(settingsDialog, { open: true, section: 'feed' });
 
+	/** "5 min ago", "3 h ago", "yesterday", or the date. */
+	function ago(iso: string) {
+		const min = Math.round((Date.now() - Date.parse(iso)) / 60_000);
+		if (min < 1) return 'just now';
+		if (min < 60) return `${min} min ago`;
+		if (min < 24 * 60) return `${Math.round(min / 60)} h ago`;
+		if (min < 48 * 60) return 'yesterday';
+		return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+	}
+	const refreshed = $derived(feed.state?.refreshed);
+
+	const menu = (): MenuItem[] => [
+		{ label: 'Refresh from arxiv_fetch', icon: 'icon-[lucide--refresh-cw]', disabled: feed.refreshing, onSelect: () => feed.refresh() },
+		{ label: 'Choose the arxiv_fetch folder…', icon: 'icon-[lucide--folder-open]', onSelect: () => feed.chooseToolDir() },
+		{ label: 'Feed settings…', icon: 'icon-[lucide--settings]', separatorBefore: true, onSelect: openSettings }
+	];
+
 	$effect(() => {
 		if (!feed.loaded) void feed.load();
 	});
@@ -47,7 +66,20 @@
 	<header class="@container flex h-12 shrink-0 items-center gap-3 px-6 max-lg:gap-2" data-tauri-drag-region>
 		<h1 class="min-w-0 shrink-[0.05] truncate font-serif text-xl" data-tauri-drag-region>{feed.dismissed ? 'Dismissed' : 'arXiv feed'}</h1>
 		<span class="text-sm text-muted tabular-nums" data-tauri-drag-region>{feed.visible.length}</span>
+		{#if refreshed}<span class="truncate text-xs text-muted @max-3xl:hidden" title={new Date(refreshed.at).toLocaleString()} data-tauri-drag-region>Refreshed {ago(refreshed.at)} · {refreshed.added.toLocaleString()} new</span>{/if}
 		<div class="flex-1" data-tauri-drag-region></div>
+		{#if platform.readArxivFetch}
+			<Tip label={settings.values.feedToolDir ? `Bring in arxiv_fetch’s latest run (${settings.values.feedToolDir})` : 'Bring in what arxiv_fetch found (asks for its folder)'}>
+				{#snippet child({ props })}
+					<button {...props} class={button('secondary', 'h-8')} disabled={feed.refreshing} onclick={() => feed.refresh()}>
+						<span class="icon-[lucide--refresh-cw] size-3.5 {feed.refreshing ? 'animate-spin' : ''}"></span><span class="@max-2xl:hidden">{feed.refreshing ? 'Refreshing…' : 'Refresh'}</span>
+					</button>
+				{/snippet}
+			</Tip>
+			<Tip label="More">
+				{#snippet child({ props })}<button {...props} class={iconButton(8)} aria-label="Feed menu" onclick={(e) => contextMenuState.showAt(e.currentTarget, menu())}><span class="icon-[lucide--ellipsis] size-4"></span></button>{/snippet}
+			</Tip>
+		{/if}
 		<ToggleGroup label="Sort" value={feed.sort} onValueChange={(v) => (feed.sort = v)} items={[{ value: 'date', label: 'Newest' }, { value: 'priority', label: 'Priority' }]} />
 		<label class="flex h-8 w-64 min-w-28 shrink-[4] items-center gap-2 rounded-lg bg-stone-200/60 pr-1.5 pl-2.5 ring-blue-500 focus-within:bg-white focus-within:ring-2 dark:bg-stone-800/60 dark:ring-blue-400 dark:focus-within:bg-stone-900">
 			<span class="icon-[lucide--search] size-3.5 shrink-0 text-stone-400"></span>
@@ -85,11 +117,11 @@
 			<div class="grid h-full place-items-center text-center text-sm text-muted">
 				<div class="max-w-sm">
 					<p>No papers in the feed yet.</p>
-					{#if platform.importArxivFetch}
-						<p class="mt-2">Set your categories and topics, or import them (with the papers found so far) from arxiv_fetch.</p>
-						<button class={button('secondary', 'mt-3')} onclick={openSettings}>Feed settings…</button>
+					{#if platform.readArxivFetch}
+						<p class="mt-2">Bring in what the arxiv_fetch tool has found and scored.</p>
+						<button class={button('secondary', 'mt-3')} disabled={feed.refreshing} onclick={() => feed.refresh()}>{feed.refreshing ? 'Refreshing…' : 'Refresh from arxiv_fetch…'}</button>
 					{:else}
-						<p class="mt-2">Checking arXiv runs in the desktop app; its papers show here too.</p>
+						<p class="mt-2">The desktop app brings them in from the arxiv_fetch tool; they show here too.</p>
 					{/if}
 				</div>
 			</div>

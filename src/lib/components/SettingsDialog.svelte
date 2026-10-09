@@ -19,8 +19,7 @@
 	import { downloadStarter, hasStarter, removeStarter, starter, STARTER_TAG } from '#lib/onboarding/starter.svelte.js';
 	import { prompts } from '#lib/ui/prompt.svelte.js';
 	import { toast } from './Toasts.svelte';
-	import { importArxivFetch } from '#lib/feed/import.js';
-	import { FeedStore } from '#lib/feed/store.js';
+	import { feed } from '#lib/feed/feed.svelte.js';
 
 	async function removeExamples() {
 		const n = library.papers.filter((p) => p.tags?.includes(STARTER_TAG)).length;
@@ -51,25 +50,6 @@
 	];
 	const visible = $derived(sections.filter((x) => !x.desktop || platform.kind === 'desktop'));
 
-	// ── arXiv feed ────────────────────────────────────────────────────────
-	let importing = $state(false);
-	async function importFeed() {
-		if (!platform.importArxivFetch || !library.repo) return;
-		importing = true;
-		try {
-			const data = await platform.importArxivFetch();
-			if (!data) return;
-			const withConfig =
-				!!data.config &&
-				(await prompts.confirm('Use the tool’s settings too?', { message: 'Its categories, topics, profile and rubric (config.json) replace the feed’s.', confirmLabel: 'Use them' }));
-			const r = await importArxivFetch(new FeedStore(library.repo.fs), data, withConfig);
-			toast(`Imported ${r.papers.toLocaleString()} papers (${r.added.toLocaleString()} new to the feed, ${r.scored.toLocaleString()} scored, ${r.dismissed} dismissed)${r.config ? ', and the tool’s settings' : ''}`);
-		} catch (e) {
-			toast(`Import failed: ${e instanceof Error ? e.message : e}`, 'error');
-		} finally {
-			importing = false;
-		}
-	}
 </script>
 
 {#snippet row(label: string, hint: string, control: Snippet)}
@@ -204,10 +184,12 @@
 								{@render row('Library folder', library.name, locCtl)}
 							{:else if settingsDialog.section === 'feed'}
 								<p class="text-xs leading-relaxed text-muted">
-									The arXiv feed checks arXiv's daily listings for your categories and topics, scores new papers P1–P5 with Claude, and lists them in the library. It lives in <code>.xivly/feed/</code>, in the library folder.
+									The arXiv feed lists what the <code>arxiv_fetch</code> tool found and scored (P1–P5), to add to the library. Run the tool, then Refresh: papers you already dismissed or added stay as they are. The feed lives in <code>.xivly/feed/</code>, in the library folder.
 								</p>
-								{#snippet importCtl()}<button class={button('secondary')} disabled={importing} onclick={importFeed}>{importing ? 'Importing…' : 'Import…'}</button>{/snippet}
-								{@render row('Import from arxiv_fetch', 'Its papers, scores, dismissals and settings (the folder with arxiv.db)', importCtl)}
+								{#snippet dirCtl()}<button class={button('secondary')} onclick={() => feed.chooseToolDir()}>{s.feedToolDir ? 'Change…' : 'Choose…'}</button>{/snippet}
+								{@render row('arxiv_fetch folder', s.feedToolDir || 'Not chosen yet (the folder with arxiv.db)', dirCtl)}
+								{#snippet refreshCtl()}<button class={button('secondary')} disabled={feed.refreshing} onclick={() => feed.refresh()}>{feed.refreshing ? 'Refreshing…' : 'Refresh now'}</button>{/snippet}
+								{@render row('Refresh', 'Bring in its papers, scores and settings', refreshCtl)}
 							{:else if settingsDialog.section === 'hooks'}
 								{#snippet hookCtl()}<Select label="Hook notifications" value={s.hookToasts} onValueChange={set('hookToasts')} items={[{ value: 'errors', label: 'Failures only' }, { value: 'all', label: 'Every run' }, { value: 'off', label: 'Never' }]} />{/snippet}
 								{@render row('Notifications', 'When a hook script runs', hookCtl)}

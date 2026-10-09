@@ -87,7 +87,8 @@ export function normalizeFeedState(raw: Json | null): FeedState {
 			error: str(x.error)
 		})
 	);
-	return { ...r, version: FEED_VERSION, lastTo: str(r.lastTo), runs: runs.slice(-MAX_RUNS) };
+	const refreshed = isObject(r.refreshed) && str(r.refreshed.at) ? { at: str(r.refreshed.at)!, added: Number(r.refreshed.added) || 0 } : undefined;
+	return { ...r, version: FEED_VERSION, lastTo: str(r.lastTo), runs: runs.slice(-MAX_RUNS), refreshed };
 }
 
 /** The state with a run added or replaced (by start time), the oldest dropped past the limit. */

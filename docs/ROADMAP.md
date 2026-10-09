@@ -97,7 +97,7 @@ Catchup pages don't allow cross-origin reads, so fetching (and running `claude`)
 - [x] **3.3 Feed view:** "arXiv feed" in the library sidebar, with priority chips (P1–P3 on by default, with counts), topic chips, search (title, abstract, authors, reason), newest-first grouped by day or by priority, cards showing the priority badge, reason, metadata and an expandable abstract, and links to arXiv and the PDF.
 - [x] **3.4 Add to library, dismiss and restore:** "Add" imports the paper through the existing arXiv import, keeps its topics as tags, and links the card to the library paper ("Open"). Dismiss with undo; a Dismissed view to restore.
 - ~~3.5–3.8 Checking arXiv and scoring in Xivly~~: **dropped (2026-10-09).** `arxiv_fetch.py` keeps fetching and scoring, run by hand; Xivly imports what it found (3.2, re-run any time: papers merge, and decisions made in Xivly are kept). The Claude bridge moves back to Phase 4.
-- [ ] **3.9 Refresh from the tool:** a "Refresh from arxiv_fetch" button in the feed that remembers the tool's folder, so bringing in a new run takes one click.
+- [x] **3.9 Refresh from the tool:** a "Refresh from arxiv_fetch" button in the feed that remembers the tool's folder, so bringing in a new run takes one click.
 - [ ] **3.10 Nice-to-haves:** "new since the last refresh" highlighting, keyword filters saved as views.
 
 ## Phase 4: Chat with Claude about a paper (desktop)

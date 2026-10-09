@@ -186,5 +186,7 @@ export interface FeedState {
 	/** End of the last successful check's window: the next one starts there. */
 	lastTo?: string;
 	runs: FeedRun[];
+	/** The last refresh from arxiv_fetch: when, and how many papers it brought that the feed didn't have. */
+	refreshed?: { at: string; added: number };
 	[extra: string]: unknown;
 }

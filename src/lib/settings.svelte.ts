@@ -102,7 +102,9 @@ const defaults = {
 	recentWindow: 'week' as RecentWindow,
 
 	// Desktop
-	hookToasts: 'errors' as 'all' | 'errors' | 'off'
+	hookToasts: 'errors' as 'all' | 'errors' | 'off',
+	/** The arxiv_fetch tool's folder (with arxiv.db) the feed refreshes from, on this computer. */
+	feedToolDir: ''
 };
 
 export type Settings = typeof defaults;

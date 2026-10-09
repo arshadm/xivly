@@ -110,5 +110,6 @@ export async function importArxivFetch(store: FeedStore, data: ArxivFetchExport,
 	if (runs.length) await store.updateState((s) => runs.reduce(withRun, s));
 	const config = withConfig ? configFromArxivFetch(data.config) : null;
 	if (config) await store.writeConfig({ ...(await store.readConfig()), ...config });
+	await store.updateState((s) => ({ ...s, refreshed: { at: new Date().toISOString(), added } }));
 	return { papers: papers.length, added, scored: papers.filter((p) => p.priority).length, dismissed: papers.filter((p) => p.dismissed).length, config: !!config };
 }

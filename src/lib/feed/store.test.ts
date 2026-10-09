@@ -85,5 +85,7 @@ describe('FeedStore', () => {
 		expect(await json(fs, '.xivly/feed/config.json')).toMatchObject({ note: 'mine', categories: ['cs.PL'] });
 		await store.updateState((s) => withRun(s, { started: 'a', from: 'f', to: 't', found: 1, new: 1, scored: 0, status: 'ok' }));
 		expect((await store.readState()).lastTo).toBe('t');
+		await store.updateState((s) => ({ ...s, refreshed: { at: '2026-10-09T12:00:00Z', added: 3 } }));
+		expect((await store.readState()).refreshed).toEqual({ at: '2026-10-09T12:00:00Z', added: 3 });
 	});
 });
