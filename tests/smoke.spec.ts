@@ -61,6 +61,37 @@ async function writesDone(page: Page) {
 	await expect.poll(() => page.evaluate(writing)).toBe(0);
 }
 
+/**
+ * A stand-in for the desktop's claude (the web build takes it from `__xivlyTestClaude`):
+ * answers "It is about **calm reading** [p. 1]." (or "Still about **calm** reading." when
+ * asked "again"), and keeps every request in `__claudeRequests` (across reloads).
+ */
+async function standInClaude(context: BrowserContext) {
+	await context.addInitScript(() => {
+		const w = window as unknown as { __xivlyTestClaude: unknown; __claudeRequests: unknown[] };
+		w.__claudeRequests = JSON.parse(sessionStorage.getItem('claudeRequests') ?? '[]');
+		w.__xivlyTestClaude = {
+			locate: async () => ({ path: '/fake/claude', version: 'test' }),
+			async run(r: { sessionId: string; prompt: string }, onEvent: (e: unknown) => void) {
+				w.__claudeRequests.push(r);
+				sessionStorage.setItem('claudeRequests', JSON.stringify(w.__claudeRequests));
+				const answer = r.prompt.includes('again') ? 'Still about **calm** reading.' : 'It is about **calm reading** [p. 1].';
+				const events: unknown[] = [{ type: 'system', subtype: 'init', session_id: r.sessionId }, { type: 'assistant', message: { content: [{ type: 'tool_use', name: 'Read', input: { file_path: 'paper.pdf' } }] } }];
+				for (const word of answer.split(/(?<= )/)) events.push({ type: 'stream_event', event: { type: 'content_block_delta', delta: { type: 'text_delta', text: word } } });
+				events.push({ type: 'result', is_error: false, result: answer, session_id: r.sessionId, total_cost_usd: 0.004 }, { type: 'xivly_exit', code: 0, stderr: '' });
+				for (const e of events) {
+					await new Promise((res) => setTimeout(res, 30));
+					onEvent(e);
+				}
+			},
+			cancel: async () => {}
+		};
+	});
+}
+
+/** The prompts Claude was asked so far (with the stand-in). */
+const claudeRequests = (page: Page) => page.evaluate(() => (window as unknown as { __claudeRequests: { prompt: string; sessionId: string; resume: boolean; tools: string[] }[] }).__claudeRequests);
+
 test('the library loads without console errors', async ({ page }) => {
 	const errs = errors(page);
 	await startLibrary(page);
@@ -354,6 +385,8 @@ test('the notes pane: ⌘E opens it, its edge resizes it, and it stays as it was
 	await edge.focus();
 	await reader.keyboard.press('ArrowLeft');
 	await expect(edge).toHaveAttribute('aria-valuenow', '540');
+	// Settings are saved a moment after a change: reload once it's stored.
+	await expect.poll(() => reader.evaluate(() => localStorage.getItem('xivly:settings') ?? '')).toContain('"notesPaneWidth":540');
 
 	await reader.reload();
 	await expect(edge).toHaveAttribute('aria-valuenow', '540');
@@ -812,27 +845,7 @@ test('a list of 1500 papers only renders the rows on screen', async ({ page }) =
 });
 
 test('chat with Claude (a stand-in claude): ⌘⇧E, streamed answers with page links, kept and continued after a reload', async ({ page, context }) => {
-	// Every new tab of the context gets the stand-in (the reader opens in one).
-	await context.addInitScript(() => {
-		const w = window as unknown as { __xivlyTestClaude: unknown; __claudeRequests: unknown[] };
-		w.__claudeRequests = JSON.parse(sessionStorage.getItem('claudeRequests') ?? '[]');
-		w.__xivlyTestClaude = {
-			locate: async () => ({ path: '/fake/claude', version: 'test' }),
-			async run(r: { sessionId: string; prompt: string }, onEvent: (e: unknown) => void) {
-				w.__claudeRequests.push(r);
-				sessionStorage.setItem('claudeRequests', JSON.stringify(w.__claudeRequests));
-				const answer = r.prompt.includes('again') ? 'Still about **calm** reading.' : 'It is about **calm reading** [p. 1].';
-				const events = [{ type: 'system', subtype: 'init', session_id: r.sessionId }, { type: 'assistant', message: { content: [{ type: 'tool_use', name: 'Read', input: { file_path: 'paper.pdf' } }] } }];
-				for (const word of answer.split(/(?<= )/)) events.push({ type: 'stream_event', event: { type: 'content_block_delta', delta: { type: 'text_delta', text: word } } } as never);
-				events.push({ type: 'result', is_error: false, result: answer, session_id: r.sessionId, total_cost_usd: 0.004 } as never, { type: 'xivly_exit', code: 0, stderr: '' } as never);
-				for (const e of events) {
-					await new Promise((res) => setTimeout(res, 30));
-					onEvent(e);
-				}
-			},
-			cancel: async () => {}
-		};
-	});
+	await standInClaude(context);
 	const reader = await addPaper(page, context);
 	const errs = errors(reader);
 	await expect(reader.locator('[data-pdf-page]').first().locator('[data-pdf-canvas]')).toBeVisible();
@@ -860,7 +873,7 @@ test('chat with Claude (a stand-in claude): ⌘⇧E, streamed answers with page 
 	await box.fill('Tell me again');
 	await box.press('Enter');
 	await expect(chat.locator('strong').last()).toHaveText('calm');
-	const requests = await reader.evaluate(() => (window as unknown as { __claudeRequests: { sessionId: string; resume: boolean; tools: string[] }[] }).__claudeRequests);
+	const requests = await claudeRequests(reader);
 	expect(requests.map((r) => r.resume)).toEqual([false, true]);
 	expect(requests[1].sessionId).toBe(requests[0].sessionId);
 	expect(requests[0].tools).toEqual(['Read']);
@@ -870,5 +883,116 @@ test('chat with Claude (a stand-in claude): ⌘⇧E, streamed answers with page 
 	await reader.getByRole('textbox', { name: 'Notes' }).click();
 	await reader.keyboard.type('Noted.');
 	await expect(reader.getByText('Saved', { exact: true })).toBeVisible();
+	expect(errs).toEqual([]);
+});
+
+test('saved prompts: from the ✨ menu, filled in from the paper and the selection; saved from a question', async ({ page, context }) => {
+	await standInClaude(context);
+	const reader = await addPaper(page, context);
+	const errs = errors(reader);
+	const firstPage = reader.locator('[data-pdf-page]').first();
+	await expect(firstPage.locator('[data-pdf-canvas]')).toBeVisible();
+	await reader.keyboard.press('ControlOrMeta+Shift+e');
+	const chat = reader.locator('.chat');
+
+	// A default prompt, from the empty chat's suggestions.
+	await chat.getByRole('button', { name: 'Summarise this paper in a few bullet points.' }).click();
+	await expect(chat.locator('strong')).toHaveText('calm reading');
+	expect((await claudeRequests(reader)).at(-1)!.prompt).toBe('Summarise this paper in a few bullet points.');
+
+	// One that needs a selection: off without one, then filled with it.
+	const menuButton = reader.getByRole('button', { name: 'Saved prompts' });
+	await menuButton.click();
+	await expect(reader.getByRole('menuitem', { name: 'Explain the selection (select text first)' })).toHaveAttribute('data-disabled');
+	await reader.keyboard.press('Escape');
+	const line = (await firstPage.getByText(/Reading papers should be calm/).first().boundingBox())!;
+	await reader.mouse.move(line.x + 2, line.y + line.height / 2);
+	await reader.mouse.down();
+	await reader.mouse.move(line.x + line.width - 2, line.y + line.height / 2, { steps: 8 });
+	await reader.mouse.up();
+	await menuButton.click();
+	await reader.getByRole('menuitem', { name: 'Explain the selection' }).click();
+	await expect(chat.locator('strong')).toHaveCount(2);
+	expect((await claudeRequests(reader)).at(-1)!.prompt).toMatch(/^Explain this passage[\s\S]*Reading papers should be calm/);
+
+	// A question saved as a prompt, then in the menu and in Settings.
+	const box = reader.getByRole('textbox', { name: 'Ask Claude about this paper' });
+	await box.fill('List the figures of {{title}}');
+	await menuButton.click();
+	await reader.getByRole('menuitem', { name: 'Save this question as a prompt…' }).click();
+	const name = reader.getByRole('dialog', { name: 'Save as a prompt' }).getByRole('textbox');
+	await name.fill('Figures');
+	await name.press('Enter');
+	await box.fill('');
+	await menuButton.click();
+	await reader.getByRole('menuitem', { name: 'Figures' }).click();
+	await expect(chat.locator('strong')).toHaveCount(3);
+	expect((await claudeRequests(reader)).at(-1)!.prompt).toBe(`List the figures of ${title}`);
+	await menuButton.click();
+	await reader.getByRole('menuitem', { name: 'Edit prompts…' }).click();
+	await expect(reader.getByRole('textbox', { name: 'Prompt name' }).last()).toHaveValue('Figures');
+	expect(errs).toEqual([]);
+});
+
+/** Drag across a line of the first page's text (selecting it). */
+async function selectLine(reader: Page, text: RegExp) {
+	const line = (await reader.locator('[data-pdf-page]').first().getByText(text).first().boundingBox())!;
+	await reader.mouse.move(line.x + 2, line.y + line.height / 2);
+	await reader.mouse.down();
+	await reader.mouse.move(line.x + line.width - 2, line.y + line.height / 2, { steps: 8 });
+	await reader.mouse.up();
+	return line;
+}
+
+test('ask Claude about a selection: quoted with its page to ask about, or explained at once', async ({ page, context }) => {
+	await standInClaude(context);
+	const reader = await addPaper(page, context);
+	const errs = errors(reader);
+	await expect(reader.locator('[data-pdf-page]').first().locator('[data-pdf-canvas]')).toBeVisible();
+
+	let line = await selectLine(reader, /Reading papers should be calm/);
+	await reader.mouse.click(line.x + line.width / 2, line.y + line.height / 2, { button: 'right' });
+	await reader.getByRole('menuitem', { name: 'Ask Claude about this…' }).click();
+	const box = reader.getByRole('textbox', { name: 'Ask Claude about this paper' });
+	await expect(box).toBeFocused();
+	await expect(box).toHaveValue(/^This passage \[p\. 1\]:\n\n> Reading papers should be calm/);
+	await reader.keyboard.type('Why does it matter?');
+	await reader.keyboard.press('Enter');
+	await expect(reader.locator('.chat strong')).toHaveText('calm reading');
+	expect((await claudeRequests(reader)).at(-1)!.prompt).toMatch(/> Reading papers should be calm[\s\S]*Why does it matter\?$/);
+
+	line = await selectLine(reader, /This one-page paper exists/);
+	await reader.mouse.click(line.x + line.width / 2, line.y + line.height / 2, { button: 'right' });
+	await reader.getByRole('menuitem', { name: 'Explain this with Claude' }).click();
+	await expect(reader.locator('.chat strong')).toHaveCount(2);
+	expect((await claudeRequests(reader)).at(-1)!.prompt).toMatch(/^This passage \[p\. 1\]:\n\n> This one-page paper exists[\s\S]*Explain it in plain terms/);
+	expect(errs).toEqual([]);
+});
+
+test('an answer into the notes: under the question, its [p. N] as page chips, kept', async ({ page, context }) => {
+	await standInClaude(context);
+	const reader = await addPaper(page, context);
+	const errs = errors(reader);
+	await expect(reader.locator('[data-pdf-page]').first().locator('[data-pdf-canvas]')).toBeVisible();
+	await reader.keyboard.press('ControlOrMeta+Shift+e');
+	const box = reader.getByRole('textbox', { name: 'Ask Claude about this paper' });
+	await box.fill('What is it about?');
+	await box.press('Enter');
+	await expect(reader.locator('.chat strong')).toHaveText('calm reading');
+
+	await reader.getByRole('button', { name: 'Add to notes' }).click();
+	await reader.getByRole('button', { name: 'Show', exact: true }).click();
+	const notes = reader.getByRole('textbox', { name: 'Notes' });
+	await expect(notes.locator('em')).toHaveText('Claude, on “What is it about?”:');
+	await expect(notes.locator('strong')).toHaveText('calm reading');
+	const chip = notes.locator('[data-paper-link]');
+	await expect(chip).toHaveText('p. 1');
+	await chip.click();
+	await expect(reader.getByRole('group', { name: 'Back' })).toBeVisible();
+
+	await expect(reader.getByText('Saved', { exact: true })).toBeVisible();
+	await writesDone(reader);
+	await reader.reload();
+	await expect(notes.locator('[data-paper-link]')).toHaveText('p. 1');
 	expect(errs).toEqual([]);
 });

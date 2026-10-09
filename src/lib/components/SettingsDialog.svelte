@@ -20,6 +20,7 @@
 	import { prompts } from '#lib/ui/prompt.svelte.js';
 	import { toast } from './Toasts.svelte';
 	import { feed } from '#lib/feed/feed.svelte.js';
+	import PromptsEditor from '#lib/chat/PromptsEditor.svelte';
 
 	async function removeExamples() {
 		const n = library.papers.filter((p) => p.tags?.includes(STARTER_TAG)).length;
@@ -211,6 +212,7 @@
 								{@render row('Path to claude', 'Only if it isn’t found (e.g. ~/.local/bin/claude)', pathCtl)}
 								{#snippet modelCtl()}<Select label="Model" value={['sonnet', 'opus', 'haiku'].includes(s.claudeModel) ? s.claudeModel : 'sonnet'} onValueChange={set('claudeModel')} items={[{ value: 'sonnet', label: 'Sonnet (balanced)' }, { value: 'opus', label: 'Opus (most capable)' }, { value: 'haiku', label: 'Haiku (fastest)' }]} />{/snippet}
 								{@render row('Model', 'For questions about papers', modelCtl)}
+								<PromptsEditor />
 							{:else if settingsDialog.section === 'hooks'}
 								{#snippet hookCtl()}<Select label="Hook notifications" value={s.hookToasts} onValueChange={set('hookToasts')} items={[{ value: 'errors', label: 'Failures only' }, { value: 'all', label: 'Every run' }, { value: 'off', label: 'Never' }]} />{/snippet}
 								{@render row('Notifications', 'When a hook script runs', hookCtl)}

@@ -111,11 +111,11 @@ Catchup pages don't allow cross-origin reads, so fetching (and running `claude`)
   - *Test:* Rust tests (the arguments; a stand-in `claude` script for streaming and exit codes; an ignored test against the real CLI), and `events.test.ts`.
 - [x] **4.3 Chat panel:** the right pane has **Notes | Chat** tabs (both stay alive), ⌘⇧E opens the chat with the question box focused. Answers stream in as text, then show rendered (Markdown, maths); what Claude did shows under them ("Reading paper.pdf (pages 1-3)"); `[p. N]` citations are chips that jump to the page. Stop cancels. Suggested first questions.
 - [x] **4.4 Conversations:** saved as `papers/<id>/chats/<chat>.json` with the Claude Code session, continued with `--resume`, the latest one reopened; New chat, and earlier chats from the history menu. *Test:* `store.test.ts`, `session.test.ts` (a stand-in claude), and an e2e test where the web build is given a stand-in claude.
-- [ ] **4.5 Saved prompts** in `.xivly/prompts.json`, with placeholders such as `{{title}}`, `{{selection}}` and `{{notes}}`.
-- [ ] **4.6 "Ask Claude about the selection"** in the PDF right-click menu.
-- [ ] **4.7 Connect to notes:** "Insert answer into notes", and page citations like `[p. 7]` turned into anchor chips.
+- [x] **4.5 Saved prompts** in `.xivly/prompts.json` (library-wide; defaults until edited): the chat's ✨ menu, the empty chat's suggestions, placeholders `{{title}}`, `{{authors}}`, `{{year}}`, `{{abstract}}`, `{{selection}}` (the text selected in the paper, kept a couple of minutes), `{{notes}}` (notes.md). "Save this question as a prompt", and an editor in Settings › Claude. *Test:* `prompts.test.ts` and an e2e test.
+- [x] **4.6 Claude on a selection:** right-click selected text › "Ask Claude about this…" (the passage quoted with its page in the question box, to ask about) or "Explain this with Claude" (asked at once).
+- [x] **4.7 Into the notes:** "Add to notes" on an answer puts it at the end of the notes under "Claude, on “the question”:", its Markdown as notes formatting, `[p. N]` as page chips and `$…$` as formulas (`src/lib/chat/to-notes.ts`). "Copy" copies the Markdown. *Test:* `to-notes.test.ts` and e2e tests for 4.6 and 4.7.
 
-Use only your own installed and logged-in `claude` CLI. Never read or reuse its login tokens directly.
+Run only your own installed and logged-in `claude` CLI. Xivly never reads or reuses its login tokens.
 
 ## Phase 5: Mind map per paper
 

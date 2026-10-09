@@ -77,7 +77,7 @@
 	export const openFind = () => editor?.openFind();
 
 	/** Add content at the end of the notes, once they're loaded (the pane may have just opened). */
-	export async function append(nodes: JSONContent[]) {
+	export async function append(nodes: JSONContent[] | string) {
 		for (let i = 0; i < 120 && !editor && notes.status !== 'error'; i++) await new Promise(requestAnimationFrame);
 		editor?.append(nodes);
 	}

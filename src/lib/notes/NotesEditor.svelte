@@ -90,8 +90,8 @@
 		if (findOpen && editor) untrack(() => (found = { ...found, count: findMatches(editor!.state.doc, findQuery).length }));
 	});
 
-	/** Add content at the end of the notes (a quote from the paper…), and go on writing after it. */
-	export function append(nodes: JSONContent[]) {
+	/** Add content (nodes, or HTML read into notes nodes) at the end of the notes (a quote from the paper…), and go on writing after it. */
+	export function append(nodes: JSONContent[] | string) {
 		editor?.chain().focus('end').insertContent(nodes).scrollIntoView().run();
 	}
 

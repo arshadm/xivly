@@ -58,6 +58,7 @@
 	import SplitPane from '#lib/pdf/SplitPane.svelte';
 	import NotesPane, { flushNotes } from '#lib/notes/NotesPane.svelte';
 	import ChatPane from '#lib/chat/ChatPane.svelte';
+	import { answerHeading, answerToNotesHtml } from '#lib/chat/to-notes.js';
 	import BookmarkPicker from '#lib/pdf/BookmarkPicker.svelte';
 	import { anchorAt, anchorAtPdfY, jumpTo } from '#lib/anchor.js';
 	import { quoteContent } from '#lib/notes/paper-link.js';
@@ -455,12 +456,52 @@
 	let notesStatus = $state<{ text: string; error: string | null }>({ text: '', error: null });
 	let chatPane = $state<ChatPane>();
 
+	// The last text selected in the paper (a click in the pane may clear the selection itself
+	// before a prompt asks for it): kept for a couple of minutes.
+	let lastSelection = { text: '', at: 0 };
+	$effect(() => {
+		const text = viewer?.selection.text ?? '';
+		if (text.trim()) lastSelection = { text, at: Date.now() };
+	});
+	const selectedText = () => viewer?.selection.text?.trim() || (Date.now() - lastSelection.at < 120_000 ? lastSelection.text : '');
+
+	/** What prompts can use ({{title}}, {{selection}}…). */
+	const promptContext = () => ({ title: paper?.title ?? '', authors: paper?.authors?.join(', ') ?? '', year: paper?.year ? String(paper.year) : '', abstract: paper?.abstract ?? '', selection: selectedText() });
+
 	/** The chat (⌘⇧E): the pane on its Chat tab, the question box focused. */
 	async function openChat() {
 		settings.set('paneTab', 'chat');
 		if (!s.notesPane) settings.set('notesPane', true);
 		for (let i = 0; i < 60 && !chatPane; i++) await new Promise(requestAnimationFrame);
 		await chatPane?.focus();
+	}
+
+	/** An answer from Claude at the end of the notes (its [p. N] as page chips), under the question. */
+	async function answerToNotes(question: string, answer: string) {
+		for (let i = 0; i < 60 && !notesPane; i++) await new Promise(requestAnimationFrame);
+		await notesPane?.append(answerHeading(question) + answerToNotesHtml(answer) + '<p></p>');
+		toast('Added to your notes', 'info', { label: 'Show', run: () => settings.set('paneTab', 'notes') });
+	}
+
+	/** A passage of the paper, quoted with its page (as Claude cites pages). */
+	function quoted(ctx: PdfContext) {
+		const page = ctx.selection.find((sel) => sel.text.trim())?.page ?? ctx.page ?? 1;
+		const text = ctx.selectedText.replace(/\s+/g, ' ').trim();
+		return `This passage [p. ${page}]:\n\n> ${text}\n\n`;
+	}
+
+	/** Right-click › Ask Claude about this: the passage quoted in the question box, to ask about. */
+	async function askAboutSelection(ctx: PdfContext) {
+		const q = quoted(ctx);
+		await openChat();
+		await chatPane?.draft(q);
+	}
+
+	/** Right-click › Explain this with Claude: asked at once. */
+	async function explainSelection(ctx: PdfContext) {
+		const q = `${quoted(ctx)}Explain it in plain terms, and how it fits the rest of the paper.`;
+		await openChat();
+		await chatPane?.ask(q);
 	}
 
 	/** The selected text, as a quote at the end of the notes (opening them if hidden) with a chip to where it is. */
@@ -479,7 +520,17 @@
 	const readingAnchor = () => (viewer?.document.status === 'ready' ? anchorAt(viewer.position) : null);
 
 	const moreActions = (ctx: PdfContext) => ({
-		selection: ctx.selectedText.trim() ? [{ id: 'selection.quote', label: 'Quote in notes', run: () => void quoteInNotes(ctx) }] : [],
+		selection: ctx.selectedText.trim()
+			? [
+					{ id: 'selection.quote', label: 'Quote in notes', run: () => void quoteInNotes(ctx) },
+					...(platform.claude
+						? [
+								{ id: 'selection.ask', label: 'Ask Claude about this…', run: () => void askAboutSelection(ctx) },
+								{ id: 'selection.explain', label: 'Explain this with Claude', run: () => void explainSelection(ctx) }
+							]
+						: [])
+				]
+			: [],
 		page: ctx.page ? [{ id: 'page.bookmark', label: 'Add bookmark here…', keys: keys.addBookmark, run: () => bookmarkAt(ctx) }] : []
 	});
 
@@ -895,7 +946,7 @@
 											<NotesPane bind:this={notesPane} bind:status={notesStatus} {id} onjump={(a) => viewer && jumpTo(viewer, a)} anchor={readingAnchor} />
 										</div>
 										<div class="flex min-h-0 flex-1 flex-col" class:hidden={s.paneTab !== 'chat'}>
-											<ChatPane bind:this={chatPane} {id} title={paper.title} onpage={(page) => viewer && jumpTo(viewer, { page })} />
+											<ChatPane bind:this={chatPane} {id} title={paper.title} onpage={(page) => viewer && jumpTo(viewer, { page })} context={promptContext} onnotes={answerToNotes} />
 										</div>
 									</SplitPane>
 								{/if}

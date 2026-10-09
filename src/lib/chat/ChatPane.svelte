@@ -30,8 +30,26 @@
 	import Tip from '#lib/ui/Tip.svelte';
 	import { ChatSession, linkPages } from './session.svelte';
 	import { ChatStore, type Chat } from './store';
+	import { fillPrompt, needsSelection, readPrompts, writePrompts, type PromptContext, type SavedPrompt } from './prompts';
+	import { prompts as dialogs } from '#lib/ui/prompt.svelte.js';
+	import { toast } from '#lib/components/Toasts.svelte';
+	import { clipboard } from '#lib/ui/clipboard.js';
 
-	let { id, title, onpage }: { id: string; title: string; onpage: (page: number) => void } = $props();
+	let {
+		id,
+		title,
+		onpage,
+		context,
+		onnotes
+	}: {
+		id: string;
+		title: string;
+		onpage: (page: number) => void;
+		/** The paper and the reader, for prompt placeholders ({{title}}, {{selection}}…). */
+		context: () => PromptContext;
+		/** "Add to notes" on an answer: the question it answered, and the answer (Markdown). */
+		onnotes?: (question: string, answer: string) => void;
+	} = $props();
 
 	const store = $derived(library.repo ? new ChatStore(library.repo.fs) : null);
 	let chats = $state.raw<Chat[]>([]);
@@ -64,6 +82,15 @@
 		scrollDown(true);
 		await sending;
 		chats = (await store?.list(id)) ?? chats;
+	}
+
+	/** A question started for you (the cursor after it), to finish and send. */
+	export async function draft(text: string) {
+		question = text;
+		await focus();
+		await tick();
+		input?.setSelectionRange(question.length, question.length);
+		input?.scrollTo({ top: input.scrollHeight });
 	}
 
 	/** Focus the question box (⌘⇧E), once the conversations are loaded and it's there. */
@@ -102,6 +129,43 @@
 		else if (/^https?:/i.test(href)) void platform.openUrl(href);
 	}
 
+	// ── Saved prompts ─────────────────────────────────────────────────────
+	let saved = $state.raw<SavedPrompt[]>([]);
+	const loadPrompts = async () => library.repo && (saved = await readPrompts(library.repo.fs));
+	$effect(() => void loadPrompts());
+
+	/** The paper's notes as Markdown (notes.md), for {{notes}}. */
+	async function notesText() {
+		const bytes = await library.repo?.fs.read(`papers/${id}/notes.md`).catch(() => null);
+		return bytes ? new TextDecoder().decode(bytes).replace(/^<!--[\s\S]*?-->\s*/, '') : '';
+	}
+
+	/** A saved prompt, filled in from the paper (and what's selected), asked. */
+	export async function usePrompt(p: SavedPrompt) {
+		const ctx = context();
+		if (needsSelection(p.text) && !ctx.selection?.trim()) return toast('Select some text in the paper first');
+		if (/\{\{\s*notes\s*\}\}/.test(p.text)) ctx.notes = await notesText();
+		await ask(fillPrompt(p.text, ctx));
+	}
+
+	async function saveAsPrompt() {
+		const text = question.trim();
+		if (!text || !library.repo) return;
+		const name = await dialogs.ask('Save as a prompt', { value: text.split(/\s+/).slice(0, 5).join(' '), placeholder: 'Name', confirmLabel: 'Save', message: 'Placeholders: {{title}}, {{authors}}, {{year}}, {{abstract}}, {{selection}}, {{notes}}' });
+		if (!name?.trim()) return;
+		saved = [...(await readPrompts(library.repo.fs)), { id: crypto.randomUUID(), name: name.trim(), text }];
+		await writePrompts(library.repo.fs, saved).catch((e) => toast(`Couldn’t save the prompt: ${e}`, 'error'));
+	}
+
+	const promptMenu = (): MenuItem[] => {
+		const hasSelection = !!context().selection?.trim();
+		return [
+			...saved.map((p) => ({ label: needsSelection(p.text) && !hasSelection ? `${p.name} (select text first)` : p.name, disabled: needsSelection(p.text) && !hasSelection, onSelect: () => void usePrompt(p) })),
+			{ label: 'Save this question as a prompt…', icon: 'icon-[lucide--bookmark-plus]', separatorBefore: true, disabled: !question.trim(), onSelect: () => void saveAsPrompt() },
+			{ label: 'Edit prompts…', icon: 'icon-[lucide--pencil]', onSelect: () => Object.assign(settingsDialog, { open: true, section: 'claude' }) }
+		];
+	};
+
 	const history = (): MenuItem[] => [
 		{ label: 'New chat', icon: 'icon-[lucide--plus]', onSelect: () => open() },
 		...chats.map((c, i) => ({
@@ -112,7 +176,6 @@
 		}))
 	];
 
-	const suggestions = ['Summarise this paper in a few bullet points.', 'What are the main contributions, and how are they evaluated?', 'Explain the method step by step.', 'What are the limitations, and what would you try next?'];
 	const cost = (c?: number) => (c ? `≈ $${c.toFixed(c < 0.1 ? 3 : 2)} of subscription usage (API-price equivalent)` : '');
 </script>
 
@@ -122,6 +185,7 @@
 	<div class="flex min-h-0 flex-1 flex-col border-t border-stone-200 bg-white dark:border-stone-800 dark:bg-stone-900">
 		<div class="flex shrink-0 items-center gap-1 border-b border-stone-200 py-1 pr-2 pl-4 dark:border-stone-800">
 			<p class="min-w-0 flex-1 truncate text-xs text-muted" title={session.chat.title}>{session.chat.title || 'New chat'}</p>
+			<Tip label="Saved prompts">{#snippet child({ props })}<button {...props} class={iconButton(7, mutedIcon)} aria-label="Saved prompts" disabled={session?.running} onclick={async (e) => { const el = e.currentTarget; await loadPrompts(); contextMenuState.showAt(el, promptMenu()); }}><span class="icon-[lucide--wand-sparkles] size-4"></span></button>{/snippet}</Tip>
 			<Tip label="New chat">{#snippet child({ props })}<button {...props} class={iconButton(7, mutedIcon)} aria-label="New chat" disabled={session?.running} onclick={() => open()}><span class="icon-[lucide--square-pen] size-4"></span></button>{/snippet}</Tip>
 			<Tip label="Earlier chats">{#snippet child({ props })}<button {...props} class={iconButton(7, mutedIcon)} aria-label="Earlier chats" disabled={!chats.length || session?.running} onclick={(e) => contextMenuState.showAt(e.currentTarget, history())}><span class="icon-[lucide--history] size-4"></span></button>{/snippet}</Tip>
 		</div>
@@ -131,8 +195,8 @@
 			{#if !session.chat.messages.length && !session.running}
 				<div class="space-y-2 pt-4">
 					<p class="text-xs text-muted">Ask Claude about this paper. It reads the PDF (and your notes) and cites pages you can click.</p>
-					{#each suggestions as s (s)}
-						<button class="block w-full rounded-lg border border-stone-200 px-3 py-2 text-left text-[13px] hover:bg-stone-50 dark:border-stone-700 dark:hover:bg-stone-800" onclick={() => ask(s)}>{s}</button>
+					{#each saved.filter((p) => !needsSelection(p.text)).slice(0, 4) as p (p.id)}
+						<button class="block w-full rounded-lg border border-stone-200 px-3 py-2 text-left text-[13px] hover:bg-stone-50 dark:border-stone-700 dark:hover:bg-stone-800" onclick={() => usePrompt(p)}>{fillPrompt(p.text, { title })}</button>
 					{/each}
 				</div>
 			{/if}
@@ -148,7 +212,14 @@
 								{#if /claude|logged in|install/i.test(m.error)}<button class="ml-1 underline" onclick={() => Object.assign(settingsDialog, { open: true, section: 'claude' })}>Settings › Claude</button>{/if}
 							</p>
 						{/if}
-						{#if m.tools?.length || m.cost}<p class="mt-1 text-[11px] text-muted" title={cost(m.cost)}>{m.tools?.join(' · ') ?? ''}</p>{/if}
+						<div class="mt-1 flex items-center gap-1 text-[11px] text-muted">
+							{#if m.tools?.length || m.cost}<span class="min-w-0 flex-1 truncate" title={cost(m.cost)}>{m.tools?.join(' · ') ?? ''}</span>{:else}<span class="flex-1"></span>{/if}
+							{#if m.text}
+								{@const asked = session.chat.messages.slice(0, i).findLast((x) => x.role === 'user')?.text ?? ''}
+								{#if onnotes}<Tip label="Add to notes">{#snippet child({ props })}<button {...props} class={iconButton(6, mutedIcon)} aria-label="Add to notes" onclick={() => onnotes?.(asked, m.text)}><span class="icon-[lucide--notebook-pen] size-3.5"></span></button>{/snippet}</Tip>{/if}
+								<Tip label="Copy (Markdown)">{#snippet child({ props })}<button {...props} class={iconButton(6, mutedIcon)} aria-label="Copy the answer" onclick={() => clipboard.write(m.text).then(() => toast('Copied'))}><span class="icon-[lucide--copy] size-3.5"></span></button>{/snippet}</Tip>
+							{/if}
+						</div>
 					</div>
 				{/if}
 			{/each}
