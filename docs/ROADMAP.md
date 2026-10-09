@@ -46,7 +46,7 @@ Planned features for this fork: split-view notes, a mind map per paper, named bo
 
 ## Phase 2: Split view and rich-text notes
 
-- [ ] **2.1 Move the reader's viewer area into its own component** (`src/routes/read/+page.svelte` is ~900 lines), without changing behaviour. *Test:* the e2e test passes.
+- [x] **2.1 Move the reader's viewer area into its own component** (`src/routes/read/+page.svelte` is ~900 lines), without changing behaviour. *Test:* the e2e test passes.
 - [ ] **2.2 Resizable split pane** with the PDF on the left. The width and open state are remembered in settings.
 - [ ] **2.3 Editor in the right pane** (TipTap/ProseMirror): headings, bold and italic, lists, quotes, code, links and undo. No saving yet. Its keyboard shortcuts must not clash with the reader's.
 - [ ] **2.4 Save `notes.json`** (`{version, doc, updated}`) a short time after you stop typing, and also on close (`onFlush`). The save state shows in `SaveStatus`.

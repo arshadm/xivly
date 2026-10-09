@@ -2,12 +2,11 @@
 	import { iconButton } from '#lib/ui/button.js';
 	import { page } from '$app/state';
 	import { tick, untrack } from 'svelte';
-	import { fade, fly, scale, slide } from 'svelte/transition';
+	import { fly, scale } from 'svelte/transition';
 	import {
 		Annotations,
 		Document,
 		Find,
-		Minimap,
 		PageNav,
 		Paper,
 		Thumbnails,
@@ -53,15 +52,14 @@
 	import { paperCache, warmPdf } from '#lib/pdf.js';
 	import AnnotationToolbar from '#lib/pdf/AnnotationToolbar.svelte';
 	import NoteHoverCard from '#lib/pdf/NoteHoverCard.svelte';
-	import PdfContextMenu from '#lib/pdf/PdfContextMenu.svelte';
 	import ThemePopover from '#lib/pdf/ThemePopover.svelte';
 	import SaveStatus from '#lib/pdf/SaveStatus.svelte';
-	import BackPill from '#lib/pdf/BackPill.svelte';
+	import BookmarksPanel from '#lib/pdf/BookmarksPanel.svelte';
+	import ReaderPages from '#lib/pdf/ReaderPages.svelte';
 	import BookmarkPicker from '#lib/pdf/BookmarkPicker.svelte';
 	import { jumpTo } from '#lib/anchor.js';
 	import { prompts } from '#lib/ui/prompt.svelte.js';
 	import type { Bookmark } from '#lib/types.js';
-	import CenterControl from '#lib/pdf/CenterControl.svelte';
 	import { icons } from '#lib/pdf/icons.js';
 	import { emptyText, kindIcons, kindLabels } from '#lib/pdf/annotation-kinds.js';
 	import AnnotationPreview, { hasPreview } from '#lib/pdf/AnnotationPreview.svelte';
@@ -720,27 +718,7 @@
 																{/snippet}
 															</Annotations.List>
 														{:else if tab === 'bookmarks'}
-															<div class="flex items-center justify-between px-2 pt-1 pb-2">
-																<p class="text-[11px] font-medium tracking-wide text-muted uppercase">Bookmarks</p>
-																<Tip label="Bookmark this spot" shortcut={keys.addBookmark}>
-																	{#snippet child({ props })}<button {...props} class={iconButton(6)} aria-label="Bookmark this spot" onclick={() => addBookmark()}><span class="icon-[lucide--bookmark-plus] size-3.5"></span></button>{/snippet}
-																</Tip>
-															</div>
-															{#each bookmarks as b (b.id)}
-																<div class="group flex items-center rounded-md hover:bg-stone-200/70 dark:hover:bg-stone-800">
-																	<button class="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 text-left" onclick={() => goToBookmark(b)}>
-																		<span class="icon-[lucide--bookmark] size-3.5 shrink-0 text-muted"></span>
-																		<span class="min-w-0 flex-1 truncate font-medium">{b.name}</span>
-																		<span class="text-[11px] text-muted tabular-nums group-hover:hidden group-focus-within:hidden">p. {Math.floor(b.page)}</span>
-																	</button>
-																	<div class="hidden shrink-0 items-center pr-1 group-hover:flex group-focus-within:flex">
-																		<Tip label="Rename">{#snippet child({ props })}<button {...props} class={iconButton(6)} aria-label="Rename {b.name}" onclick={() => renameBookmark(b)}><span class="icon-[lucide--pencil] size-3.5"></span></button>{/snippet}</Tip>
-																		<Tip label="Remove">{#snippet child({ props })}<button {...props} class={iconButton(6)} aria-label="Remove {b.name}" onclick={() => removeBookmark(b)}><span class="icon-[lucide--trash-2] size-3.5"></span></button>{/snippet}</Tip>
-																	</div>
-																</div>
-															{:else}
-																<p class="flex flex-wrap items-center gap-1 p-2 text-muted">Press <Kbd>{keys.addBookmark}</Kbd> to bookmark the spot you're reading, or right-click a page.</p>
-															{/each}
+															<BookmarksPanel {bookmarks} onadd={() => addBookmark()} ongo={goToBookmark} onrename={renameBookmark} onremove={removeBookmark} />
 														{:else if tab === 'search'}
 															<div class="space-y-2 pt-1 pb-2">
 																<div class="flex items-center gap-1 rounded-md border border-edge bg-white px-2 focus-within:ring-2 focus-within:ring-blue-500 dark:focus-within:ring-blue-400 dark:bg-stone-900">
@@ -842,48 +820,7 @@
 										{#if s.progressBar}<Toc.Progress class="absolute! inset-x-0 bottom-0 rounded-none! bg-transparent! [--pdf-progress-height:2px]" />{/if}
 									</header>
 
-									<div class="flex min-h-0 flex-1">
-										<!-- ── Pages ──────────────────────────────────────── -->
-										<div class="relative min-w-0 flex-1">
-											<PdfContextMenu onOpenReference={openReference} {saveFile} {pageActions}>
-												{#snippet trigger({ props })}
-													<Viewer.Viewport {...props} style={s.pageFrame === 'none' ? `background:${swatch}` : undefined} class="h-full bg-stone-100 transition-colors dark:bg-stone-950 [--pdf-page-gap:22px] [--pdf-pages-padding:28px] {s.sideNotes ? '[--pdf-pages-aside:252px]' : ''}">
-														<Viewer.Pages class={restoring ? 'opacity-0' : 'transition-opacity duration-150'}>
-															{#snippet children({ pageNumber })}
-																<Viewer.Page {pageNumber}>
-																	<Viewer.Canvas />
-																	<Viewer.TextLayer />
-																	<Viewer.LinkLayer class="[&_a]:rounded-sm [&_a:hover]:bg-sky-500/10" />
-																	<Find.Layer />
-																	<Paper.Layer />
-																	<Annotations.Layer />
-																	{#if s.lineMarkers}<Annotations.LineMarkers markers="all" />{/if}
-																	{#if s.sideNotes}<Annotations.Margin edge={s.tocRail ? 36 : 8} class="[--pdf-margin-width:220px]" />{/if}
-																	<Viewer.Focus />
-																</Viewer.Page>
-															{/snippet}
-														</Viewer.Pages>
-													</Viewer.Viewport>
-												{/snippet}
-											</PdfContextMenu>
-											{#if s.tocRail}<Toc.Rail class="absolute top-8 right-3 bottom-8 text-muted" />{/if}
-											<BackPill />
-											<CenterControl bind:locked={centerLocked} />
-											{#if paperState?.status === 'analyzing'}
-												<div class="pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 rounded-full bg-stone-900/70 px-3 py-1 text-xs text-white" transition:fade>Reading the paper… {Math.round(paperState.progress * 100)}%</div>
-											{/if}
-										</div>
-
-										{#if s.minimap}
-											<div transition:slide={{ axis: 'x', duration: 160 }} class="flex shrink-0">
-												<Minimap.Root style="background:{swatch}" variant={s.minimapVariant} width={s.minimapVariant === 'heatmap' ? 18 : s.minimapVariant === 'spine' ? 120 : 84} class="h-full border-l border-stone-200 dark:border-stone-800">
-													{#if s.minimapVariant === 'heatmap'}<Minimap.Heatmap />{/if}
-													<Minimap.Viewport class="rounded-sm! bg-sky-500/10! shadow-[inset_0_0_0_var(--hairline)_rgb(14_165_233/0.5)]!" />
-													{#if s.minimapVariant !== 'heatmap'}<Minimap.Markers find annotations sections={s.minimapVariant !== 'spine'} />{/if}
-												</Minimap.Root>
-											</div>
-										{/if}
-									</div>
+									<ReaderPages {swatch} {restoring} {paperState} bind:centerLocked {openReference} {pageActions} />
 								</div>
 							</div>
 
