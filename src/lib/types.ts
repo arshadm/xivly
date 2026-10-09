@@ -114,3 +114,77 @@ export interface NotesFile {
 	updated?: string;
 	[extra: string]: unknown;
 }
+
+// ── arXiv feed (`.xivly/feed/`) ──────────────────────────────────────────
+
+/** `.xivly/feed/config.json`: what the feed looks for and how papers are scored. */
+export interface FeedConfig {
+	version: number;
+	/** arXiv categories kept (e.g. "cs.LG"); their archives ("cs") are fetched. */
+	categories: string[];
+	/** Topic name → terms; a paper matching any term of a topic gets that topic. */
+	topics: Record<string, string[]>;
+	/** Where terms are matched: the abstract (default), the title, or both. */
+	searchField: 'abs' | 'title' | 'all';
+	/** Who the papers are scored for (sent to Claude with every batch). */
+	profile: string;
+	/** What P1–P5 mean ("1" … "5"). */
+	rubric: Record<string, string>;
+	/** Claude model for scoring ("sonnet", "opus", …). */
+	model: string;
+	batchSize: number;
+	[extra: string]: unknown;
+}
+
+/** One paper of the feed, in `.xivly/feed/papers/<YYYY-MM>.json`. */
+export interface FeedPaper {
+	/** arXiv id without version, e.g. "2610.01234". */
+	id: string;
+	/** e.g. "v2". */
+	version?: string;
+	title: string;
+	authors: string[];
+	abstract: string;
+	categories: string[];
+	/** Topics of the config it matched (merged across checks). */
+	topics: string[];
+	/** Announcement day, YYYY-MM-DD (the month file it lives in). */
+	published: string;
+	/** P1 (read now) … P5 (not relevant); absent until scored. */
+	priority?: number;
+	/** Why that priority, in a sentence. */
+	rationale?: string;
+	/** ISO timestamp of scoring, and by which model. */
+	scoredAt?: string;
+	scorer?: string;
+	/** ISO timestamp of the check that found it. */
+	firstSeen: string;
+	/** ISO timestamp when dismissed (hidden from the feed, kept so it never comes back). */
+	dismissed?: string;
+	/** Id of the library paper it was added as. */
+	added?: string;
+	[extra: string]: unknown;
+}
+
+/** A check of the feed (`state.json` keeps the recent ones). */
+export interface FeedRun {
+	started: string;
+	finished?: string;
+	/** The window checked, ISO timestamps. */
+	from: string;
+	to: string;
+	found: number;
+	new: number;
+	scored: number;
+	status: 'running' | 'ok' | 'failed' | 'cancelled';
+	error?: string;
+}
+
+/** `.xivly/feed/state.json`. */
+export interface FeedState {
+	version: number;
+	/** End of the last successful check's window: the next one starts there. */
+	lastTo?: string;
+	runs: FeedRun[];
+	[extra: string]: unknown;
+}
