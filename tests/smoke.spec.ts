@@ -247,6 +247,12 @@ test('bookmarks: add one, see it in the panel after a reload, jump to it from âŒ
 
 	await reader.keyboard.press('ControlOrMeta+Alt+6');
 	await expect(reader.getByRole('button', { name: /Main results/ })).toBeVisible();
+	// Shown at once, written just after (under a Web Lock): reload once it's on disk.
+	const writing = async () => {
+		const { held = [], pending = [] } = await navigator.locks.query();
+		return [...held, ...pending].filter((l) => l.name?.startsWith('xivly:papers/')).length;
+	};
+	await expect.poll(() => reader.evaluate(writing)).toBe(0);
 	await reader.reload();
 	await expect(reader.locator('[data-pdf-page]').first().locator('[data-pdf-canvas]')).toBeVisible();
 	await reader.keyboard.press('ControlOrMeta+Alt+6');
@@ -272,5 +278,50 @@ test('bookmarks: add one, see it in the panel after a reload, jump to it from âŒ
 	await reader.getByRole('button', { name: 'Remove Main results' }).click();
 	await confirm.getByRole('button', { name: 'Remove' }).click();
 	await expect(row).toBeHidden();
+	expect(errs).toEqual([]);
+});
+
+test('the highlighter stays on, highlights selected text at once in its color, and remembers that color', async ({ page, context }) => {
+	await startLibrary(page);
+	await page.getByRole('button', { name: 'Add papers' }).click();
+	const chooser = page.waitForEvent('filechooser');
+	await page.getByRole('button', { name: /Drop PDF files/ }).click();
+	await (await chooser).setFiles(`${test.info().project.testDir}/fixtures/paper.pdf`);
+	await page.getByRole('button', { name: new RegExp(title) }).click();
+	const reader = await readerTab(context);
+	const errs = errors(reader);
+	const firstPage = reader.locator('[data-pdf-page]').first();
+	await expect(firstPage.locator('[data-pdf-canvas]')).toBeVisible();
+
+	const highlighter = reader.getByRole('button', { name: 'Highlight', exact: true });
+	const swatch = (name: string) => reader.getByRole('group', { name: 'Color' }).getByRole('button', { name });
+	/** Drag across a line of the page's text. */
+	async function select(text: RegExp) {
+		const box = (await firstPage.getByText(text).first().boundingBox())!;
+		await reader.mouse.move(box.x + 2, box.y + box.height / 2);
+		await reader.mouse.down();
+		await reader.mouse.move(box.x + box.width - 2, box.y + box.height / 2, { steps: 8 });
+		await reader.mouse.up();
+	}
+
+	// It starts with its own color (the first one by default); pick another.
+	await highlighter.click();
+	await expect(swatch('Yellow')).toHaveAttribute('data-active');
+	await swatch('Green').click();
+
+	// Two selections, two highlights: no menu, no note to write, the tool stays on.
+	await select(/Reading papers should be calm/);
+	await expect(firstPage.locator('[data-pdf-annotation]')).toHaveCount(1);
+	await select(/This one-page paper exists/);
+	await expect(firstPage.locator('[data-pdf-annotation]')).toHaveCount(2);
+	await expect(reader.getByRole('dialog', { name: 'Annotation' })).toBeHidden();
+	await expect(highlighter).toHaveAttribute('data-active');
+
+	// Esc ends it; next time it starts with the color picked last.
+	await reader.keyboard.press('Escape');
+	await expect(highlighter).not.toHaveAttribute('data-active');
+	await swatch('Blue').click();
+	await highlighter.click();
+	await expect(swatch('Green')).toHaveAttribute('data-active');
 	expect(errs).toEqual([]);
 });

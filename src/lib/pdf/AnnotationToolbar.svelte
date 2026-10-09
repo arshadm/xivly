@@ -34,7 +34,7 @@
 	let wasSelect = false;
 	const remember = () => (wasSelect = store.tool === 'select');
 	const switchMode = () => wasSelect && settings.set('selectionMenu', plain);
-	const toolLabel = (t: AnnotationTool) => (t === 'select' ? (plain ? 'Select, without the color menu' : 'Select, with the color menu') : names[t]);
+	const toolLabel = (t: AnnotationTool) => (t === 'select' ? (plain ? 'Select, without the color menu' : 'Select, with the color menu') : t === 'highlight' ? 'Highlighter: select text to highlight it (Esc to stop)' : names[t]);
 	const icon = (t: AnnotationTool) => (t === 'select' && plain ? 'icon-[lucide--text-cursor]' : toolIcons[t]);
 </script>
 

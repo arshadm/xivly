@@ -112,6 +112,25 @@
 	// Annotation tools offered: highlight is the only text markup; one Box
 	// tool, filled (area) or outlined (rect) per Settings › Annotations.
 	const tools = $derived<AnnotationTool[]>(['select', 'hand', 'highlight', s.boxFill ? 'area' : 'rect', 'note', 'freetext', 'ink', 'arrow', 'eraser']);
+
+	// The highlighter stays on (Esc or another tool ends it): selected text is highlighted at once,
+	// with no menu and no note to write. It takes its own color (Settings › Annotations), and a
+	// color picked while it's on becomes its color next time.
+	let tool = $state<AnnotationTool>('select');
+	let color = $state('yellow');
+	const highlighting = $derived(tool === 'highlight');
+	$effect(() => {
+		if (!highlighting) return;
+		untrack(() => {
+			const palette = store?.palette ?? [];
+			color = palette.some((c) => c.key === s.highlightColor) ? s.highlightColor : (palette[0]?.key ?? 'yellow');
+		});
+	});
+	const onColorChange = (c: string) => highlighting && settings.set('highlightColor', c);
+	// A new highlight is kept at once (no popover over it): the next selection can follow right away.
+	$effect(() => {
+		if (highlighting && store?.pendingId) store.commit();
+	});
 	const keymap = $derived({ 'tool.area': s.boxFill ? ['b', 'a'] : [], 'tool.rect': s.boxFill ? [] : ['b', 'r'] });
 
 	// `?` shows the reading & annotation keys of this paper too.
@@ -605,12 +624,15 @@
 						<Annotations.Root
 							bind:annotations
 							bind:store
+							bind:tool
+							bind:color
+							{onColorChange}
 							importFromPdf
 							{tools}
 							author={{ name: s.author || 'Me' }}
-							stickyTools={s.stickyTools}
+							stickyTools={s.stickyTools || highlighting}
 							selectOn={s.selectOn}
-							editOnCreate={s.editOnCreate}
+							editOnCreate={s.editOnCreate && !highlighting}
 							inkSmoothing={s.inkSmoothing}
 							foreign={s.foreignAnnotations}
 							noteEmojis={s.noteEmojis}
@@ -905,7 +927,7 @@
 								</Viewer.LinkPreview>
 							{/if}
 							<Paper.Backlinks />
-							{#if s.selectionMenu}<Annotations.SelectionMenu />{/if}
+							{#if s.selectionMenu && !highlighting}<Annotations.SelectionMenu />{/if}
 							<Annotations.Popover />
 							<NoteHoverCard />
 						</Annotations.Root>

@@ -57,6 +57,8 @@ const defaults = {
 	sideNotes: true,
 	lineMarkers: true,
 	stickyTools: false,
+	/** Palette key the highlighter starts with (the last one picked while highlighting). */
+	highlightColor: 'yellow',
 	/** Pen stroke smoothing (svelte-pdf-mini `smoothStroke`). */
 	inkSmoothing: 'steady' as InkSmoothing,
 	/** Boxes are filled (translucent) or outlined. */

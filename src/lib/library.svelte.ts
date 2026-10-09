@@ -3,6 +3,7 @@ import { addBookmark, newBookmark, removeBookmark, renameBookmark } from './book
 import { broadcast } from './broadcast';
 import { toast } from './components/Toasts.svelte';
 import { forgetCover, warmCovers } from './covers';
+import { onFlush } from './flush';
 import { parseArxiv } from './arxiv';
 import { sha256 } from './duplicates';
 import { filterPapers, type View } from './filter';
@@ -310,12 +311,22 @@ class Library {
 	 * function patch is applied to the paper as it is on disk, under its lock
 	 * (lists such as tags: never overwrite an edit made meanwhile elsewhere).
 	 */
+	/** paper.json writes under way (shown already: the UI doesn't wait for them). */
+	readonly writes = new Set<Promise<unknown>>();
+
+	#writing<T>(write: Promise<T>): Promise<T> {
+		this.writes.add(write);
+		const done = () => void this.writes.delete(write);
+		write.then(done, done);
+		return write;
+	}
+
 	async update(id: string, patch: PaperPatch | ((current: Paper) => PaperPatch)) {
 		const i = this.papers.findIndex((p) => p.id === id);
 		const before = i >= 0 ? this.papers[i] : undefined;
 		if (before) this.papers[i] = merge(before, (typeof patch === 'function' ? patch(before) : patch) as Record<string, unknown>);
 		try {
-			const updated = await this.repo!.update(id, patch as Patch<Paper>);
+			const updated = await this.#writing(this.repo!.update(id, patch as Patch<Paper>));
 			const j = this.papers.findIndex((p) => p.id === id);
 			if (j >= 0) this.papers[j] = { ...updated, title: tidyTitle(updated.title) };
 			return updated;
@@ -330,7 +341,7 @@ class Library {
 	touch(id: string, patch: PaperPatch) {
 		const i = this.papers.findIndex((p) => p.id === id);
 		if (i >= 0) this.papers[i] = merge(this.papers[i], patch as Record<string, unknown>);
-		return this.repo!.touch(id, patch);
+		return this.#writing(this.repo!.touch(id, patch));
 	}
 
 	async remove(id: string) {
@@ -437,6 +448,9 @@ function uniqueId(base: string, taken: Set<string>) {
 }
 
 export const library = new Library();
+
+// Closing a window or quitting waits for paper.json writes still under way (a bookmark just added…).
+onFlush({ dirty: () => library.writes.size > 0, flush: () => Promise.allSettled([...library.writes]).then(() => true) });
 
 const HF_REFRESH_MS = 7 * 86_400_000;
 const IMPORT_CONCURRENCY = 3;

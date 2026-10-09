@@ -7,6 +7,7 @@
 <script lang="ts">
 	import { button, iconButton, mutedIcon } from '#lib/ui/button.js';
 	import { Dialog } from 'bits-ui';
+	import { defaultPalette } from 'svelte-pdf-mini/core';
 	import type { Snippet } from 'svelte';
 	import UiDialog from '#lib/ui/Dialog.svelte';
 	import { library } from '#lib/library.svelte.js';
@@ -125,6 +126,23 @@
 								{@render toggle('selectionMenu', 'Menu on text selection', 'Colors, note and copy buttons over selected text')}
 								{@render toggle('editOnCreate', 'Write a note right away', 'Open the note editor when you create an annotation')}
 								{@render toggle('stickyTools', 'Keep the tool', 'Stay on the current tool after creating an annotation')}
+								{#snippet highlightCtl()}
+									<div class="flex items-center gap-1.5" role="radiogroup" aria-label="Highlighter color">
+										{#each defaultPalette as c (c.key)}
+											<button
+												type="button"
+												role="radio"
+												aria-checked={s.highlightColor === c.key}
+												aria-label={c.label}
+												title={c.label}
+												class="size-5 rounded-full ring-offset-2 ring-offset-white outline-none focus-visible:ring-2 focus-visible:ring-blue-500 aria-checked:ring-2 aria-checked:ring-stone-800 dark:ring-offset-stone-900 dark:aria-checked:ring-stone-100"
+												style:background={c.light}
+												onclick={() => settings.set('highlightColor', c.key)}
+											></button>
+										{/each}
+									</div>
+								{/snippet}
+								{@render row('Highlighter color', 'The Highlight tool starts with this color (picking another while highlighting changes it)', highlightCtl)}
 								{#snippet inkCtl()}<Select label="Pen style" value={s.inkSmoothing} onValueChange={set('inkSmoothing')} items={[{ value: 'steady', label: 'Steady (exponential smoothing)' }, { value: 'smooth', label: 'Smooth (keeps sharp corners)' }, { value: 'pen', label: 'Pen (variable width)' }, { value: 'raw', label: 'Raw' }]} />{/snippet}
 								{@render row('Pen style', 'How strokes are smoothed: Steady is calm, Smooth keeps sharp corners', inkCtl)}
 								{@render toggle('boxFill', 'Fill boxes', 'Boxes get a translucent fill (off: outline only)')}
