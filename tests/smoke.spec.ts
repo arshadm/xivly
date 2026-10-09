@@ -408,3 +408,34 @@ test('notes: rich text typed in the pane; its keys never reach the reader', asyn
 	await expect(notes).toContainText('key idea and more');
 	expect(errs).toEqual([]);
 });
+
+test('notes link to the paper: quote a selection, link the page, click a chip to jump there', async ({ page, context }) => {
+	const reader = await addPaper(page, context);
+	const errs = errors(reader);
+	const firstPage = reader.locator('[data-pdf-page]').first();
+	await expect(firstPage.locator('[data-pdf-canvas]')).toBeVisible();
+
+	// Select a line, right-click it: "Quote in notes" opens the (hidden) notes with the quote.
+	const line = (await firstPage.getByText(/Reading papers should be calm/).first().boundingBox())!;
+	await reader.mouse.move(line.x + 2, line.y + line.height / 2);
+	await reader.mouse.down();
+	await reader.mouse.move(line.x + line.width - 2, line.y + line.height / 2, { steps: 8 });
+	await reader.mouse.up();
+	await reader.mouse.click(line.x + line.width / 2, line.y + line.height / 2, { button: 'right' });
+	await reader.getByRole('menuitem', { name: 'Quote in notes' }).click();
+	const notes = reader.getByRole('textbox', { name: 'Notes' });
+	await expect(notes.locator('blockquote')).toContainText('Reading papers should be calm');
+	const chip = notes.locator('blockquote [data-paper-link]');
+	await expect(chip).toHaveText('p. 1');
+
+	// The bar's "link to the page you're reading" adds a chip where you're typing.
+	await reader.keyboard.type('See also');
+	await reader.getByRole('button', { name: 'Link to the page you’re reading' }).click();
+	await expect(notes.locator('p [data-paper-link]')).toHaveCount(2);
+
+	// A chip jumps to its place: Back appears.
+	await chip.click();
+	await expect(reader.getByRole('group', { name: 'Back' })).toBeVisible();
+	await expect(reader.getByText('Saved', { exact: true })).toBeVisible();
+	expect(errs).toEqual([]);
+});

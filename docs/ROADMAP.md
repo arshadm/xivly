@@ -58,7 +58,10 @@ Planned features for this fork: split-view notes, a mind map per paper, named bo
   - Fields added by agents are kept.
   - *Test:* `saver.test.ts`, the notes tests in `repo.test.ts`, and the e2e notes test (reload, hide right after typing).
 - [x] **2.5 The same paper in two windows:** a paper is read in one window at a time (`ReaderLock`), and handing it over writes its notes first. *Test:* the e2e "one reader per paper" test.
-- [ ] **2.6 Links to the paper:** "Link to current page" inserts a chip you click to jump. "Quote selection into notes" copies the selected text with its anchor.
+- [x] **2.6 Links to the paper:**
+  - The formatting bar's "Link to the page you're reading" inserts a page chip ("p. 5"), stored as `{type: "paperLink", attrs: {page, label}}`. Clicking a chip jumps there (then "Back to page N").
+  - Right-clicking selected text offers "Quote in notes": the text as a quote at the end of the notes, with a chip just above its first line. It opens the notes pane if it's hidden.
+  - *Test:* `paper-link.test.ts`, `anchor.test.ts`, and the e2e "notes link to the paper" test.
 - [ ] **2.7 Extras:** maths (KaTeX), tables, pasted images saved to `notes-assets/`, checklists.
 - [ ] **2.8 Markdown export,** added to the existing notes export. Optionally, a `notes.md` written next to it on every save, for Claude Code and other agents.
 - [ ] **2.9 Search:** find inside notes, and include note text in library search (`filter.ts`).

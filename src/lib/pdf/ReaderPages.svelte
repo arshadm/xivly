@@ -18,7 +18,7 @@
 		paperState,
 		centerLocked = $bindable(false),
 		openReference,
-		pageActions
+		moreActions
 	}: {
 		/** The page color (behind frameless pages, and the minimap). */
 		swatch: string;
@@ -27,14 +27,14 @@
 		paperState?: PaperState;
 		centerLocked?: boolean;
 		openReference: (r: Reference) => void;
-		pageActions: (ctx: PdfContext) => PdfAction[];
+		moreActions: (ctx: PdfContext) => Partial<Record<'selection' | 'page', PdfAction[]>>;
 	} = $props();
 	const s = $derived(settings.values);
 </script>
 
 <div class="flex min-h-0 min-w-0 flex-1">
 	<div class="relative min-w-0 flex-1">
-		<PdfContextMenu onOpenReference={openReference} {saveFile} {pageActions}>
+		<PdfContextMenu onOpenReference={openReference} {saveFile} {moreActions}>
 			{#snippet trigger({ props })}
 				<Viewer.Viewport {...props} style={s.pageFrame === 'none' ? `background:${swatch}` : undefined} class="h-full bg-stone-100 transition-colors dark:bg-stone-950 [--pdf-page-gap:22px] [--pdf-pages-padding:28px] {s.sideNotes ? '[--pdf-pages-aside:252px]' : ''}">
 					<Viewer.Pages class={restoring ? 'opacity-0' : 'transition-opacity duration-150'}>

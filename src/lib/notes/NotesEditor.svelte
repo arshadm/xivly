@@ -15,17 +15,30 @@
 	import { prompts } from '#lib/ui/prompt.svelte.js';
 	import Separator from '#lib/ui/Separator.svelte';
 	import Tip from '#lib/ui/Tip.svelte';
+	import type { PaperAnchor } from '#lib/types.js';
+	import { PaperLink, paperLinkNode, toAnchor } from './paper-link';
 
 	let {
 		content,
 		onupdate,
+		onjump,
+		anchor,
 		editable = true
 	}: {
 		/** The notes as loaded (null: none yet). Read once: the editor owns the document after that. */
 		content: JSONContent | null;
 		onupdate?: (doc: JSONContent) => void;
+		/** A page chip was clicked. */
+		onjump?: (anchor: PaperAnchor) => void;
+		/** Where the reader is (for "Link to this page"); null before the paper shows. */
+		anchor?: () => PaperAnchor | null;
 		editable?: boolean;
 	} = $props();
+
+	/** Add content at the end of the notes (a quote from the paper…), and go on writing after it. */
+	export function append(nodes: JSONContent[]) {
+		editor?.chain().focus('end').insertContent(nodes).scrollIntoView().run();
+	}
 
 	let element = $state<HTMLElement>();
 	let editor = $state.raw<Editor>();
@@ -42,11 +55,18 @@
 				// ⌘E belongs to the app (the notes pane): inline code is `backticks` or the bar.
 				StarterKit.configure({ code: false, link: { openOnClick: false, autolink: true, defaultProtocol: 'https' } }),
 				Code.extend({ addKeyboardShortcuts: () => ({}) }),
-				Placeholder.configure({ placeholder: 'Write your notes about this paper…' })
+				Placeholder.configure({ placeholder: 'Write your notes about this paper…' }),
+				PaperLink
 			],
 			editorProps: {
 				attributes: { class: 'notes-editor min-h-full px-5 py-4 outline-none', role: 'textbox', 'aria-multiline': 'true', 'aria-label': 'Notes', 'data-notes-editor': '' },
 				// ⌘-click (Ctrl-click) a link: open it in the browser.
+				// A page chip: jump there.
+				handleClickOn: (_view, _pos, node) => {
+					if (node.type.name !== 'paperLink') return false;
+					onjump?.(toAnchor(node.attrs));
+					return true;
+				},
 				handleClick: (_view, _pos, event) => {
 					const link = (event.target as Element | null)?.closest?.('a[href]');
 					if (!link || !(mac ? event.metaKey : event.ctrlKey)) return false;
@@ -82,6 +102,11 @@
 		run((c) => c.extendMarkRange('link').setLink({ href: url.trim() }));
 	}
 
+	function linkHere() {
+		const a = anchor?.();
+		if (a) run((c) => c.insertContent([paperLinkNode(a), { type: 'text', text: ' ' }]));
+	}
+
 	const mod = mac ? '⌘' : 'Ctrl+';
 	const alt = mac ? '⌥' : 'Alt+';
 	const shift = mac ? '⇧' : 'Shift+';
@@ -94,7 +119,8 @@
 			{ label: 'Underline', icon: 'icon-[lucide--underline]', keys: `${mod}U`, on: () => run((c) => c.toggleUnderline()), isActive: () => active('underline') },
 			{ label: 'Strikethrough', icon: 'icon-[lucide--strikethrough]', keys: `${mod}${shift}S`, on: () => run((c) => c.toggleStrike()), isActive: () => active('strike') },
 			{ label: 'Inline code', icon: 'icon-[lucide--code]', on: () => run((c) => c.toggleCode()), isActive: () => active('code') },
-			{ label: 'Link', icon: 'icon-[lucide--link]', on: editLink, isActive: () => active('link') }
+			{ label: 'Link', icon: 'icon-[lucide--link]', on: editLink, isActive: () => active('link') },
+			{ label: 'Link to the page you’re reading', icon: 'icon-[lucide--file-symlink]', on: linkHere, disabled: () => !anchor?.() }
 		],
 		[
 			{ label: 'Heading 1', icon: 'icon-[lucide--heading-1]', keys: `${alt}${mod}1`, on: () => run((c) => c.toggleHeading({ level: 1 })), isActive: () => active('heading', { level: 1 }) },
@@ -226,6 +252,30 @@
 		border: none;
 		border-top: 1px solid var(--color-stone-200, #e7e5e4);
 		margin: 1.2em 0;
+	}
+	/* A link to a place in the paper. */
+	:global(.notes-editor .paper-link) {
+		display: inline-block;
+		cursor: pointer;
+		border-radius: 999px;
+		padding: 0 0.5em;
+		font-size: 0.8em;
+		font-family: var(--font-sans);
+		line-height: 1.6;
+		vertical-align: 0.08em;
+		background: rgb(14 165 233 / 0.12);
+		color: var(--color-sky-800, #075985);
+		white-space: nowrap;
+	}
+	:global(.notes-editor .paper-link:hover) {
+		background: rgb(14 165 233 / 0.22);
+	}
+	:global(.notes-editor .paper-link.ProseMirror-selectednode) {
+		outline: 2px solid rgb(14 165 233 / 0.6);
+	}
+	:global(.dark .notes-editor .paper-link) {
+		background: rgb(56 189 248 / 0.16);
+		color: var(--color-sky-300, #7dd3fc);
 	}
 	/* The placeholder, while the notes are empty. */
 	:global(.notes-editor p.is-editor-empty:first-child::before) {

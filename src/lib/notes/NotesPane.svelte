@@ -5,7 +5,7 @@
 <script lang="ts" module>
 	import { onFlush } from '#lib/flush.js';
 	import { library } from '#lib/library.svelte.js';
-	import type { NotesDoc } from '#lib/types.js';
+	import type { NotesDoc, PaperAnchor } from '#lib/types.js';
 	import { Saver } from './saver.svelte';
 
 	// One saver per paper, outliving the pane: hiding it (⌘E) mid-save loses nothing,
@@ -33,7 +33,26 @@
 	import Tip from '#lib/ui/Tip.svelte';
 	import NotesEditor from './NotesEditor.svelte';
 
-	let { id, onclose }: { id: string; onclose: () => void } = $props();
+	let {
+		id,
+		onclose,
+		onjump,
+		anchor
+	}: {
+		id: string;
+		onclose: () => void;
+		onjump: (anchor: PaperAnchor) => void;
+		/** Where the reader is (for "Link to this page"). */
+		anchor: () => PaperAnchor | null;
+	} = $props();
+
+	let editor = $state<NotesEditor>();
+
+	/** Add content at the end of the notes, once they're loaded (the pane may have just opened). */
+	export async function append(nodes: JSONContent[]) {
+		for (let i = 0; i < 120 && !editor && notes.status !== 'error'; i++) await new Promise(requestAnimationFrame);
+		editor?.append(nodes);
+	}
 
 	const saver = $derived(saverFor(id));
 	let notes = $state<{ status: 'loading' } | { status: 'ready'; doc: NotesDoc | null } | { status: 'error'; error: string }>({ status: 'loading' });
@@ -64,7 +83,7 @@
 </div>
 <div class="min-h-0 flex-1 border-t border-stone-200 bg-white dark:border-stone-800 dark:bg-stone-900">
 	{#if notes.status === 'ready'}
-		{#key id}<NotesEditor content={notes.doc as JSONContent | null} onupdate={(doc) => saver.change(doc as NotesDoc)} />{/key}
+		{#key id}<NotesEditor bind:this={editor} content={notes.doc as JSONContent | null} onupdate={(doc) => saver.change(doc as NotesDoc)} {onjump} {anchor} />{/key}
 	{:else if notes.status === 'error'}
 		<div class="m-4 rounded-lg border border-red-200 bg-red-50 p-3 text-[13px] text-red-800 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-200">
 			<p class="font-medium">These notes couldn’t be read, so they’re left as they are.</p>

@@ -26,7 +26,6 @@
 		type Reference,
 		type ViewerState,
 		type KeymapAction,
-		type PdfAction,
 		type PdfContext,
 		type Section,
 		comboLabel
@@ -59,7 +58,8 @@
 	import SplitPane from '#lib/pdf/SplitPane.svelte';
 	import NotesPane, { flushNotes } from '#lib/notes/NotesPane.svelte';
 	import BookmarkPicker from '#lib/pdf/BookmarkPicker.svelte';
-	import { jumpTo } from '#lib/anchor.js';
+	import { anchorAt, anchorAtPdfY, jumpTo } from '#lib/anchor.js';
+	import { quoteContent } from '#lib/notes/paper-link.js';
 	import { prompts } from '#lib/ui/prompt.svelte.js';
 	import type { Bookmark } from '#lib/types.js';
 	import { icons } from '#lib/pdf/icons.js';
@@ -448,7 +448,27 @@
 		void addBookmark({ position: ctx.page + fraction, section: ctx.section });
 	}
 
-	const pageActions = (ctx: PdfContext): PdfAction[] => (ctx.page ? [{ id: 'page.bookmark', label: 'Add bookmark here…', keys: keys.addBookmark, run: () => bookmarkAt(ctx) }] : []);
+	// ── Notes ────────────────────────────────────────────────────────────
+	let notesPane = $state<NotesPane>();
+
+	/** The selected text, as a quote at the end of the notes (opening them if hidden) with a chip to where it is. */
+	async function quoteInNotes(ctx: PdfContext) {
+		const first = ctx.selection.find((sel) => sel.text.trim());
+		const text = ctx.selectedText.trim();
+		if (!first || !text || !viewer) return;
+		const anchor = first.rect ? anchorAtPdfY(first.page, first.rect[3], viewer.document.pageSize(first.page)) : anchorAt(first.page);
+		if (!s.notesPane) settings.set('notesPane', true);
+		for (let i = 0; i < 60 && !notesPane; i++) await new Promise(requestAnimationFrame);
+		await notesPane?.append(quoteContent(text, anchor));
+	}
+
+	/** Where you're reading, for "Link to this page" in the notes. */
+	const readingAnchor = () => (viewer?.document.status === 'ready' ? anchorAt(viewer.position) : null);
+
+	const moreActions = (ctx: PdfContext) => ({
+		selection: ctx.selectedText.trim() ? [{ id: 'selection.quote', label: 'Quote in notes', run: () => void quoteInNotes(ctx) }] : [],
+		page: ctx.page ? [{ id: 'page.bookmark', label: 'Add bookmark here…', keys: keys.addBookmark, run: () => bookmarkAt(ctx) }] : []
+	});
 
 	async function renameBookmark(b: Bookmark) {
 		const name = await prompts.ask('Rename bookmark', { value: b.name, placeholder: 'Name', confirmLabel: 'Rename' });
@@ -832,13 +852,13 @@
 										{#if s.progressBar}<Toc.Progress class="absolute! inset-x-0 bottom-0 rounded-none! bg-transparent! [--pdf-progress-height:2px]" />{/if}
 									</header>
 
-									<ReaderPages {swatch} {restoring} {paperState} bind:centerLocked {openReference} {pageActions} />
+									<ReaderPages {swatch} {restoring} {paperState} bind:centerLocked {openReference} {moreActions} />
 								</div>
 
 								<!-- ── Notes pane (⌘E) ── -->
 								{#if s.notesPane}
 									<SplitPane class="text-[13px] {chrome}">
-										<NotesPane {id} onclose={() => settings.set('notesPane', false)} />
+										<NotesPane bind:this={notesPane} {id} onclose={() => settings.set('notesPane', false)} onjump={(a) => viewer && jumpTo(viewer, a)} anchor={readingAnchor} />
 									</SplitPane>
 								{/if}
 							</div>

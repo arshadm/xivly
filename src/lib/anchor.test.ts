@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { anchorAt, anchorLabel, jumpTo, parseAnchor } from './anchor';
+import { anchorAt, anchorAtPdfY, anchorLabel, jumpTo, parseAnchor } from './anchor';
 
 describe('anchorAt', () => {
 	it('rounds to two decimals and trims the label', () => {
@@ -50,5 +50,20 @@ describe('jumpTo', () => {
 		await jumpTo(v as never, { page: 5.5 });
 		expect(v.history.push).not.toHaveBeenCalled();
 		expect(v.restorePosition).not.toHaveBeenCalled();
+	});
+});
+
+describe('anchorAtPdfY', () => {
+	const letter = { width: 612, height: 792 };
+	it('turns a PDF y (from the bottom) into how far down the page, a little above it', () => {
+		expect(anchorAtPdfY(3, 792, letter)).toEqual({ page: 3 });
+		expect(anchorAtPdfY(3, 396, letter)).toEqual({ page: 3.48 });
+	});
+	it('uses the page box when it doesn’t start at 0', () => {
+		expect(anchorAtPdfY(2, 500, { width: 612, height: 400, viewBox: [0, 100, 612, 500] })).toEqual({ page: 2 });
+		expect(anchorAtPdfY(2, 300, { width: 612, height: 400, viewBox: [0, 100, 612, 500] })).toEqual({ page: 2.48 });
+	});
+	it('stays on its page', () => {
+		expect(anchorAtPdfY(4, -50, letter).page).toBe(4.99);
 	});
 });

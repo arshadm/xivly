@@ -13,13 +13,13 @@
 		trigger,
 		onOpenReference,
 		saveFile,
-		pageActions
+		moreActions
 	}: {
 		trigger: Snippet<[{ props: Record<string, unknown> }]>;
 		onOpenReference?: (r: Reference) => void;
 		saveFile?: (file: Blob, name: string) => unknown;
-		/** The app's own actions for the right-clicked page (bookmark it…), under "Page". */
-		pageActions?: (ctx: PdfContext) => PdfAction[];
+		/** The app's own actions, under "Selection" (quote it…) or "Page" (bookmark it…). */
+		moreActions?: (ctx: PdfContext) => Partial<Record<'selection' | 'page', PdfAction[]>>;
 	} = $props();
 	const viewer = ViewerContext.get();
 	const store = AnnotationsContext.getOr(null);
@@ -28,11 +28,14 @@
 	const groups = $derived.by(() => {
 		const ctx = viewer.lastContext;
 		if (!ctx) return [];
-		const out: PdfActionGroup[] = contextActions(ctx, { viewer, annotations: store, paper, extractor, onOpenReference, saveFile });
-		const extra = pageActions?.(ctx) ?? [];
-		if (!extra.length) return out;
-		const page = out.find((g) => g.kind === 'page');
-		return page ? out.map((g) => (g === page ? { ...g, actions: [...g.actions, ...extra] } : g)) : [...out, { kind: 'page' as const, actions: extra }];
+		let out: PdfActionGroup[] = contextActions(ctx, { viewer, annotations: store, paper, extractor, onOpenReference, saveFile });
+		for (const [kind, extra] of Object.entries(moreActions?.(ctx) ?? {}) as ['selection' | 'page', PdfAction[]][]) {
+			if (!extra.length) continue;
+			const group = out.find((g) => g.kind === kind);
+			// A new Selection group goes first (it's what was right-clicked), a new Page group last.
+			out = group ? out.map((g) => (g === group ? { ...g, actions: [...g.actions, ...extra] } : g)) : kind === 'selection' ? [{ kind, actions: extra }, ...out] : [...out, { kind, actions: extra }];
+		}
+		return out;
 	});
 	// WebKit (the desktop app) clears a text selection whenever focus moves outside
 	// it, and the menu focuses each item under the pointer: keep the right-clicked
