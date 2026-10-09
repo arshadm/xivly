@@ -53,8 +53,11 @@ Planned features for this fork: split-view notes, a mind map per paper, named bo
   - Markdown shortcuts as you type (`#`, `-`, `>`, backticks, `**bold**`). ⌘-click opens a link.
   - Keys the editor uses (⌘B, ⌘I, ⌥⌘1–3…) don't reach the reader. ⌘E still toggles the pane, so inline code has no shortcut.
   - No saving yet.
-- [ ] **2.4 Save `notes.json`** (`{version, doc, updated}`) a short time after you stop typing, and also on close (`onFlush`). The save state shows in `SaveStatus`.
-- [ ] **2.5 The same paper open in two windows:** one window edits and the other is read-only, or reloads when the file changes (`broadcast.ts`, `ReaderLock`).
+- [x] **2.4 Save `notes.json`** (`{version, updated, doc}`) a short time after you stop typing (`src/lib/notes/saver.svelte.ts`, one write at a time, retried on failure), when the pane is hidden, and before the window closes or the app quits. The pane's header shows Saving… / Saved / Not saved.
+  - A `notes.json` that can't be read is never overwritten: the pane says why instead.
+  - Fields added by agents are kept.
+  - *Test:* `saver.test.ts`, the notes tests in `repo.test.ts`, and the e2e notes test (reload, hide right after typing).
+- [x] **2.5 The same paper in two windows:** a paper is read in one window at a time (`ReaderLock`), and handing it over writes its notes first. *Test:* the e2e "one reader per paper" test.
 - [ ] **2.6 Links to the paper:** "Link to current page" inserts a chip you click to jump. "Quote selection into notes" copies the selected text with its anchor.
 - [ ] **2.7 Extras:** maths (KaTeX), tables, pasted images saved to `notes-assets/`, checklists.
 - [ ] **2.8 Markdown export,** added to the existing notes export. Optionally, a `notes.md` written next to it on every save, for Claude Code and other agents.

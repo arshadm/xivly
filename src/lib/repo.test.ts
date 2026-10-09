@@ -234,3 +234,45 @@ describe('Repo', () => {
 		expect(lib.categories.map((c) => c.id)).toEqual(['vision', 'language', 'generative']);
 	});
 });
+
+describe('notes', () => {
+	const doc = { type: 'doc' as const, content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Key idea' }] }] };
+
+	it('none until saved, then read back as written', async () => {
+		const { r } = await repo();
+		const p = await r.add(PDF, { title: 'Noted' });
+		expect(await r.readNotes(p.id)).toBeNull();
+		await r.saveNotes(p.id, doc);
+		const notes = await r.readNotes(p.id);
+		expect(notes?.doc).toEqual(doc);
+		expect(notes?.version).toBe(1);
+		expect(Date.parse(notes!.updated!)).not.toBeNaN();
+	});
+
+	it('keeps fields added by others, and replaces the document', async () => {
+		const { fs, r } = await repo();
+		const p = await r.add(PDF, { title: 'Noted' });
+		await fs.write(`papers/${p.id}/notes.json`, enc.encode(JSON.stringify({ version: 1, doc: { type: 'doc' }, summary: 'by an agent' })));
+		await r.saveNotes(p.id, doc);
+		const file = await json(fs, `papers/${p.id}/notes.json`);
+		expect(file.summary).toBe('by an agent');
+		expect(file.doc).toEqual(doc);
+	});
+
+	it('refuses a notes.json that isn’t notes, rather than saving over it', async () => {
+		const { fs, r } = await repo();
+		const p = await r.add(PDF, { title: 'Noted' });
+		await fs.write(`papers/${p.id}/notes.json`, enc.encode('{ not json'));
+		await expect(r.readNotes(p.id)).rejects.toThrow(/not valid JSON/);
+		await fs.write(`papers/${p.id}/notes.json`, enc.encode(JSON.stringify({ doc: 'text' })));
+		await expect(r.readNotes(p.id)).rejects.toThrow(/doesn’t hold notes/);
+	});
+
+	it('never brings back a removed paper', async () => {
+		const { fs, r } = await repo();
+		const p = await r.add(PDF, { title: 'Noted' });
+		await r.remove(p.id);
+		await expect(r.saveNotes(p.id, doc)).rejects.toThrow(RemovedError);
+		expect(await fs.exists(`papers/${p.id}`)).toBe(false);
+	});
+});

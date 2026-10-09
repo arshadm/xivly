@@ -5,7 +5,7 @@ import { parseBookmarks } from './bookmarks';
 import type { HookEvent, LibraryFs, Platform } from './platform';
 import agentsMd from './templates/AGENTS.md?raw';
 import sampleHook from './templates/paper-added.sample?raw';
-import type { HfLinks, LibraryFile, Paper, PaperLinks, PaperPatch } from './types';
+import type { HfLinks, LibraryFile, NotesDoc, NotesFile, Paper, PaperLinks, PaperPatch } from './types';
 
 const enc = new TextEncoder();
 const dec = new TextDecoder();
@@ -91,6 +91,15 @@ export function normalizePaper(id: string, meta: Json): Paper {
 		links: links(meta.links),
 		hf: hf(meta.hf)
 	} as Paper;
+}
+
+const NOTES_VERSION = 1;
+
+/** notes.json as the app needs it, or null when it isn't notes at all. */
+function normalizeNotes(raw: Json): NotesFile | null {
+	const doc = raw.doc;
+	if (!isObject(doc) || doc.type !== 'doc' || (doc.content !== undefined && !Array.isArray(doc.content))) return null;
+	return { ...raw, version: num(raw.version) ?? NOTES_VERSION, doc: doc as NotesDoc, updated: str(raw.updated) };
 }
 
 const isColor = (v: unknown) => typeof v === 'string' && v.length > 0;
@@ -349,6 +358,26 @@ export class Repo {
 	/** Like `update`, without firing a hook (reading position, last opened). */
 	async touch(id: string, patch: Patch<Paper>) {
 		await this.#patchJson<Paper>(`papers/${id}/paper.json`, prepare(id, patch), () => this.#present(id));
+	}
+
+	// ── Notes ─────────────────────────────────────────────────────────────
+
+	/**
+	 * The paper's notes, or null when it has none yet. Throws when notes.json exists but
+	 * isn't notes (unreadable, or edited by hand into something else): saving over it would lose it.
+	 */
+	async readNotes(id: string): Promise<NotesFile | null> {
+		const path = `papers/${id}/notes.json`;
+		const raw = await this.#lock(path, () => this.#readJson<Json>(path));
+		if (!raw) return null;
+		const notes = normalizeNotes(raw);
+		if (!notes) throw new Error(`${path} doesn’t hold notes`);
+		return notes;
+	}
+
+	/** Write the notes (merged: fields added by agents are kept). Refused once the paper is gone. */
+	async saveNotes(id: string, doc: NotesDoc) {
+		await this.#patchJson(`papers/${id}/notes.json`, { version: NOTES_VERSION, updated: new Date().toISOString(), doc }, () => this.#present(id));
 	}
 
 	readPdf(id: string) {

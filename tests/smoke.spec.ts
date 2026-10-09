@@ -146,7 +146,7 @@ test('a text box is handwritten by default, and stays so after save and reload',
 	expect(errs).toEqual([]);
 });
 
-test('one reader per paper: a second tab takes it over, annotations kept', async ({ page, context }) => {
+test('one reader per paper: a second tab takes it over, annotations and notes kept', async ({ page, context }) => {
 	await startLibrary(page);
 	await page.getByRole('button', { name: 'Add papers' }).click();
 	const chooser = page.waitForEvent('filechooser');
@@ -179,6 +179,10 @@ test('one reader per paper: a second tab takes it over, annotations kept', async
 	await first.keyboard.type('Not saved yet');
 	await first.keyboard.press('Enter');
 	await expect(first.getByRole('button', { name: 'Unsaved changes: save now' })).toBeVisible();
+	// And notes, typed just now (not written yet).
+	await first.keyboard.press('ControlOrMeta+e');
+	await first.getByRole('textbox', { name: 'Notes' }).click();
+	await first.keyboard.type('Handed over');
 
 	// A second reader of the same paper (a link, a restored tab) doesn't load it…
 	const second = await context.newPage();
@@ -188,6 +192,7 @@ test('one reader per paper: a second tab takes it over, annotations kept', async
 	// …until it takes it over: the first saves and lets go, the second shows the saved annotation.
 	await second.getByRole('button', { name: 'Read it here' }).click();
 	await expect(second.locator('[data-pdf-page]').first().locator('[data-pdf-annotation]')).toHaveCount(1);
+	await expect(second.getByRole('textbox', { name: 'Notes' })).toContainText('Handed over');
 	await expect(first.getByText('This paper is open in another tab.')).toBeVisible();
 	expect(errs).toEqual([]);
 });
@@ -373,8 +378,33 @@ test('notes: rich text typed in the pane; its keys never reach the reader', asyn
 	await expect(notes.locator('strong')).toHaveText('key idea');
 	await expect(reader.getByRole('tablist')).toBeHidden();
 
-	// ⌘E still hides the pane.
+	// Saved a moment after typing: still there after hiding the pane, and after a reload.
+	await expect(reader.getByText('Saved', { exact: true })).toBeVisible();
+	// …and it stays saved: nothing writes again until the next edit.
+	await reader.waitForTimeout(1500);
+	await expect(reader.getByText('Saved', { exact: true })).toBeVisible();
 	await reader.keyboard.press('ControlOrMeta+e');
 	await expect(notes).toBeHidden();
+	await reader.keyboard.press('ControlOrMeta+e');
+	await expect(notes.locator('h2')).toHaveText('Method highlights');
+	await reader.reload();
+	await expect(notes.locator('h2')).toHaveText('Method highlights');
+	await expect(notes.locator('strong')).toHaveText('key idea');
+
+	// Hiding the pane right after typing still saves.
+	await notes.click();
+	await reader.keyboard.press('ControlOrMeta+End');
+	await reader.keyboard.type(' and more');
+	await reader.keyboard.press('ControlOrMeta+e');
+	await expect(notes).toBeHidden();
+	const writing = async () => {
+		const { held = [], pending = [] } = await navigator.locks.query();
+		return [...held, ...pending].filter((l) => l.name?.startsWith('xivly:papers/')).length;
+	};
+	await expect.poll(() => reader.evaluate(writing)).toBe(0);
+	await reader.reload();
+	await expect(reader.locator('[data-pdf-page]').first().locator('[data-pdf-canvas]')).toBeVisible();
+	await reader.keyboard.press('ControlOrMeta+e');
+	await expect(notes).toContainText('key idea and more');
 	expect(errs).toEqual([]);
 });

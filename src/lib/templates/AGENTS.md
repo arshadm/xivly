@@ -8,6 +8,8 @@ Everything is plain files: you can read, search and edit them directly.
 ```
 papers/<slug>/paper.pdf    the paper; highlights & notes are standard PDF annotations inside it
 papers/<slug>/paper.json   metadata (see below)
+papers/<slug>/notes.json   your notes on the paper: { version, updated, doc }, doc being
+                           rich text as TipTap / ProseMirror JSON
 papers/<slug>/*            anything else you add (summary.md, code/, ...) is kept
 .xivly/library.json        categories (id, name, color) and tags
 .xivly/hooks/              scripts run by the desktop app on events

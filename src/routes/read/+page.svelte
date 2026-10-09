@@ -57,7 +57,7 @@
 	import BookmarksPanel from '#lib/pdf/BookmarksPanel.svelte';
 	import ReaderPages from '#lib/pdf/ReaderPages.svelte';
 	import SplitPane from '#lib/pdf/SplitPane.svelte';
-	import NotesEditor from '#lib/notes/NotesEditor.svelte';
+	import NotesPane, { flushNotes } from '#lib/notes/NotesPane.svelte';
 	import BookmarkPicker from '#lib/pdf/BookmarkPicker.svelte';
 	import { jumpTo } from '#lib/anchor.js';
 	import { prompts } from '#lib/ui/prompt.svelte.js';
@@ -174,6 +174,7 @@
 			void lock
 				?.handOver(async () => {
 					await save();
+					await flushNotes(id);
 					return rev === savedRev;
 				})
 				.then((ok) => {
@@ -837,13 +838,7 @@
 								<!-- ── Notes pane (⌘E) ── -->
 								{#if s.notesPane}
 									<SplitPane class="text-[13px] {chrome}">
-										<div class="flex h-11 shrink-0 items-center gap-1 pr-2 pl-4" data-tauri-drag-region>
-											<p class="flex-1 text-[11px] font-medium tracking-wide text-muted uppercase" data-tauri-drag-region>Notes</p>
-											<Tip label="Hide notes" shortcut={keys.notesPane}>
-												{#snippet child({ props })}<button {...props} class={iconBtn} aria-label="Hide notes" onclick={() => settings.set('notesPane', false)}><span class="icon-[lucide--x] size-4"></span></button>{/snippet}
-											</Tip>
-										</div>
-										<div class="min-h-0 flex-1 border-t border-stone-200 bg-white dark:border-stone-800 dark:bg-stone-900"><NotesEditor content={null} /></div>
+										<NotesPane {id} onclose={() => settings.set('notesPane', false)} />
 									</SplitPane>
 								{/if}
 							</div>

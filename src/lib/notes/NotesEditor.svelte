@@ -8,7 +8,7 @@
 	import Code from '@tiptap/extension-code';
 	import { Placeholder } from '@tiptap/extensions';
 	import StarterKit from '@tiptap/starter-kit';
-	import { onDestroy } from 'svelte';
+	import { onDestroy, untrack } from 'svelte';
 	import { mac } from '#lib/os.js';
 	import { platform } from '#lib/platform/index.js';
 	import { iconButton } from '#lib/ui/button.js';
@@ -60,7 +60,13 @@
 		});
 		editor = e;
 	});
-	$effect(() => editor?.setEditable(editable));
+	// Without an update event (it's no edit), and tracking only these two: whatever the
+	// update handlers read must not re-run this.
+	$effect(() => {
+		const e = editor;
+		const on = editable;
+		untrack(() => e?.setEditable(on, false));
+	});
 	onDestroy(() => editor?.destroy());
 
 	const active = (name: string, attrs?: Record<string, unknown>) => (void version, editor?.isActive(name, attrs) ?? false);

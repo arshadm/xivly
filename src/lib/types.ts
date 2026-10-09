@@ -98,3 +98,19 @@ export interface Bookmark extends PaperAnchor {
 	/** ISO timestamp. */
 	created: string;
 }
+
+/** A rich-text document (TipTap / ProseMirror JSON). */
+export interface NotesDoc {
+	type: 'doc';
+	content?: unknown[];
+	[extra: string]: unknown;
+}
+
+/** `papers/<id>/notes.json`: the paper's notes (written by the notes pane). */
+export interface NotesFile {
+	version: number;
+	doc: NotesDoc;
+	/** ISO timestamp of the last save. */
+	updated?: string;
+	[extra: string]: unknown;
+}
