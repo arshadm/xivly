@@ -44,6 +44,9 @@ class Library {
 	/** Tags shown only ('in'), e.g. given to papers added while filtering. */
 	includedTags = $derived(Object.keys(this.tagFilter).filter((t) => this.tagFilter[t] === 'in'));
 	query = $state('');
+	/** Each paper's notes (lower-cased) for search: loaded once a search starts (`loadNotesText`). */
+	notesText = $state.raw<ReadonlyMap<string, string>>(new Map());
+	#notesTextAt = 0;
 
 	categories = $derived(this.file.categories);
 
@@ -59,9 +62,21 @@ class Library {
 			query: this.query,
 			sortBy: settings.values.sortBy,
 			sortDesc: settings.values.sortDesc,
-			isCategory: (id) => !!this.category(id)
+			isCategory: (id) => !!this.category(id),
+			notesText: (id) => this.notesText.get(id)
 		})
 	);
+
+	/** Read every paper's notes for search, unless done in the last few seconds (it runs as you type). */
+	async loadNotesText() {
+		if (!this.repo || Date.now() - this.#notesTextAt < 10_000) return;
+		this.#notesTextAt = Date.now();
+		try {
+			this.notesText = await this.repo.readAllNotesText();
+		} catch (e) {
+			console.warn('notes not searchable', e);
+		}
+	}
 
 	/** Mark read (now) or unread. */
 	setRead(id: string, read: boolean) {

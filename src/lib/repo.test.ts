@@ -285,3 +285,35 @@ describe('notes', () => {
 		expect(await fs.exists(`papers/${p.id}`)).toBe(false);
 	});
 });
+
+describe('readAllNotesText', () => {
+	const doc = (text: string) => ({ type: 'doc' as const, content: [{ type: 'paragraph', content: [{ type: 'text', text }] }] });
+
+	it('each paper’s notes, lower-cased, without the header; papers without notes left out', async () => {
+		const { r } = await repo();
+		const a = await r.add(PDF, { title: 'One' });
+		await r.add(PDF, { title: 'Two' });
+		await r.saveNotes(a.id, doc('The KEY idea'));
+		const text = await r.readAllNotesText();
+		expect([...text.keys()]).toEqual([a.id]);
+		expect(text.get(a.id)).toBe('the key idea');
+	});
+
+	it('in one call where the platform can (desktop)', async () => {
+		const fs = new MemoryFs();
+		const calls: string[] = [];
+		const withEach = Object.assign(fs, {
+			readEach: async (dir: string, file: string) => {
+				calls.push(`${dir}/*/${file}`);
+				const names = (await fs.list(dir)).filter((e) => e.dir).map((e) => e.name);
+				return Promise.all(names.map(async (name) => ({ name, text: ((b) => (b ? dec.decode(b) : null))(await fs.read(`${dir}/${name}/${file}`)), error: false })));
+			}
+		});
+		const r = new Repo(withEach, platform);
+		await r.init();
+		const a = await r.add(PDF, { title: 'One' });
+		await r.saveNotes(a.id, doc('Desktop'));
+		expect((await r.readAllNotesText()).get(a.id)).toBe('desktop');
+		expect(calls).toEqual(['papers/*/notes.md']);
+	});
+});

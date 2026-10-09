@@ -54,6 +54,8 @@
 	let typing = $state(false);
 	let typingTimer: ReturnType<typeof setTimeout> | undefined;
 	function onSearchInput() {
+		// Notes are searched too: read once a search starts.
+		if (library.query.trim()) void library.loadNotesText();
 		typing = true;
 		clearTimeout(typingTimer);
 		typingTimer = setTimeout(() => (typing = false), 400);

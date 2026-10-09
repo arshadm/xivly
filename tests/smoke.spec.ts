@@ -474,3 +474,43 @@ test('export as Markdown: the title, your notes, then the highlights', async ({ 
 	expect(md.indexOf('## Notes')).toBeLessThan(md.indexOf('Reading papers should be calm'));
 	expect(errs).toEqual([]);
 });
+
+test('search: ⌘F in the notes finds in them; the library finds a paper by its notes', async ({ page, context }) => {
+	const reader = await addPaper(page, context);
+	const errs = errors(reader);
+	await expect(reader.locator('[data-pdf-page]').first().locator('[data-pdf-canvas]')).toBeVisible();
+	await reader.keyboard.press('ControlOrMeta+e');
+	const notes = reader.getByRole('textbox', { name: 'Notes' });
+	await notes.click();
+	await reader.keyboard.type('Zebra one.\nA second ZEBRA, and a zebra again.');
+	await expect(reader.getByText('Saved', { exact: true })).toBeVisible();
+
+	// ⌘F in the notes: their find bar, not the paper's.
+	await reader.keyboard.press('ControlOrMeta+f');
+	const find = reader.getByRole('textbox', { name: 'Find in notes' });
+	await expect(find).toBeFocused();
+	await find.fill('zebra');
+	await expect(find.locator('xpath=..')).toContainText('1/3');
+	await expect(notes.locator('.notes-match')).toHaveCount(3);
+	await find.press('Enter');
+	await expect(find.locator('xpath=..')).toContainText('2/3');
+	await find.press('Shift+Enter');
+	await expect(find.locator('xpath=..')).toContainText('1/3');
+	await find.press('Escape');
+	await expect(find).toBeHidden();
+	await expect(notes.locator('.notes-match')).toHaveCount(0);
+	// On the page, ⌘F is the paper's find.
+	await reader.locator('[data-pdf-page]').first().click({ position: { x: 20, y: 20 } });
+	await reader.keyboard.press('ControlOrMeta+f');
+	await expect(reader.getByPlaceholder('Find in paper')).toBeFocused();
+
+	// The library: a word only the notes have finds the paper.
+	await page.bringToFront();
+	const search = page.getByRole('textbox', { name: 'Search papers' });
+	const card = page.getByRole('button', { name: new RegExp(title) });
+	await search.fill('zebra');
+	await expect(card).toBeVisible();
+	await search.fill('okapi');
+	await expect(card).toBeHidden();
+	expect(errs).toEqual([]);
+});

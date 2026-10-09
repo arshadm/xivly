@@ -54,3 +54,13 @@ describe('filterPapers', () => {
 		expect(ids(filterPapers(papers, options({ query: 'llm' })))).toEqual(['b', 'a']);
 	});
 });
+
+describe('search in notes', () => {
+	it('a paper matches by what its notes say, once they are known', () => {
+		const notes = new Map([['d', 'my take: the diffusion trick is key']]);
+		expect(ids(filterPapers(papers, options({ query: 'trick' })))).toEqual([]);
+		expect(ids(filterPapers(papers, options({ query: 'Trick', notesText: (id) => notes.get(id) })))).toEqual(['d']);
+		// Still matched by the paper itself too.
+		expect(ids(filterPapers(papers, options({ query: 'diffusion', notesText: (id) => notes.get(id) })))).toEqual(['c', 'd']);
+	});
+});

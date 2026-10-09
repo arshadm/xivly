@@ -48,6 +48,9 @@
 
 	let editor = $state<NotesEditor>();
 
+	/** Find in the notes (⌘F while in them). */
+	export const openFind = () => editor?.openFind();
+
 	/** Add content at the end of the notes, once they're loaded (the pane may have just opened). */
 	export async function append(nodes: JSONContent[]) {
 		for (let i = 0; i < 120 && !editor && notes.status !== 'error'; i++) await new Promise(requestAnimationFrame);
@@ -74,6 +77,8 @@
 	const status = $derived(saver.state === 'saving' || saver.state === 'pending' ? 'Saving…' : saver.state === 'error' ? 'Not saved' : saver.savedAt || (notes.status === 'ready' && notes.doc) ? 'Saved' : '');
 </script>
 
+<!-- data-notes-pane: ⌘F in here finds in the notes, not in the paper. -->
+<div class="contents" data-notes-pane>
 <div class="flex h-11 shrink-0 items-center gap-2 pr-2 pl-4" data-tauri-drag-region>
 	<p class="text-[11px] font-medium tracking-wide text-muted uppercase" data-tauri-drag-region>Notes</p>
 	<span class="flex-1 truncate text-[11px] {saver.state === 'error' ? 'text-red-600 dark:text-red-400' : 'text-muted'}" title={saver.error ?? undefined} aria-live="polite" data-tauri-drag-region>{status}</span>
@@ -90,4 +95,5 @@
 			<p class="mt-1 text-xs opacity-80">{notes.error}</p>
 		</div>
 	{/if}
+</div>
 </div>

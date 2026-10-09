@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { NotesDoc } from '#lib/types.js';
-import { notesToMarkdown, notesToText } from './markdown';
+import { notesToMarkdown } from './markdown';
 
 const doc = (...content: unknown[]): NotesDoc => ({ type: 'doc', content });
 const p = (...content: unknown[]) => ({ type: 'paragraph', content });
@@ -80,9 +80,3 @@ describe('notesToMarkdown', () => {
 	});
 });
 
-describe('notesToText', () => {
-	it('all the text, one block per line', () => {
-		const d = doc({ type: 'heading', attrs: { level: 2 }, content: [t('Method')] }, p(t('Uses '), t('attention', 'bold'), t(', see '), { type: 'paperLink', attrs: { page: 3 } }), { type: 'bulletList', content: [{ type: 'listItem', content: [p(t('one'))] }] });
-		expect(notesToText(d)).toBe('Method\nUses attention, see p. 3\none');
-	});
-});

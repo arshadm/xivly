@@ -390,6 +390,29 @@ export class Repo {
 		});
 	}
 
+	/**
+	 * Every paper's notes as text (from notes.md), lower-cased, for library search. Papers
+	 * without notes are left out. Desktop reads them all in one call.
+	 */
+	async readAllNotesText(): Promise<Map<string, string>> {
+		const files = this.fs.readEach
+			? await this.fs.readEach('papers', 'notes.md')
+			: await Promise.all(
+					(await this.fs.list('papers'))
+						.filter((e) => e.dir && !e.name.startsWith('.'))
+						.map(async ({ name }) => {
+							const bytes = await this.fs.read(`papers/${name}/notes.md`).catch(() => null);
+							return { name, text: bytes ? dec.decode(bytes) : null, error: false };
+						})
+				);
+		const out = new Map<string, string>();
+		for (const { name, text } of files) {
+			const body = text?.replace(/^<!--[\s\S]*?-->\s*/, '').trim();
+			if (body) out.set(name, body.toLowerCase());
+		}
+		return out;
+	}
+
 	readPdf(id: string) {
 		return this.fs.read(`papers/${id}/paper.pdf`);
 	}

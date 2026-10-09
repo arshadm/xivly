@@ -8,7 +8,7 @@
 	import Code from '@tiptap/extension-code';
 	import { Placeholder } from '@tiptap/extensions';
 	import StarterKit from '@tiptap/starter-kit';
-	import { onDestroy, untrack } from 'svelte';
+	import { onDestroy, tick, untrack } from 'svelte';
 	import { mac } from '#lib/os.js';
 	import { platform } from '#lib/platform/index.js';
 	import { iconButton } from '#lib/ui/button.js';
@@ -17,6 +17,7 @@
 	import Tip from '#lib/ui/Tip.svelte';
 	import type { PaperAnchor } from '#lib/types.js';
 	import { PaperLink, paperLinkNode, toAnchor } from './paper-link';
+	import { findMatches, findStep, NotesFind, setFindQuery } from './find';
 
 	let {
 		content,
@@ -34,6 +35,50 @@
 		anchor?: () => PaperAnchor | null;
 		editable?: boolean;
 	} = $props();
+
+	// ── Find in the notes (⌘F while in them) ──────────────────────────────
+	let findOpen = $state(false);
+	let findQuery = $state('');
+	let findInput = $state<HTMLInputElement>();
+	let found = $state({ index: -1, count: 0 });
+
+	/** Show the find bar, filled with the selected text if any. */
+	export async function openFind() {
+		const selected = editor ? editor.state.doc.textBetween(editor.state.selection.from, editor.state.selection.to, ' ') : '';
+		if (selected && !selected.includes('\n')) findQuery = selected;
+		findOpen = true;
+		await tick();
+		findInput?.focus();
+		findInput?.select();
+		search();
+	}
+
+	function search() {
+		if (!editor) return;
+		const count = setFindQuery(editor, findQuery);
+		found = { index: count ? 0 : -1, count };
+	}
+
+	function step(dir: 1 | -1) {
+		if (editor && found.count) found = findStep(editor, dir);
+	}
+
+	function closeFind() {
+		findOpen = false;
+		if (editor) setFindQuery(editor, '');
+		editor?.commands.focus();
+	}
+
+	function onFindKey(e: KeyboardEvent) {
+		if (e.key === 'Enter') (e.preventDefault(), step(e.shiftKey ? -1 : 1));
+		else if (e.key === 'Escape') (e.preventDefault(), e.stopPropagation(), closeFind());
+	}
+
+	// The matches follow edits.
+	$effect(() => {
+		void version;
+		if (findOpen && editor) untrack(() => (found = { ...found, count: findMatches(editor!.state.doc, findQuery).length }));
+	});
 
 	/** Add content at the end of the notes (a quote from the paper…), and go on writing after it. */
 	export function append(nodes: JSONContent[]) {
@@ -56,7 +101,8 @@
 				StarterKit.configure({ code: false, link: { openOnClick: false, autolink: true, defaultProtocol: 'https' } }),
 				Code.extend({ addKeyboardShortcuts: () => ({}) }),
 				Placeholder.configure({ placeholder: 'Write your notes about this paper…' }),
-				PaperLink
+				PaperLink,
+				NotesFind
 			],
 			editorProps: {
 				attributes: { class: 'notes-editor min-h-full px-5 py-4 outline-none', role: 'textbox', 'aria-multiline': 'true', 'aria-label': 'Notes', 'data-notes-editor': '' },
@@ -156,6 +202,18 @@
 					</Tip>
 				{/each}
 			{/each}
+		</div>
+	{/if}
+	{#if findOpen}
+		<div class="flex shrink-0 items-center gap-1 border-b border-stone-200 px-3 py-1.5 dark:border-stone-800">
+			<div class="flex min-w-0 flex-1 items-center gap-1 rounded-md border border-edge bg-white px-2 focus-within:ring-2 focus-within:ring-blue-500 dark:bg-stone-900 dark:focus-within:ring-blue-400">
+				<span class="icon-[lucide--search] size-3.5 shrink-0 text-stone-400"></span>
+				<input bind:this={findInput} bind:value={findQuery} oninput={search} onkeydown={onFindKey} class="min-w-0 flex-1 bg-transparent py-1 text-[13px] outline-none placeholder:text-muted" placeholder="Find in notes" aria-label="Find in notes" />
+				<span class="text-[11px] whitespace-nowrap text-muted tabular-nums" aria-live="polite">{findQuery ? (found.count ? `${found.index + 1}/${found.count}` : 'No match') : ''}</span>
+			</div>
+			<Tip label="Previous match" shortcut={mac ? '⇧↵' : 'Shift+Enter'}>{#snippet child({ props })}<button {...props} type="button" class={iconButton(7)} aria-label="Previous match" disabled={!found.count} onclick={() => step(-1)}><span class="icon-[lucide--chevron-up] size-4"></span></button>{/snippet}</Tip>
+			<Tip label="Next match" shortcut="↵">{#snippet child({ props })}<button {...props} type="button" class={iconButton(7)} aria-label="Next match" disabled={!found.count} onclick={() => step(1)}><span class="icon-[lucide--chevron-down] size-4"></span></button>{/snippet}</Tip>
+			<Tip label="Close" shortcut="Esc">{#snippet child({ props })}<button {...props} type="button" class={iconButton(7)} aria-label="Close find" onclick={closeFind}><span class="icon-[lucide--x] size-4"></span></button>{/snippet}</Tip>
 		</div>
 	{/if}
 	<div class="min-h-0 flex-1 overflow-y-auto" bind:this={element}></div>
@@ -276,6 +334,14 @@
 	:global(.dark .notes-editor .paper-link) {
 		background: rgb(56 189 248 / 0.16);
 		color: var(--color-sky-300, #7dd3fc);
+	}
+	/* Find in the notes. */
+	:global(.notes-editor .notes-match) {
+		background: rgb(252 211 77 / 0.45);
+		border-radius: 2px;
+	}
+	:global(.notes-editor .notes-match-current) {
+		background: rgb(245 158 11 / 0.7);
 	}
 	/* The placeholder, while the notes are empty. */
 	:global(.notes-editor p.is-editor-empty:first-child::before) {

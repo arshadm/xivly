@@ -566,7 +566,7 @@
 	function onkeydown(e: KeyboardEvent) {
 		if (e.defaultPrevented && inNotes(e)) return;
 		if (matches(e, keys.save)) (e.preventDefault(), void save({ explicit: true }));
-		else if (matches(e, keys.find)) (e.preventDefault(), openPanel('search'));
+		else if (matches(e, keys.find)) (e.preventDefault(), (e.target as Element | null)?.closest?.('[data-notes-pane]') ? notesPane?.openFind() : openPanel('search'));
 		else if (matches(e, keys.panel) || matches(e, keys.panelAlt)) (e.preventDefault(), (panelOpen = !panelOpen));
 		else if (matches(e, keys.closeWindow)) (e.preventDefault(), closeWindow());
 		else if (matches(e, keys.addBookmark)) (e.preventDefault(), void addBookmark());

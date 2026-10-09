@@ -16,6 +16,8 @@ export interface FilterOptions {
 	sortDesc: boolean;
 	/** Is this a category of the library (ids missing from library.json count as uncategorized)? */
 	isCategory: (id: string | undefined) => boolean;
+	/** A paper's notes, lower-cased (searched too), when known. */
+	notesText?: (id: string) => string | undefined;
 }
 
 /** Comparable string per sort order ('' when the paper has no value for it). */
@@ -55,7 +57,7 @@ export function filterPapers(papers: Paper[], o: FilterOptions): Paper[] {
 		if (v.kind === 'recent' && !(p.opened && Date.parse(p.opened) >= o.recentSince)) return false;
 		for (const [t, mode] of Object.entries(o.tagFilter)) if (!!p.tags?.includes(t) !== (mode === 'in')) return false;
 		if (o.readFilter !== 'all' && !!p.read !== (o.readFilter === 'read')) return false;
-		return !q || haystack(p).includes(q);
+		return !q || haystack(p).includes(q) || !!o.notesText?.(p.id)?.includes(q);
 	});
 	// Recent is always most recently opened first.
 	const recent = v.kind === 'recent';

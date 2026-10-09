@@ -1,5 +1,5 @@
 // The notes (TipTap / ProseMirror JSON) as Markdown, for the notes export and
-// notes.md (read by Claude Code, scripts…), and as plain text for search.
+// notes.md (read by Claude Code, scripts… and by library search).
 import { anchorLabel } from '#lib/anchor.js';
 import type { NotesDoc } from '#lib/types.js';
 import { toAnchor } from './paper-link';
@@ -21,22 +21,6 @@ export interface MarkdownOptions {
 export function notesToMarkdown(doc: NotesDoc, opts: MarkdownOptions = {}): string {
 	return blocks((doc.content ?? []) as Node[], opts).trim();
 }
-
-/** All the text in the notes, blocks on their own lines (search). */
-export function notesToText(doc: NotesDoc): string {
-	const out: string[] = [];
-	const walk = (n: Node) => {
-		if (n.type === 'text') out.push(n.text ?? '');
-		else if (n.type === 'paperLink') out.push(anchorLabel(toAnchor(n.attrs ?? {})));
-		else if (n.type === 'inlineMath' || n.type === 'blockMath') out.push(String(n.attrs?.latex ?? ''));
-		n.content?.forEach(walk);
-		if (n.type !== 'text' && n.type !== 'paperLink' && !isInline(n)) out.push('\n');
-	};
-	((doc.content ?? []) as Node[]).forEach(walk);
-	return out.join('').replace(/\n{2,}/g, '\n').trim();
-}
-
-const isInline = (n: Node) => ['text', 'paperLink', 'hardBreak', 'inlineMath'].includes(n.type);
 
 // ── Blocks ────────────────────────────────────────────────────────────
 
