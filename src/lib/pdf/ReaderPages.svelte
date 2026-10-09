@@ -5,7 +5,7 @@
 -->
 <script lang="ts">
 	import { slide, fade } from 'svelte/transition';
-	import { Annotations, Find, Minimap, Paper, Toc, Viewer, type PaperState, type PdfAction, type PdfContext, type Reference } from 'svelte-pdf-mini';
+	import { Annotations, AnnotationsContext, Find, Minimap, Paper, Toc, Viewer, type PaperState, type PdfAction, type PdfContext, type Reference } from 'svelte-pdf-mini';
 	import { settings } from '#lib/settings.svelte.js';
 	import { saveFile } from '#lib/windows.js';
 	import BackPill from './BackPill.svelte';
@@ -30,13 +30,19 @@
 		moreActions: (ctx: PdfContext) => Partial<Record<'selection' | 'page', PdfAction[]>>;
 	} = $props();
 	const s = $derived(settings.values);
+	const store = AnnotationsContext.get();
+
+	// Room beside the pages for side notes, only when there are some to show: otherwise
+	// "Page width" would leave a quarter of the view empty for nothing. (As the margin
+	// shows them: a comment, or a label other than a box's.)
+	const marginNotes = $derived(s.sideNotes && store.annotations.some((a) => !a.inReplyTo && !a.hidden && !!(a.contents?.trim() || (a.label && a.kind !== 'area'))));
 </script>
 
 <div class="flex min-h-0 min-w-0 flex-1">
 	<div class="relative min-w-0 flex-1">
 		<PdfContextMenu onOpenReference={openReference} {saveFile} {moreActions}>
 			{#snippet trigger({ props })}
-				<Viewer.Viewport {...props} style={s.pageFrame === 'none' ? `background:${swatch}` : undefined} class="h-full bg-stone-100 transition-colors dark:bg-stone-950 [--pdf-page-gap:22px] [--pdf-pages-padding:28px] {s.sideNotes ? '[--pdf-pages-aside:252px]' : ''}">
+				<Viewer.Viewport {...props} style={s.pageFrame === 'none' ? `background:${swatch}` : undefined} class="h-full bg-stone-100 transition-colors dark:bg-stone-950 [--pdf-page-gap:22px] [--pdf-pages-padding:28px] {marginNotes ? '[--pdf-pages-aside:252px]' : ''}">
 					<Viewer.Pages class={restoring ? 'opacity-0' : 'transition-opacity duration-150'}>
 						{#snippet children({ pageNumber })}
 							<Viewer.Page {pageNumber}>

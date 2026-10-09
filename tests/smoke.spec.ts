@@ -618,3 +618,36 @@ test('notes: images — a pasted image is kept next to the paper and shown again
 	await expect.poll(() => shown(reloaded)).toBe(40);
 	expect(errs).toEqual([]);
 });
+
+test('page width uses the whole view, leaving room for side notes only once there are some', async ({ page, context }) => {
+	const reader = await addPaper(page, context);
+	await reader.setViewportSize({ width: 1280, height: 800 });
+	const errs = errors(reader);
+	const firstPage = reader.locator('[data-pdf-page]').first();
+	await expect(firstPage.locator('[data-pdf-canvas]')).toBeVisible();
+	const viewport = reader.locator('[data-pdf-viewport]');
+	/** The page's width as a share of the view (less its padding). */
+	const share = async () => {
+		const [p, v] = await Promise.all([firstPage.boundingBox(), viewport.evaluate((el) => el.clientWidth)]);
+		return p!.width / (v - 56);
+	};
+	await expect.poll(share).toBeGreaterThan(0.97);
+
+	// With the notes pane open too.
+	await reader.keyboard.press('ControlOrMeta+e');
+	await expect(reader.getByRole('textbox', { name: 'Notes' })).toBeVisible();
+	await expect.poll(share).toBeGreaterThan(0.97);
+	await reader.keyboard.press('ControlOrMeta+e');
+
+	// A box with a note: now there's a note for the margin, and room for it.
+	await reader.getByRole('button', { name: 'Box a region' }).click();
+	const box = (await firstPage.boundingBox())!;
+	await reader.mouse.move(box.x + box.width * 0.1, box.y + box.height * 0.06);
+	await reader.mouse.down();
+	await reader.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.12, { steps: 5 });
+	await reader.mouse.up();
+	await reader.keyboard.type('A note for the margin');
+	await reader.keyboard.press('Enter');
+	await expect.poll(share).toBeLessThan(0.8);
+	expect(errs).toEqual([]);
+});
