@@ -5,7 +5,7 @@
 -->
 <script lang="ts">
 	import { slide, fade } from 'svelte/transition';
-	import { Annotations, AnnotationsContext, Find, Minimap, Paper, Toc, Viewer, type PaperState, type PdfAction, type PdfContext, type Reference } from 'svelte-pdf-mini';
+	import { Annotations, AnnotationsContext, Find, Minimap, Paper, Toc, Viewer, type Annotation, type PaperState, type PdfAction, type PdfContext, type Reference } from 'svelte-pdf-mini';
 	import { settings } from '#lib/settings.svelte.js';
 	import { saveFile } from '#lib/windows.js';
 	import BackPill from './BackPill.svelte';
@@ -32,10 +32,12 @@
 	const s = $derived(settings.values);
 	const store = AnnotationsContext.get();
 
-	// Room beside the pages for side notes, only when there are some to show: otherwise
-	// "Page width" would leave a quarter of the view empty for nothing. (As the margin
-	// shows them: a comment, or a label other than a box's.)
-	const marginNotes = $derived(s.sideNotes && store.annotations.some((a) => !a.inReplyTo && !a.hidden && !!(a.contents?.trim() || (a.label && a.kind !== 'area'))));
+	// The margin shows the notes written so far: a comment, or a label other than a box's
+	// (as svelte-pdf-mini does). A note still being written stays in its popover.
+	const inMargin = (a: Annotation) => !a.inReplyTo && !a.hidden && !!(a.contents?.trim() || (a.label && a.kind !== 'area'));
+	// Room beside the pages only when the margin has something to show: otherwise
+	// "Page width" would leave a quarter of the view empty for nothing.
+	const marginNotes = $derived(s.sideNotes && store.annotations.some(inMargin));
 </script>
 
 <div class="flex min-h-0 min-w-0 flex-1">
@@ -53,7 +55,7 @@
 								<Paper.Layer />
 								<Annotations.Layer />
 								{#if s.lineMarkers}<Annotations.LineMarkers markers="all" />{/if}
-								{#if s.sideNotes}<Annotations.Margin edge={s.tocRail ? 36 : 8} class="[--pdf-margin-width:220px]" />{/if}
+								{#if s.sideNotes}<Annotations.Margin filter={inMargin} edge={s.tocRail ? 36 : 8} class="[--pdf-margin-width:220px]" />{/if}
 								<Viewer.Focus />
 							</Viewer.Page>
 						{/snippet}
