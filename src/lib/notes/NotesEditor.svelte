@@ -415,11 +415,39 @@
 		margin-top: 0.3em;
 		user-select: none;
 	}
+	/* A square box (not the system's rounded one); ticked: just a tick, no fill. */
 	:global(.notes-editor ul[data-type='taskList'] li > label input) {
-		width: 0.95em;
-		height: 0.95em;
-		accent-color: var(--color-stone-700, #44403c);
+		appearance: none;
+		-webkit-appearance: none;
+		display: grid;
+		place-content: center;
+		width: 1em;
+		height: 1em;
+		margin: 0;
+		border: 1.5px solid var(--color-stone-400, #a8a29e);
+		border-radius: 3px;
+		background: transparent;
+		color: var(--color-stone-800, #292524);
 		cursor: pointer;
+		outline: none;
+	}
+	:global(.notes-editor ul[data-type='taskList'] li > label input:hover) {
+		border-color: var(--color-stone-500, #78716c);
+	}
+	:global(.notes-editor ul[data-type='taskList'] li > label input:focus-visible) {
+		outline: 2px solid rgb(14 165 233 / 0.6);
+		outline-offset: 1px;
+	}
+	:global(.notes-editor ul[data-type='taskList'] li > label input:checked::before) {
+		content: '';
+		width: 0.72em;
+		height: 0.72em;
+		background: currentColor;
+		mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3 8.5l3.2 3.2L13 4.8' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+	}
+	:global(.dark .notes-editor ul[data-type='taskList'] li > label input) {
+		border-color: var(--color-stone-500, #78716c);
+		color: var(--color-stone-100, #f5f5f4);
 	}
 	:global(.notes-editor ul[data-type='taskList'] li > div) {
 		flex: 1;
