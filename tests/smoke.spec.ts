@@ -546,3 +546,26 @@ test('notes: checklists — "[ ] " starts one, a click ticks it, and it stays ti
 	await expect(reloaded.getByRole('checkbox').last()).not.toBeChecked();
 	expect(errs).toEqual([]);
 });
+
+test('notes: tables — insert one, Tab from cell to cell, add a row, and it stays', async ({ page, context }) => {
+	const { reader, notes } = await openNotes(page, context);
+	const errs = errors(reader);
+	await reader.getByRole('button', { name: 'Table', exact: true }).click();
+	await expect(notes.locator('table tr')).toHaveCount(3);
+	await expect(notes.locator('table th')).toHaveCount(3);
+	// The cursor starts in the first header cell.
+	for (const [i, cell] of ['Model', 'Score', 'Notes', 'ResNet', '0.76', 'baseline'].entries()) {
+		if (i) await reader.keyboard.press('Tab');
+		await reader.keyboard.type(cell);
+	}
+	const tableBar = reader.getByRole('toolbar', { name: 'Table' });
+	await expect(tableBar).toBeVisible();
+	await tableBar.getByRole('button', { name: 'Add a row below' }).click();
+	await expect(notes.locator('table tr')).toHaveCount(4);
+	await expect(notes.locator('table tr').nth(1)).toHaveText('ResNet0.76baseline');
+
+	const reloaded = await reloadNotes(reader);
+	await expect(reloaded.locator('table th').first()).toHaveText('Model');
+	await expect(reloaded.locator('table tr')).toHaveCount(4);
+	expect(errs).toEqual([]);
+});

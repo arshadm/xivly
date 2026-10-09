@@ -7,6 +7,7 @@
 	import { Editor, type JSONContent } from '@tiptap/core';
 	import Code from '@tiptap/extension-code';
 	import { TaskItem, TaskList } from '@tiptap/extension-list';
+	import { TableKit } from '@tiptap/extension-table';
 	import { Placeholder } from '@tiptap/extensions';
 	import StarterKit from '@tiptap/starter-kit';
 	import { onDestroy, tick, untrack } from 'svelte';
@@ -105,7 +106,8 @@
 				PaperLink,
 				NotesFind,
 				TaskList,
-				TaskItem.configure({ nested: true })
+				TaskItem.configure({ nested: true }),
+				TableKit.configure({ table: { resizable: false } })
 			],
 			editorProps: {
 				attributes: { class: 'notes-editor min-h-full px-5 py-4 outline-none', role: 'textbox', 'aria-multiline': 'true', 'aria-label': 'Notes', 'data-notes-editor': '' },
@@ -181,12 +183,23 @@
 			{ label: 'Numbered list', icon: 'icon-[lucide--list-ordered]', keys: `${mod}${shift}7`, on: () => run((c) => c.toggleOrderedList()), isActive: () => active('orderedList') },
 			{ label: 'Checklist', icon: 'icon-[lucide--list-checks]', keys: `${mod}${shift}9`, on: () => run((c) => c.toggleTaskList()), isActive: () => active('taskList') },
 			{ label: 'Quote', icon: 'icon-[lucide--text-quote]', keys: `${mod}${shift}B`, on: () => run((c) => c.toggleBlockquote()), isActive: () => active('blockquote') },
-			{ label: 'Code block', icon: 'icon-[lucide--square-code]', keys: `${alt}${mod}C`, on: () => run((c) => c.toggleCodeBlock()), isActive: () => active('codeBlock') }
+			{ label: 'Code block', icon: 'icon-[lucide--square-code]', keys: `${alt}${mod}C`, on: () => run((c) => c.toggleCodeBlock()), isActive: () => active('codeBlock') },
+			{ label: 'Table', icon: 'icon-[lucide--table]', on: () => run((c) => c.insertTable({ rows: 3, cols: 3, withHeaderRow: true })), isActive: () => active('table') }
 		],
 		[
 			{ label: 'Undo', icon: 'icon-[lucide--undo-2]', keys: `${mod}Z`, on: () => run((c) => c.undo()), disabled: () => !can((e) => e.can().undo()) },
 			{ label: 'Redo', icon: 'icon-[lucide--redo-2]', keys: `${mod}${shift}Z`, on: () => run((c) => c.redo()), disabled: () => !can((e) => e.can().redo()) }
 		]
+	];
+
+	// In a table: its rows and columns.
+	const tableItems: Item[] = [
+		{ label: 'Add a row below', icon: 'icon-[lucide--between-vertical-start]', on: () => run((c) => c.addRowAfter()) },
+		{ label: 'Add a column to the right', icon: 'icon-[lucide--between-horizontal-start]', on: () => run((c) => c.addColumnAfter()) },
+		{ label: 'Delete the row', icon: 'icon-[lucide--table-rows-split]', on: () => run((c) => c.deleteRow()) },
+		{ label: 'Delete the column', icon: 'icon-[lucide--table-columns-split]', on: () => run((c) => c.deleteColumn()) },
+		{ label: 'Header row', icon: 'icon-[lucide--panel-top]', on: () => run((c) => c.toggleHeaderRow()), isActive: () => (void version, !!editor && editor.isActive('tableHeader')) },
+		{ label: 'Delete the table', icon: 'icon-[lucide--grid-2x2-x]', on: () => run((c) => c.deleteTable()) }
 	];
 </script>
 
@@ -205,6 +218,20 @@
 						{/snippet}
 					</Tip>
 				{/each}
+			{/each}
+		</div>
+	{/if}
+	{#if editable && active('table')}
+		<div class="flex shrink-0 flex-wrap items-center gap-0.5 border-b border-stone-200 bg-stone-50 px-3 py-1 dark:border-stone-800 dark:bg-stone-900/60" role="toolbar" aria-label="Table">
+			<span class="mr-1 text-[11px] font-medium tracking-wide text-muted uppercase">Table</span>
+			{#each tableItems as item (item.label)}
+				<Tip label={item.label}>
+					{#snippet child({ props })}
+						<button {...props} type="button" class={btn} aria-label={item.label} aria-pressed={item.isActive ? item.isActive() : undefined} data-active={item.isActive?.() || undefined} onmousedown={(e) => e.preventDefault()} onclick={item.on}>
+							<span class="{item.icon} size-4"></span>
+						</button>
+					{/snippet}
+				</Tip>
 			{/each}
 		</div>
 	{/if}
@@ -367,6 +394,47 @@
 	:global(.dark .notes-editor .paper-link) {
 		background: rgb(56 189 248 / 0.16);
 		color: var(--color-sky-300, #7dd3fc);
+	}
+	/* Tables: ruled cells, the header row shaded; scrolls sideways when wide. */
+	:global(.notes-editor .tableWrapper) {
+		overflow-x: auto;
+	}
+	:global(.notes-editor table) {
+		border-collapse: collapse;
+		table-layout: fixed;
+		width: 100%;
+		font-size: 0.93em;
+	}
+	:global(.notes-editor th),
+	:global(.notes-editor td) {
+		border: 1px solid var(--color-stone-300, #d6d3d1);
+		padding: 0.3em 0.5em;
+		vertical-align: top;
+		min-width: 3em;
+		position: relative;
+	}
+	:global(.notes-editor th) {
+		background: rgb(0 0 0 / 0.04);
+		font-weight: 600;
+		text-align: left;
+	}
+	:global(.notes-editor td > p),
+	:global(.notes-editor th > p) {
+		margin: 0;
+	}
+	:global(.notes-editor .selectedCell::after) {
+		content: '';
+		position: absolute;
+		inset: 0;
+		background: rgb(14 165 233 / 0.15);
+		pointer-events: none;
+	}
+	:global(.dark .notes-editor th),
+	:global(.dark .notes-editor td) {
+		border-color: var(--color-stone-700, #44403c);
+	}
+	:global(.dark .notes-editor th) {
+		background: rgb(255 255 255 / 0.05);
 	}
 	/* Find in the notes. */
 	:global(.notes-editor .notes-match) {
