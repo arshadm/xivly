@@ -385,7 +385,8 @@ test('notes: rich text typed in the pane; its keys never reach the reader', asyn
 	await reader.keyboard.press('ControlOrMeta+b');
 	await reader.keyboard.type('key idea');
 	await expect(notes.locator('strong')).toHaveText('key idea');
-	await expect(reader.getByRole('tablist')).toBeHidden();
+	// The side panel's tabs (not the pane's Notes | Chat).
+	await expect(reader.getByRole('complementary').getByRole('tab', { name: 'Contents' })).toBeHidden();
 
 	// Saved a moment after typing: still there after hiding the pane, and after a reload.
 	await expect(reader.getByText('Saved', { exact: true })).toBeVisible();
