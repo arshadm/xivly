@@ -434,7 +434,10 @@
 		if (name?.trim()) await library.renameBookmark(id, b.id, name).catch((e) => toast(String(e), 'error'));
 	}
 
-	const removeBookmark = (b: Bookmark) => library.removeBookmark(id, b.id).catch((e) => toast(String(e), 'error'));
+	async function removeBookmark(b: Bookmark) {
+		if (!(await prompts.confirm(`Remove the bookmark “${b.name}”?`, { confirmLabel: 'Remove', danger: true }))) return;
+		await library.removeBookmark(id, b.id).catch((e) => toast(String(e), 'error'));
+	}
 
 	const goToBookmark = (b: Bookmark) => viewer && jumpTo(viewer, b);
 

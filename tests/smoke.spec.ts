@@ -260,5 +260,17 @@ test('bookmarks: add one, see it in the panel after a reload, jump to it from ‚å
 	await expect(reader.getByRole('option', { name: /Main results/ })).toBeVisible();
 	await picker.press('Enter');
 	await expect(picker).toBeHidden();
+
+	// Removing asks first: Cancel keeps it, Remove removes it.
+	const row = reader.getByRole('button', { name: /Main results/ });
+	await row.hover();
+	await reader.getByRole('button', { name: 'Remove Main results' }).click();
+	const confirm = reader.getByRole('dialog', { name: /Remove the bookmark/ });
+	await confirm.getByRole('button', { name: 'Cancel' }).click();
+	await expect(row).toBeVisible();
+	await row.hover();
+	await reader.getByRole('button', { name: 'Remove Main results' }).click();
+	await confirm.getByRole('button', { name: 'Remove' }).click();
+	await expect(row).toBeHidden();
 	expect(errs).toEqual([]);
 });
