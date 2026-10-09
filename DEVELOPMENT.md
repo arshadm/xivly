@@ -44,7 +44,7 @@ The e2e test (`tests/`) runs in Playwright's Chromium (`bunx playwright install 
 
 To hack on svelte-pdf-mini at the same time: `cd ../svelte-pdf-mini/packages/svelte-pdf-mini && bun link`, then `bun link svelte-pdf-mini` here. Vite caches dependencies in memory: restart the dev server after rebuilding the library.
 
-On macOS, `tauri dev` runs the app inside a small `Xivly Dev.app` wrapper (`scripts/dev-app.sh`) so it has a bundle identifier (`cc.blanchon.xivly.dev`): clipboard history apps then record its copies, and its data stays apart from the installed app.
+On macOS, `tauri dev` runs the app inside a small `Xivly Dev.app` wrapper (`scripts/dev-app.sh`) so it has a bundle identifier (`io.github.arshadm.xivly.dev`): clipboard history apps then record its copies, and its data stays apart from the installed app.
 
 ## Chrome extension
 

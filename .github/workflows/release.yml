@@ -47,9 +47,9 @@
 # The Apple credentials are only given to the steps that sign or notarize.
 name: release
 
+# Fork: manual runs only (Actions › release › Run workflow), so pushing a tag
+# never starts a release.
 on:
-  push:
-    tags: ["v*.*.*"]
   workflow_dispatch:
     inputs:
       tag:
@@ -471,7 +471,8 @@ jobs:
 
   homebrew:
     needs: [prepare, publish]
-    if: needs.prepare.outputs.prerelease != 'true'
+    # Upstream's tap and stores only: never from a fork.
+    if: github.repository == 'julien-blanchon/xivly' && needs.prepare.outputs.prerelease != 'true'
     runs-on: ubuntu-latest
     # One tap writer at a time, whatever the tag.
     concurrency:
@@ -526,7 +527,8 @@ jobs:
   # Run workflow) without rebuilding it.
   stores:
     needs: [prepare, publish]
-    if: needs.prepare.outputs.prerelease != 'true'
+    # Upstream's tap and stores only: never from a fork.
+    if: github.repository == 'julien-blanchon/xivly' && needs.prepare.outputs.prerelease != 'true'
     uses: ./.github/workflows/stores.yml
     with:
       tag: ${{ inputs.tag || github.ref_name }}

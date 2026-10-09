@@ -26,6 +26,8 @@ env:
 jobs:
   # A published, stable release: stores never get drafts or prereleases.
   prepare:
+    # Upstream's store listings only: never from a fork (every store job needs this one).
+    if: github.repository == 'julien-blanchon/xivly'
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.release.outputs.version }}
