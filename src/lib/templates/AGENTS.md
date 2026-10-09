@@ -10,6 +10,8 @@ papers/<slug>/paper.pdf    the paper; highlights & notes are standard PDF annota
 papers/<slug>/paper.json   metadata (see below)
 papers/<slug>/notes.json   your notes on the paper: { version, updated, doc }, doc being
                            rich text as TipTap / ProseMirror JSON
+papers/<slug>/notes.md     the same notes as Markdown, rewritten on every save (read it,
+                           don't edit it: edit notes.json, or in Xivly)
 papers/<slug>/*            anything else you add (summary.md, code/, ...) is kept
 .xivly/library.json        categories (id, name, color) and tags
 .xivly/hooks/              scripts run by the desktop app on events

@@ -439,3 +439,38 @@ test('notes link to the paper: quote a selection, link the page, click a chip to
 	await expect(reader.getByText('Saved', { exact: true })).toBeVisible();
 	expect(errs).toEqual([]);
 });
+
+test('export as Markdown: the title, your notes, then the highlights', async ({ page, context }) => {
+	const reader = await addPaper(page, context);
+	const errs = errors(reader);
+	const firstPage = reader.locator('[data-pdf-page]').first();
+	await expect(firstPage.locator('[data-pdf-canvas]')).toBeVisible();
+
+	// A highlight (the highlighter), then notes with a heading, a quote of it and a chip.
+	await reader.getByRole('button', { name: 'Highlight', exact: true }).click();
+	const line = (await firstPage.getByText(/Reading papers should be calm/).first().boundingBox())!;
+	await reader.mouse.move(line.x + 2, line.y + line.height / 2);
+	await reader.mouse.down();
+	await reader.mouse.move(line.x + line.width - 2, line.y + line.height / 2, { steps: 8 });
+	await reader.mouse.up();
+	await expect(firstPage.locator('[data-pdf-annotation]')).toHaveCount(1);
+	await reader.keyboard.press('Escape');
+	await reader.keyboard.press('ControlOrMeta+e');
+	await reader.getByRole('textbox', { name: 'Notes' }).click();
+	await reader.keyboard.type('# Takeaway\nCalm reading, see ');
+	await reader.getByRole('button', { name: 'Link to the page you’re reading' }).click();
+
+	// Paper info › Export notes (back on the page first: in the notes, ⌘I is italic).
+	await firstPage.click({ position: { x: 20, y: 20 } });
+	await reader.keyboard.press('ControlOrMeta+i');
+	const download = reader.waitForEvent('download');
+	await reader.getByRole('button', { name: 'Export notes' }).click();
+	const file = await download;
+	const chunks: Uint8Array[] = [];
+	for await (const chunk of await file.createReadStream()) chunks.push(chunk as Uint8Array);
+	const md = new TextDecoder().decode(new Uint8Array(chunks.flatMap((c) => [...c])));
+	expect(md).toMatch(/^# A Tiny Paper for End-to-End Tests\n\n## Notes\n\n### Takeaway\n\nCalm reading, see \(p\. 1\)/);
+	expect(md).toContain('Reading papers should be calm');
+	expect(md.indexOf('## Notes')).toBeLessThan(md.indexOf('Reading papers should be calm'));
+	expect(errs).toEqual([]);
+});

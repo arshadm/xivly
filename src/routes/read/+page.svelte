@@ -60,6 +60,7 @@
 	import BookmarkPicker from '#lib/pdf/BookmarkPicker.svelte';
 	import { anchorAt, anchorAtPdfY, jumpTo } from '#lib/anchor.js';
 	import { quoteContent } from '#lib/notes/paper-link.js';
+	import { notesToMarkdown } from '#lib/notes/markdown.js';
 	import { prompts } from '#lib/ui/prompt.svelte.js';
 	import type { Bookmark } from '#lib/types.js';
 	import { icons } from '#lib/pdf/icons.js';
@@ -492,9 +493,14 @@
 		}
 	}
 
+	/** Your notes (from the notes pane), then the highlights and their notes by section. */
 	async function exportNotes() {
 		if (!store) return;
-		const md = store.toMarkdown({ title: paper?.title, sections: paperState?.flatSections.map((x) => ({ title: x.title, page: x.page, y: x.y })) });
+		await flushNotes(id);
+		const file = await library.repo?.readNotes(id).catch(() => null);
+		const notes = file ? notesToMarkdown(file.doc, { headingOffset: 2 }) : '';
+		const highlights = store.toMarkdown({ sections: paperState?.flatSections.map((x) => ({ title: x.title, page: x.page, y: x.y })) }).trim();
+		const md = [`# ${paper?.title ?? id}`, ...(notes ? ['## Notes', notes] : []), ...(highlights ? [highlights] : [])].join('\n\n') + '\n';
 		await saveFile(new Blob([md], { type: 'text/markdown' }), `${id}-notes.md`).catch((e) => toast(`Export failed: ${e}`, 'error'));
 	}
 

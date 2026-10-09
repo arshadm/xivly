@@ -249,6 +249,15 @@ describe('notes', () => {
 		expect(Date.parse(notes!.updated!)).not.toBeNaN();
 	});
 
+	it('writes notes.md next to it, the same notes as Markdown', async () => {
+		const { fs, r } = await repo();
+		const p = await r.add(PDF, { title: 'Noted' });
+		await r.saveNotes(p.id, doc);
+		const md = dec.decode((await fs.read(`papers/${p.id}/notes.md`))!);
+		expect(md).toMatch(/^<!-- Written by Xivly from notes.json/);
+		expect(md.endsWith('\n\nKey idea\n')).toBe(true);
+	});
+
 	it('keeps fields added by others, and replaces the document', async () => {
 		const { fs, r } = await repo();
 		const p = await r.add(PDF, { title: 'Noted' });

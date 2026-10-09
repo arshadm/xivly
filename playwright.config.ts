@@ -13,6 +13,8 @@ export default defineConfig({
 	forbidOnly: !!process.env.CI,
 	reporter: process.env.CI ? [['github'], ['list']] : 'list',
 	timeout: 30_000,
+	// Several readers render PDFs at once (one per worker): a reload can take a while.
+	expect: { timeout: 10_000 },
 	use: {
 		baseURL: `http://localhost:${port}/xivly/`,
 		trace: 'retain-on-failure'

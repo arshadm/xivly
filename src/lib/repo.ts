@@ -2,6 +2,7 @@
 // for the layout. paper.json / library.json are merged, never rewritten
 // from scratch, so fields added by users, hooks or agents survive.
 import { parseBookmarks } from './bookmarks';
+import { notesToMarkdown } from './notes/markdown';
 import type { HookEvent, LibraryFs, Platform } from './platform';
 import agentsMd from './templates/AGENTS.md?raw';
 import sampleHook from './templates/paper-added.sample?raw';
@@ -94,6 +95,7 @@ export function normalizePaper(id: string, meta: Json): Paper {
 }
 
 const NOTES_VERSION = 1;
+const NOTES_MD_HEADER = '<!-- Written by Xivly from notes.json each time the notes are saved: edit the notes in Xivly (changes here are replaced). -->';
 
 /** notes.json as the app needs it, or null when it isn't notes at all. */
 function normalizeNotes(raw: Json): NotesFile | null {
@@ -375,9 +377,17 @@ export class Repo {
 		return notes;
 	}
 
-	/** Write the notes (merged: fields added by agents are kept). Refused once the paper is gone. */
+	/**
+	 * Write the notes (merged: fields added by agents are kept), then notes.md, the same notes
+	 * as Markdown for tools that read the folder. Refused once the paper is gone.
+	 */
 	async saveNotes(id: string, doc: NotesDoc) {
 		await this.#patchJson(`papers/${id}/notes.json`, { version: NOTES_VERSION, updated: new Date().toISOString(), doc }, () => this.#present(id));
+		const md = notesToMarkdown(doc);
+		await this.#lock(`papers/${id}/notes.md`, async () => {
+			await this.#present(id);
+			await this.fs.write(`papers/${id}/notes.md`, enc.encode(`${NOTES_MD_HEADER}\n\n${md}${md ? '\n' : ''}`));
+		});
 	}
 
 	readPdf(id: string) {
