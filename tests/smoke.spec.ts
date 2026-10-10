@@ -1167,3 +1167,38 @@ test('mind maps out and in: PNG / SVG / outline from the map, and a chat answer 
 	expect(svg.match(/<path /g)).toHaveLength(2);
 	expect(errs).toEqual([]);
 });
+
+test('mind map branches stay on their side: a new one doesn’t jump across as it’s typed in', async ({ page, context }) => {
+	const { reader, notes } = await openNotes(page, context);
+	const errs = errors(reader);
+	await reader.getByRole('button', { name: 'Mind map', exact: true }).click();
+	const map = notes.locator('[data-mind-map-canvas]');
+	const topics = map.locator('[data-topic]');
+	const root = topics.first();
+	/** Left or right of the central topic. */
+	const sideOf = async (i: number) => {
+		const [r, b] = [(await root.boundingBox())!, (await topics.nth(i).boundingBox())!];
+		return b.x > r.x + r.width / 2 ? 'right' : 'left';
+	};
+	await root.click();
+	await reader.keyboard.press('Tab');
+	await reader.keyboard.type('First');
+	await reader.keyboard.press('Enter');
+	expect(await sideOf(1)).toBe('right');
+
+	await root.click();
+	await reader.keyboard.press('Tab');
+	await expect(topics).toHaveCount(3);
+	const empty = await sideOf(2);
+	await reader.keyboard.type('Second, with a longer text that wraps');
+	await expect(topics.nth(2).locator('textarea')).toHaveValue(/Second/);
+	expect(await sideOf(2)).toBe(empty);
+	await reader.keyboard.press('Enter');
+	expect(await sideOf(2)).toBe(empty);
+	expect(await sideOf(1)).toBe('right');
+
+	// Balance spreads them again.
+	await reader.getByRole('toolbar', { name: 'Mind map' }).getByRole('button', { name: 'Balance the branches (both sides)' }).click();
+	expect([await sideOf(1), await sideOf(2)]).toEqual(['right', 'left']);
+	expect(errs).toEqual([]);
+});

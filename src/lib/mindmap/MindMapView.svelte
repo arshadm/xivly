@@ -16,7 +16,7 @@
 	import { mac } from '#lib/os.js';
 	import type { PaperAnchor } from '#lib/types.js';
 	import { branchPath, layout, type Placed } from './layout';
-	import { addChild, addSibling, demote, find, move, promote, remove, setPage, setText, toggleCollapsed, type Edit, type MindMap } from './tree';
+	import { addChild, addSibling, balance, demote, find, move, promote, remove, setPage, setText, toggleCollapsed, type Edit, type MindMap } from './tree';
 	import { activeMap, type MapTools } from './active.svelte';
 	import { mapSvg, plain, svgToPng } from './image';
 	import { toOutline } from './tree';
@@ -356,6 +356,7 @@
 		wrap,
 		togglePage,
 		toggleCollapsed: () => onchange(toggleCollapsed(map, current)),
+		balance: () => onchange(balance(map)),
 		fit: () => fit(),
 		zoomIn: () => zoomBy(1.25),
 		zoomOut: () => zoomBy(0.8),

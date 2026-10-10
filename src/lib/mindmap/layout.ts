@@ -2,7 +2,7 @@
 // between the right and the left so both sides are about as tall, each branch
 // growing outward with its children stacked and centred on it. Sizes are the
 // topics' measured boxes (their text decides them).
-import type { Topic } from './tree';
+import { branchSides, type Topic } from './tree';
 
 export interface Size {
 	w: number;
@@ -49,25 +49,6 @@ export interface LayoutOptions {
 
 const count = (t: Topic): number => t.children.reduce((n, c) => n + 1 + count(c), 0);
 const shown = (t: Topic) => (t.collapsed ? [] : t.children);
-
-/**
- * Which side each branch of the central topic goes on: the ones given a side keep it;
- * the rest fill the right first, in order, until it holds about half the height.
- */
-export function sides(root: Topic, height: (t: Topic) => number): Map<string, 'left' | 'right'> {
-	const out = new Map<string, 'left' | 'right'>();
-	const branches = shown(root);
-	const total = branches.reduce((n, b) => n + height(b), 0);
-	let right = branches.filter((b) => b.side === 'right').reduce((n, b) => n + height(b), 0);
-	for (const b of branches) {
-		if (b.side) out.set(b.id, b.side);
-		else if (right < total / 2 || branches.length === 1) {
-			out.set(b.id, 'right');
-			right += height(b);
-		} else out.set(b.id, 'left');
-	}
-	return out;
-}
 
 export function layout(root: Topic, size: (id: string) => Size, opts: LayoutOptions = {}): Layout {
 	const gapX = opts.gapX ?? 40;
@@ -117,7 +98,7 @@ export function layout(root: Topic, size: (id: string) => Size, opts: LayoutOpti
 		}
 	}
 
-	const side = sides(root, height);
+	const side = branchSides(root);
 	for (const s of ['right', 'left'] as const) {
 		const kids = shown(root).filter((c) => side.get(c.id) === s);
 		const stacked = kids.reduce((n, k) => n + height(k), 0) + gapY * Math.max(0, kids.length - 1);

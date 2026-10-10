@@ -8,6 +8,8 @@ export interface MapTools {
 	wrap(mark: '**' | '*' | '`'): void;
 	togglePage(): void;
 	toggleCollapsed(): void;
+	/** The central topic's branches spread evenly on both sides again. */
+	balance(): void;
 	fit(): void;
 	zoomIn(): void;
 	zoomOut(): void;

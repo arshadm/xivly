@@ -342,7 +342,8 @@
 		[
 			{ label: 'Zoom out', icon: 'icon-[lucide--zoom-out]', on: t.zoomOut },
 			{ label: 'Zoom in', icon: 'icon-[lucide--zoom-in]', on: t.zoomIn },
-			{ label: 'Fit the map', icon: 'icon-[lucide--maximize]', on: t.fit }
+			{ label: 'Fit the map', icon: 'icon-[lucide--maximize]', on: t.fit },
+			{ label: 'Balance the branches (both sides)', icon: 'icon-[lucide--scale]', on: t.balance }
 		],
 		[
 			{ label: 'Copy as an outline', icon: 'icon-[lucide--list-tree]', on: () => void t.copyOutline() },

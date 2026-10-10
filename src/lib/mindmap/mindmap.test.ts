@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { branchPath, layout, sides, type Placed } from './layout';
-import { addChild, addSibling, demote, find, flipSide, move, newMap, normalizeMap, promote, remove, setPage, setText, toggleCollapsed, toOutline, visibleTopics, type MindMap, type Topic } from './tree';
+import { branchPath, layout, type Placed } from './layout';
+import { addChild, addSibling, balance, branchSides, demote, find, flipSide, move, newMap, normalizeMap, promote, remove, setPage, setText, toggleCollapsed, toOutline, visibleTopics, type MindMap, type Topic } from './tree';
 
 const t = (id: string, children: Topic[] = [], more: Partial<Topic> = {}): Topic => ({ id, text: id, children, ...more });
 const map = (root: Topic): MindMap => ({ root });
@@ -77,11 +77,38 @@ describe('balanced layout', () => {
 	const size = (w = 80, h = 24) => () => ({ w, h });
 	const overlap = (a: Placed, b: Placed) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 
-	it('branches split between right and left by height; given sides kept', () => {
+	it('branches without a side split by topic count (right first); given sides kept', () => {
 		const root = t('root', [t('a', [t('a1'), t('a2'), t('a3')]), t('b'), t('c'), t('d')]);
-		const s = sides(root, (x) => (x.id === 'a' ? 3 : 1));
-		expect([...s]).toEqual([['a', 'right'], ['b', 'left'], ['c', 'left'], ['d', 'left']]);
-		expect(sides(t('root', [t('a', [], { side: 'left' }), t('b')]), () => 1).get('a')).toBe('left');
+		expect([...branchSides(root)]).toEqual([['a', 'right'], ['b', 'left'], ['c', 'left'], ['d', 'left']]);
+		expect(branchSides(t('root', [t('a', [], { side: 'left' }), t('b')])).get('a')).toBe('left');
+	});
+
+	it('a branch never changes side as its text (its drawn size) changes', () => {
+		const m = map(t('root', [t('a'), t('b')]));
+		const side = (sizes: (id: string) => { w: number; h: number }) => layout(m.root, sizes).topics.find((x) => x.id === 'b')!.side;
+		expect(side(() => ({ w: 96, h: 32 }))).toBe(side((id) => (id === 'b' ? { w: 240, h: 90 } : { w: 80, h: 30 })));
+	});
+
+	it('a new branch goes on the lighter side and stays there; existing branches are fixed where they are', () => {
+		let m: MindMap = newMap('Paper');
+		const first = addChild(m, m.root.id, 'one');
+		m = first.map;
+		const second = addChild(m, m.root.id, 'two');
+		m = second.map;
+		expect(m.root.children.map((c) => c.side)).toEqual(['right', 'left']);
+		// More under "one": "two" stays on the left; typing changes nothing either.
+		m = addChild(addChild(m, first.select, 'x').map, first.select, 'y').map;
+		m = setText(m, second.select, 'a much longer text that wraps over several lines');
+		expect(layout(m.root, () => ({ w: 80, h: 30 })).topics.find((x) => x.id === second.select)!.side).toBe('left');
+		// A third: the lighter side is the left now (1 against 2).
+		expect(addChild(m, m.root.id).map.root.children.at(-1)!.side).toBe('left');
+		// Next to a branch: on its side.
+		expect(addSibling(m, first.select).map.root.children[1].side).toBe('right');
+	});
+
+	it('balance spreads the branches again', () => {
+		const m = map(t('root', [t('a', [], { side: 'left' }), t('b', [], { side: 'left' }), t('c', [], { side: 'left' })]));
+		expect(balance(m).root.children.map((c) => c.side)).toEqual(['right', 'right', 'left']);
 	});
 
 	it('the central topic in the middle; right grows right, left grows left; no overlaps', () => {

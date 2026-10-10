@@ -71,18 +71,70 @@ export function toggleCollapsed(map: MindMap, id: string): MindMap {
 	return { ...map, root: update(map.root, id, (t) => ({ ...t, collapsed: !t.collapsed || undefined })) };
 }
 
-/** A new topic as the last child of `id` (expanded, so it shows). */
+// ── Sides of the central topic's branches ───────────────────────────────
+
+/** A branch's weight when balancing sides: its topics at the ends (what's shown), at least 1. */
+const weight = (t: Topic): number => (t.collapsed || !t.children.length ? 1 : t.children.reduce((n, c) => n + weight(c), 0));
+
+/**
+ * Which side each branch of the central topic is on: its own when it has one; the rest
+ * (maps from outlines, older maps) fill the right first, in order, up to about half the
+ * weight. By topic counts, not drawn sizes: typing never moves a branch across.
+ */
+export function branchSides(root: Topic): Map<string, 'left' | 'right'> {
+	const out = new Map<string, 'left' | 'right'>();
+	const branches = root.collapsed ? [] : root.children;
+	const total = branches.reduce((n, b) => n + weight(b), 0);
+	let right = branches.filter((b) => b.side === 'right').reduce((n, b) => n + weight(b), 0);
+	for (const b of branches) {
+		if (b.side) out.set(b.id, b.side);
+		else if (right < total / 2 || branches.length === 1) {
+			out.set(b.id, 'right');
+			right += weight(b);
+		} else out.set(b.id, 'left');
+	}
+	return out;
+}
+
+/** Every branch of the central topic given the side it's drawn on now: later edits never move them. */
+function fixSides(root: Topic): Topic {
+	const sides = branchSides(root);
+	if (root.children.every((c) => c.side)) return root;
+	return { ...root, children: root.children.map((c) => (c.side ? c : { ...c, side: sides.get(c.id) })) };
+}
+
+/** The side a new branch goes on: the lighter one (the right when even). */
+function lighterSide(root: Topic): 'left' | 'right' {
+	const sides = branchSides(root);
+	let left = 0;
+	let right = 0;
+	for (const c of root.children) if (sides.get(c.id) === 'left') left += weight(c);
+	else right += weight(c);
+	return left < right ? 'left' : 'right';
+}
+
+/** Spread the central topic's branches evenly again (by weight, in order), fixed there. */
+export function balance(map: MindMap): MindMap {
+	return { ...map, root: fixSides({ ...map.root, children: map.root.children.map((c) => ({ ...c, side: undefined })) }) };
+}
+
+/** A new topic as the last child of `id` (expanded, so it shows); a new branch of the central topic goes on the lighter side, and stays there. */
 export function addChild(map: MindMap, id: string, text = ''): Edit {
 	const child = topic(text);
+	if (id === map.root.id) {
+		const root = fixSides(map.root);
+		return { map: { ...map, root: { ...root, collapsed: undefined, children: [...root.children, { ...child, side: lighterSide(root) }] } }, select: child.id };
+	}
 	return { map: { ...map, root: update(map.root, id, (t) => ({ ...t, collapsed: undefined, children: [...t.children, child] })) }, select: child.id };
 }
 
-/** A new topic right after `id` (on the central topic: a new branch). */
+/** A new topic right after `id` (on the central topic: a new branch; next to a branch: on its side). */
 export function addSibling(map: MindMap, id: string, text = ''): Edit {
 	const at = find(map.root, id);
 	if (!at?.parent) return addChild(map, id, text);
-	const sibling: Topic = { ...topic(text), side: at.topic.side };
-	const children = [...at.parent.children];
+	const parent = at.parent.id === map.root.id ? fixSides(at.parent) : at.parent;
+	const sibling: Topic = { ...topic(text), side: parent.children[at.index].side };
+	const children = [...parent.children];
 	children.splice(at.index + 1, 0, sibling);
 	return { map: { ...map, root: update(map.root, at.parent.id, (p) => ({ ...p, children })) }, select: sibling.id };
 }
@@ -113,13 +165,15 @@ export function promote(map: MindMap, id: string): Edit {
 	if (!at?.parent) return { map, select: id };
 	const grand = find(map.root, at.parent.id);
 	if (!grand?.parent) return { map, select: id };
+	// Onto the central topic's level: on the side of the branch it came from.
+	const side = grand.parent.id === map.root.id ? branchSides(map.root).get(grand.topic.id) : undefined;
 	let root = update(map.root, at.parent.id, (p) => ({ ...p, children: p.children.filter((c) => c.id !== id) }));
 	root = update(root, grand.parent.id, (g) => {
 		const children = [...g.children];
-		children.splice(grand.index + 1, 0, { ...at.topic, side: grand.topic.side });
+		children.splice(grand.index + 1, 0, { ...at.topic, side });
 		return { ...g, children };
 	});
-	return { map: { ...map, root }, select: id };
+	return { map: { ...map, root: side ? fixSides(root) : root }, select: id };
 }
 
 /** One level in: the last child of the topic before it. */
