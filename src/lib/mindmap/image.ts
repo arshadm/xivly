@@ -50,6 +50,14 @@ export function mapSvg(map: MindMap, l: Layout, style: ImageStyle): string {
 		if (root) parts.push(`<rect x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}" rx="12" fill="${style.dark ? '#f5f5f4' : '#292524'}"/>`);
 		else if (p.depth === 1) parts.push(`<rect x="${p.x + 1}" y="${p.y + 1}" width="${p.w - 2}" height="${p.h - 2}" rx="8" fill="${paper}" stroke="${color}" stroke-width="2"/>`);
 		else parts.push(`<line x1="${p.x}" y1="${p.y + p.h - 1}" x2="${p.x + p.w}" y2="${p.y + p.h - 1}" stroke="${color}" stroke-width="2"/>`);
+		if (p.hidden) {
+			// Folded: a line out to a "+N" badge, as on the canvas.
+			const out = p.side === 'left' ? -1 : 1;
+			const ex = p.side === 'left' ? p.x : p.x + p.w;
+			const cy = p.y + p.h / 2;
+			parts.push(`<line x1="${ex}" y1="${cy}" x2="${ex + out * 12}" y2="${cy}" stroke="${color}" stroke-width="2"/>`);
+			parts.push(`<circle cx="${ex + out * 22}" cy="${cy}" r="10" fill="${color}"/><text x="${ex + out * 22}" y="${cy + 3.5}" text-anchor="middle" font-family="-apple-system, Helvetica, Arial, sans-serif" font-size="10" font-weight="600" fill="#ffffff">+${p.hidden}</text>`);
+		}
 		const fill = root ? (style.dark ? '#1c1917' : '#ffffff') : ink;
 		const lh = size * 1.35;
 		const top = p.y + p.h / 2 - (lines.length * lh) / 2 + size;

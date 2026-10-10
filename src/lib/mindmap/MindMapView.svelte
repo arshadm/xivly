@@ -443,11 +443,15 @@
 					tabindex="-1"
 					data-topic={p.id}
 					{@attach measure(p.id)}
-					class="absolute flex w-max max-w-60 cursor-default items-center gap-1.5 leading-snug {topicClass(p)} {current === p.id && (focused || selected) ? 'ring-2 ring-sky-500' : ''}"
+					class="group absolute flex w-max max-w-60 cursor-default items-center gap-1.5 leading-snug {topicClass(p)} {current === p.id && (focused || selected) ? 'ring-2 ring-sky-500' : ''}"
 					style:left="{p.x}px"
 					style:top="{p.y}px"
 					style:border-color={p.depth === 1 ? colors.get(p.id) : undefined}
-					style:box-shadow={p.depth > 1 ? `inset 0 -2px 0 ${colors.get(p.id) ?? '#a8a29e'}` : undefined}
+					style:box-shadow={p.depth > 1
+						? `inset 0 -2px 0 ${colors.get(p.id) ?? '#a8a29e'}`
+						: p.hidden && p.depth === 1
+							? `${p.side === 'left' ? -3 : 3}px 3px 0 -1px var(--card), ${p.side === 'left' ? -3 : 3}px 3px 0 1px ${colors.get(p.id)}`
+							: undefined}
 					role="treeitem"
 					aria-selected={current === p.id}
 					aria-level={p.depth + 1}
@@ -468,10 +472,37 @@
 						<span class="topic-text min-w-4">{#if t.text}<Annotations.Markdown source={t.text} />{:else}<span class="opacity-40">…</span>{/if}</span>
 					{/if}
 					{#if t.page}
-						<button class="shrink-0 rounded-full bg-sky-500/15 px-1.5 text-[10px] text-sky-800 hover:bg-sky-500/25 dark:text-sky-300" onclick={() => onjump({ page: t.page! })} title="Go to page {t.page}">p. {t.page}</button>
+						<!-- The page it links: a small icon with the number, that goes there. -->
+						<button
+							class="flex shrink-0 items-center gap-0.5 rounded-md px-1 py-px text-[11px] font-medium tabular-nums {p.side === 'root'
+								? 'bg-white/15 text-white hover:bg-white/30 dark:bg-stone-900/10 dark:text-stone-900 dark:hover:bg-stone-900/20'
+								: 'bg-sky-500/15 text-sky-800 hover:bg-sky-500/30 dark:text-sky-300'}"
+							onclick={() => onjump({ page: t.page! })}
+							title="Go to page {t.page}"
+							aria-label="Go to page {t.page}"
+						>
+							<span class="icon-[lucide--file-text] size-3"></span>{t.page}
+						</button>
 					{/if}
 					{#if p.hidden}
-						<button class="absolute top-1/2 grid size-5 -translate-y-1/2 place-items-center rounded-full border bg-white text-[10px] tabular-nums dark:bg-stone-900 {p.side === 'left' ? '-left-6' : '-right-6'}" style:border-color={colors.get(p.id)} title="Show {p.hidden} more" onclick={() => onchange(toggleCollapsed(map, p.id))}>{p.hidden}</button>
+						<!-- Folded: a line out to a badge with how many topics are hidden; clicking unfolds. -->
+						<span class="pointer-events-none absolute top-1/2 h-0.5 w-3 -translate-y-1/2 {p.side === 'left' ? '-left-3' : '-right-3'}" style:background={colors.get(p.id) ?? '#a8a29e'} aria-hidden="true"></span>
+						<button
+							class="absolute top-1/2 grid h-5 min-w-5 -translate-y-1/2 place-items-center rounded-full px-1 text-[10px] font-semibold text-white tabular-nums shadow-sm hover:brightness-110 {p.side === 'left' ? '-left-8' : '-right-8'}"
+							style:background={colors.get(p.id) ?? '#78716c'}
+							title="Unfold ({p.hidden} hidden)"
+							aria-label="Unfold: {p.hidden} hidden topics"
+							onclick={() => onchange(toggleCollapsed(map, p.id))}>+{p.hidden}</button
+						>
+					{:else if t.children.length && p.side !== 'root' && editable}
+						<!-- Unfolded with children: a small − to fold, on hover (or ⌘/). -->
+						<button
+							class="absolute top-1/2 hidden size-4 -translate-y-1/2 place-items-center rounded-full border bg-white text-[11px] leading-none text-stone-600 group-hover:grid hover:bg-stone-100 dark:bg-stone-900 dark:text-stone-300 dark:hover:bg-stone-800 {p.side === 'left' ? '-left-5' : '-right-5'}"
+							style:border-color={colors.get(p.id) ?? '#a8a29e'}
+							title="Fold ({mac ? '⌘' : 'Ctrl+'}/)"
+							aria-label="Fold the branch"
+							onclick={() => onchange(toggleCollapsed(map, p.id))}><span class="icon-[lucide--minus] size-2.5"></span></button
+						>
 					{/if}
 				</div>
 			{/if}
@@ -507,10 +538,12 @@
 		padding: 0 0.25em;
 	}
 	.mind-map {
+		--card: #ffffff;
 		background-image: radial-gradient(rgb(0 0 0 / 0.07) 1px, transparent 1px);
 		background-size: 18px 18px;
 	}
 	:global(.dark) .mind-map {
+		--card: #1c1917;
 		background-image: radial-gradient(rgb(255 255 255 / 0.06) 1px, transparent 1px);
 	}
 </style>

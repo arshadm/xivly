@@ -1090,7 +1090,7 @@ test('the notes toolbar follows: map tools while a mind map is focused, formatti
 	await bar.getByRole('button', { name: 'Bold' }).click();
 	await expect(idea.locator('strong')).toHaveText('Idea');
 	await bar.getByRole('button', { name: 'Link to the page you’re reading' }).click();
-	await idea.getByRole('button', { name: 'p. 1' }).click();
+	await idea.getByRole('button', { name: 'Go to page 1' }).click();
 	await expect(reader.getByRole('group', { name: 'Back' })).toBeVisible();
 
 	// Done: back to the text after the map, with its formatting bar.
@@ -1116,7 +1116,7 @@ test('add to mind map: a passage of the paper as a topic with its page (a new ma
 	const topics = map.locator('[data-topic]');
 	await expect(topics).toHaveCount(2);
 	await expect(topics.nth(1)).toContainText('Reading papers should be calm.');
-	await expect(topics.nth(1).getByRole('button', { name: 'p. 1' })).toBeVisible();
+	await expect(topics.nth(1).getByRole('button', { name: 'Go to page 1' })).toBeVisible();
 
 	// Again: under the central topic of that map.
 	await add(/This one-page paper exists/);
@@ -1146,7 +1146,7 @@ test('mind maps out and in: PNG / SVG / outline from the map, and a chat answer 
 	await reader.getByRole('button', { name: 'Show', exact: true }).click();
 	const map = reader.getByRole('textbox', { name: 'Notes' }).locator('[data-mind-map-canvas]');
 	await expect(map.locator('[data-topic]')).toHaveText(['Calm reading', /Annotations in the PDF/, 'One page']);
-	await expect(map.locator('[data-topic]').nth(1).getByRole('button', { name: 'p. 1' })).toBeVisible();
+	await expect(map.locator('[data-topic]').nth(1).getByRole('button', { name: 'Go to page 1' })).toBeVisible();
 
 	// Out: an outline on the clipboard, a PNG and an SVG.
 	await map.locator('[data-topic]').first().click();
@@ -1200,5 +1200,33 @@ test('mind map branches stay on their side: a new one doesn’t jump across as i
 	// Balance spreads them again.
 	await reader.getByRole('toolbar', { name: 'Mind map' }).getByRole('button', { name: 'Balance the branches (both sides)' }).click();
 	expect([await sideOf(1), await sideOf(2)]).toEqual(['right', 'left']);
+	expect(errs).toEqual([]);
+});
+
+test('mind map folding shows: a “+N” badge on a folded branch unfolds it; a − on hover folds it', async ({ page, context }) => {
+	const { reader, notes } = await openNotes(page, context);
+	const errs = errors(reader);
+	await reader.getByRole('button', { name: 'Mind map', exact: true }).click();
+	const map = notes.locator('[data-mind-map-canvas]');
+	const topics = map.locator('[data-topic]');
+	await topics.first().click();
+	await reader.keyboard.press('Tab');
+	await reader.keyboard.type('Method');
+	await reader.keyboard.press('Tab');
+	await reader.keyboard.type('Tile');
+	await reader.keyboard.press('Enter');
+	await reader.keyboard.press('Enter');
+	await reader.keyboard.type('Fuse');
+	await reader.keyboard.press('Enter');
+	await expect(topics).toHaveCount(4);
+
+	const method = topics.filter({ hasText: 'Method' });
+	await method.hover();
+	await method.getByRole('button', { name: 'Fold the branch' }).click();
+	await expect(topics).toHaveCount(2);
+	const badge = method.getByRole('button', { name: 'Unfold: 2 hidden topics' });
+	await expect(badge).toHaveText('+2');
+	await badge.click();
+	await expect(topics).toHaveCount(4);
 	expect(errs).toEqual([]);
 });
