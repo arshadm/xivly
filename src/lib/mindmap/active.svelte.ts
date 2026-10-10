@@ -17,11 +17,17 @@ export interface MapTools {
 	exit(): void;
 	/** The selected topic: is it the central one, does it link a page, has it children, is it folded? */
 	state(): { root: boolean; page: boolean; children: boolean; collapsed: boolean };
+	/** A new topic under the selected one (a passage from the paper, with its page). */
+	addTopic(text: string, page?: number): void;
+	/** Is this map in that element (one notes editor's)? */
+	within(el: Element): boolean;
 }
 
 class ActiveMap {
 	/** Raw: the very object the map registered (compared by identity when it leaves). */
 	tools = $state.raw<MapTools | null>(null);
+	/** The map edited last (still there): where "Add to mind map" goes. */
+	recent: MapTools | null = null;
 }
 
 export const activeMap = new ActiveMap();

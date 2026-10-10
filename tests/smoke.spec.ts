@@ -1097,3 +1097,32 @@ test('the notes toolbar follows: map tools while a mind map is focused, formatti
 	await expect(notes.locator('p', { hasText: 'After the map' })).toBeVisible();
 	expect(errs).toEqual([]);
 });
+
+test('add to mind map: a passage of the paper as a topic with its page (a new map the first time)', async ({ page, context }) => {
+	const reader = await addPaper(page, context);
+	const errs = errors(reader);
+	await expect(reader.locator('[data-pdf-page]').first().locator('[data-pdf-canvas]')).toBeVisible();
+	const add = async (text: RegExp) => {
+		const line = await selectLine(reader, text);
+		await reader.mouse.click(line.x + line.width / 2, line.y + line.height / 2, { button: 'right' });
+		await reader.getByRole('menuitem', { name: 'Add to mind map' }).click();
+	};
+	await add(/Reading papers should be calm/);
+	const map = reader.getByRole('textbox', { name: 'Notes' }).locator('[data-mind-map-canvas]');
+	const topics = map.locator('[data-topic]');
+	await expect(topics).toHaveCount(2);
+	await expect(topics.nth(1)).toContainText('Reading papers should be calm.');
+	await expect(topics.nth(1).getByRole('button', { name: 'p. 1' })).toBeVisible();
+
+	// Again: under the central topic of that map.
+	await add(/This one-page paper exists/);
+	await expect(topics).toHaveCount(3);
+	await expect(topics.filter({ hasText: 'This one-page paper' })).toHaveAttribute('aria-level', '2');
+
+	// With a topic selected in the map: under that one.
+	await map.getByRole('button', { name: 'Fit the map' }).click();
+	await topics.filter({ hasText: 'Reading papers' }).click();
+	await add(/Ada Lovelace/);
+	await expect(topics.filter({ hasText: 'Ada Lovelace' })).toHaveAttribute('aria-level', '3');
+	expect(errs).toEqual([]);
+});

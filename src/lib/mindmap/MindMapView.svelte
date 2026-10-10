@@ -360,11 +360,18 @@
 		state: () => {
 			const t = find(shown.root, current)?.topic;
 			return { root: current === shown.root.id, page: !!t?.page, children: !!t?.children.length, collapsed: !!t?.collapsed };
-		}
+		},
+		addTopic(text, page) {
+			const e = addChild(map, find(map.root, current) ? current : map.root.id, text);
+			onchange(page ? setPage(e.map, e.select, page) : e.map);
+			current = e.select;
+		},
+		within: (el) => !!canvas && el.contains(canvas)
 	};
 	function onfocusin() {
 		focused = true;
 		activeMap.tools = tools;
+		activeMap.recent = tools;
 	}
 	function onfocusout(e: FocusEvent) {
 		if (canvas?.contains(e.relatedTarget as Node)) return;
@@ -373,6 +380,7 @@
 	}
 	$effect(() => () => {
 		if (activeMap.tools === tools) activeMap.tools = null;
+		if (activeMap.recent === tools) activeMap.recent = null;
 	});
 
 	function topicClass(p: Placed) {

@@ -26,6 +26,7 @@
 	import { imageFiles, MAX_IMAGE_BYTES, NotesImage, type NoteAssets } from './images';
 	import { MindMapNode } from '#lib/mindmap/node.svelte.js';
 	import { activeMap, type MapTools } from '#lib/mindmap/active.svelte.js';
+	import { addChild, newMap, normalizeMap, setPage } from '#lib/mindmap/tree.js';
 	import { toast } from '#lib/components/Toasts.svelte';
 
 	let {
@@ -94,6 +95,32 @@
 		void version;
 		if (findOpen && editor) untrack(() => (found = { ...found, count: findMatches(editor!.state.doc, findQuery).length }));
 	});
+
+	/**
+	 * A passage of the paper as a mind-map topic (with its page): under the selected topic of
+	 * the map edited last, else under the central topic of the last map, else in a new map at the end.
+	 */
+	export function addToMindMap(text: string, page?: number) {
+		if (!editor) return;
+		const recent = activeMap.recent;
+		if (recent && recent.within(editor.view.dom)) return recent.addTopic(text, page);
+		let last: { pos: number; node: PMNode } | null = null;
+		editor.state.doc.descendants((node, pos) => {
+			if (node.type.name === 'mindMap') last = { pos, node };
+			return node.isBlock;
+		});
+		const found = last as { pos: number; node: PMNode } | null;
+		if (found) {
+			const map = normalizeMap(found.node.attrs.map, title);
+			const e = addChild(map, map.root.id, text);
+			const next = page ? setPage(e.map, e.select, page) : e.map;
+			editor.view.dispatch(editor.state.tr.setNodeMarkup(found.pos, undefined, { ...found.node.attrs, map: next }));
+			return;
+		}
+		const map = newMap(title);
+		const e = addChild(map, map.root.id, text);
+		editor.chain().focus('end').insertMindMap(page ? setPage(e.map, e.select, page) : e.map).run();
+	}
 
 	/** Add content (nodes, or HTML read into notes nodes) at the end of the notes (a quote from the paper…), and go on writing after it. */
 	export function append(nodes: JSONContent[] | string) {

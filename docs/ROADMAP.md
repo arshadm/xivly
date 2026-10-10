@@ -136,7 +136,7 @@ Decided 2026-10-10:
   - A new topic stays on the canvas until its text is done, then joins the notes with that text as one undo step; one left empty leaves no trace.
   - *Test:* an e2e test (built with the keyboard, bold, undo and redo, empty topics, arrows, kept after a reload, outline in the export).
 - [x] **5.4 Toolbar that follows:** while a map is selected, the bar shows map tools (child, sibling, delete, bold, italic, code, link to page, tidy, fit, zoom, export) instead of text formatting.
-- [ ] **5.5 Links to the paper:** a topic can carry a **p. N** link (to the page you're reading) that jumps there. In the PDF, right-click a selection › "Add to mind map" adds it as a topic with its page.
+- [x] **5.5 Links to the paper:** a topic can carry a **p. N** link (to the page you're reading) that jumps there. In the PDF, right-click a selection › "Add to mind map" adds it as a topic with its page.
 - [ ] **5.6 Out and in:** export as PNG or SVG, or copy as an outline. `notes.md` and the Markdown export show maps as outlines. A saved prompt has Claude draft a map of the paper, and an answer can be inserted as a map.
 
 ## Phase 6: Sync through a synced folder

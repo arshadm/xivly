@@ -516,6 +516,17 @@
 		await notesPane?.append(quoteContent(text, anchor));
 	}
 
+	/** The selected text as a topic of the notes' mind map (with its page); the notes open. */
+	async function addSelectionToMap(ctx: PdfContext) {
+		const first = ctx.selection.find((sel) => sel.text.trim());
+		const text = ctx.selectedText.replace(/\s+/g, ' ').trim();
+		if (!first || !text) return;
+		settings.set('paneTab', 'notes');
+		if (!s.notesPane) settings.set('notesPane', true);
+		for (let i = 0; i < 60 && !notesPane; i++) await new Promise(requestAnimationFrame);
+		await notesPane?.addToMindMap(text.length > 160 ? `${text.slice(0, 157).trimEnd()}…` : text, first.page);
+	}
+
 	/** Where you're reading, for "Link to this page" in the notes. */
 	const readingAnchor = () => (viewer?.document.status === 'ready' ? anchorAt(viewer.position) : null);
 
@@ -523,6 +534,7 @@
 		selection: ctx.selectedText.trim()
 			? [
 					{ id: 'selection.quote', label: 'Quote in notes', run: () => void quoteInNotes(ctx) },
+					{ id: 'selection.map', label: 'Add to mind map', run: () => void addSelectionToMap(ctx) },
 					...(platform.claude
 						? [
 								{ id: 'selection.ask', label: 'Ask Claude about this…', run: () => void askAboutSelection(ctx) },

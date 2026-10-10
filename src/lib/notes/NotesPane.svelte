@@ -76,6 +76,12 @@
 	/** Find in the notes (⌘F while in them). */
 	export const openFind = () => editor?.openFind();
 
+	/** A passage as a mind-map topic (see NotesEditor), once the notes are loaded. */
+	export async function addToMindMap(text: string, page?: number) {
+		for (let i = 0; i < 120 && !editor && notes.status !== 'error'; i++) await new Promise(requestAnimationFrame);
+		editor?.addToMindMap(text, page);
+	}
+
 	/** Add content at the end of the notes, once they're loaded (the pane may have just opened). */
 	export async function append(nodes: JSONContent[] | string) {
 		for (let i = 0; i < 120 && !editor && notes.status !== 'error'; i++) await new Promise(requestAnimationFrame);
