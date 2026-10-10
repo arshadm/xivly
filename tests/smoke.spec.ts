@@ -1018,6 +1018,16 @@ test('mind maps in the notes: built with the keyboard, formatted, undone, kept, 
 	await reader.keyboard.type('Tiling');
 	await reader.keyboard.press('Enter');
 	await expect(topics).toHaveText([title, 'Method', 'Fusion of kernels', 'Tiling']);
+	// Tab from a topic being typed: the next one under it, the first one kept.
+	await topics.filter({ hasText: 'Tiling' }).click();
+	await reader.keyboard.press('Tab');
+	await reader.keyboard.type('Square tiles');
+	await reader.keyboard.press('Tab');
+	await reader.keyboard.type('32×32');
+	await reader.keyboard.press('Enter');
+	await expect(topics).toHaveText([title, 'Method', 'Fusion of kernels', 'Tiling', 'Square tiles', '32×32']);
+	await reader.keyboard.press('ControlOrMeta+z');
+	await expect(topics).toHaveText([title, 'Method', 'Fusion of kernels', 'Tiling']);
 	await expect(map.locator('strong')).toHaveText('kernels');
 	const box = async (text: string) => (await topics.filter({ hasText: text }).first().boundingBox())!;
 	expect((await box('Tiling')).x).toBeGreaterThan((await box('Method')).x);
@@ -1054,5 +1064,36 @@ test('mind maps in the notes: built with the keyboard, formatted, undone, kept, 
 	for await (const chunk of await (await download).createReadStream()) chunks.push(chunk as Uint8Array);
 	const md = new TextDecoder().decode(new Uint8Array(chunks.flatMap((c) => [...c])));
 	expect(md).toContain(`- ${title}\n  - Method\n    - Fusion of **kernels**`);
+	expect(errs).toEqual([]);
+});
+
+test('the notes toolbar follows: map tools while a mind map is focused, formatting again after Done', async ({ page, context }) => {
+	const { reader, notes } = await openNotes(page, context);
+	const errs = errors(reader);
+	await reader.getByRole('button', { name: 'Mind map', exact: true }).click();
+	const map = notes.locator('[data-mind-map-canvas]');
+	await map.locator('[data-topic]').first().click();
+	const bar = reader.getByRole('toolbar', { name: 'Mind map' });
+	await expect(bar).toBeVisible();
+	await expect(reader.getByRole('toolbar', { name: 'Formatting' })).toBeHidden();
+	await expect(bar.getByRole('button', { name: 'Delete the topic' })).toBeDisabled();
+
+	await bar.getByRole('button', { name: 'Add a topic under it' }).click();
+	await reader.keyboard.type('Idea');
+	await reader.keyboard.press('Enter');
+	const idea = map.locator('[data-topic]', { hasText: 'Idea' });
+	await expect(idea).toBeVisible();
+	await bar.getByRole('button', { name: 'Bold' }).click();
+	await expect(idea.locator('strong')).toHaveText('Idea');
+	await bar.getByRole('button', { name: 'Link to the page you’re reading' }).click();
+	await idea.getByRole('button', { name: 'p. 1' }).click();
+	await expect(reader.getByRole('group', { name: 'Back' })).toBeVisible();
+
+	// Done: back to the text after the map, with its formatting bar.
+	await map.locator('[data-topic]', { hasText: 'Idea' }).click();
+	await bar.getByRole('button', { name: 'Done: back to the text' }).click();
+	await expect(reader.getByRole('toolbar', { name: 'Formatting' })).toBeVisible();
+	await reader.keyboard.type('After the map');
+	await expect(notes.locator('p', { hasText: 'After the map' })).toBeVisible();
 	expect(errs).toEqual([]);
 });

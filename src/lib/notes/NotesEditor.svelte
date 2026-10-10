@@ -25,6 +25,7 @@
 	import { NotesBlockMath, NotesInlineMath } from './maths';
 	import { imageFiles, MAX_IMAGE_BYTES, NotesImage, type NoteAssets } from './images';
 	import { MindMapNode } from '#lib/mindmap/node.svelte.js';
+	import { activeMap, type MapTools } from '#lib/mindmap/active.svelte.js';
 	import { toast } from '#lib/components/Toasts.svelte';
 
 	let {
@@ -290,6 +291,34 @@
 		]
 	];
 
+	// A mind map being edited: its tools take the bar's place.
+	const mapGroups = (t: MapTools): Item[][] => [
+		[
+			{ label: 'Add a topic under it', icon: 'icon-[lucide--git-branch-plus]', keys: 'Tab', on: t.addChild },
+			{ label: 'Add a topic next to it', icon: 'icon-[lucide--list-plus]', keys: '↵', on: t.addSibling },
+			{ label: 'Delete the topic', icon: 'icon-[lucide--trash-2]', keys: '⌫', on: t.remove, disabled: () => t.state().root }
+		],
+		[
+			{ label: 'Bold', icon: 'icon-[lucide--bold]', keys: `${mod}B`, on: () => t.wrap('**') },
+			{ label: 'Italic', icon: 'icon-[lucide--italic]', keys: `${mod}I`, on: () => t.wrap('*') },
+			{ label: 'Code', icon: 'icon-[lucide--code]', keys: `${mod}${shift}C`, on: () => t.wrap('`') }
+		],
+		[
+			{ label: 'Link to the page you’re reading', icon: 'icon-[lucide--file-symlink]', on: t.togglePage, isActive: () => t.state().page },
+			{ label: 'Fold the branch', icon: 'icon-[lucide--fold-horizontal]', keys: `${mod}/`, on: t.toggleCollapsed, isActive: () => t.state().collapsed, disabled: () => !t.state().children }
+		],
+		[
+			{ label: 'Zoom out', icon: 'icon-[lucide--zoom-out]', on: t.zoomOut },
+			{ label: 'Zoom in', icon: 'icon-[lucide--zoom-in]', on: t.zoomIn },
+			{ label: 'Fit the map', icon: 'icon-[lucide--maximize]', on: t.fit }
+		],
+		[
+			{ label: 'Undo', icon: 'icon-[lucide--undo-2]', keys: `${mod}Z`, on: t.undo, disabled: () => !can((e) => e.can().undo()) },
+			{ label: 'Redo', icon: 'icon-[lucide--redo-2]', keys: `${mod}${shift}Z`, on: t.redo, disabled: () => !can((e) => e.can().redo()) },
+			{ label: 'Done: back to the text', icon: 'icon-[lucide--corner-down-left]', keys: 'Esc', on: t.exit }
+		]
+	];
+
 	// In a table: its rows and columns.
 	const tableItems: Item[] = [
 		{ label: 'Add a row below', icon: 'icon-[lucide--between-vertical-start]', on: () => run((c) => c.addRowAfter()) },
@@ -303,8 +332,9 @@
 
 <div class="flex h-full min-h-0 flex-col">
 	{#if editable}
-		<div class="flex shrink-0 flex-wrap items-center gap-0.5 border-b border-stone-200 px-3 py-1 dark:border-stone-800" role="toolbar" aria-label="Formatting">
-			{#each groups as group, gi (gi)}
+		<div class="flex shrink-0 flex-wrap items-center gap-0.5 border-b border-stone-200 px-3 py-1 dark:border-stone-800 {activeMap.tools ? 'bg-sky-50/70 dark:bg-sky-950/30' : ''}" role="toolbar" aria-label={activeMap.tools ? 'Mind map' : 'Formatting'}>
+			{#if activeMap.tools}<span class="mr-1 text-[11px] font-medium tracking-wide text-muted uppercase">Map</span>{/if}
+			{#each activeMap.tools ? mapGroups(activeMap.tools) : groups as group, gi (gi)}
 				{#if gi}<Separator class="mx-1" />{/if}
 				{#each group as item (item.label)}
 					<Tip label={item.label} shortcut={item.keys}>

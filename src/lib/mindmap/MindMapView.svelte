@@ -17,6 +17,7 @@
 	import type { PaperAnchor } from '#lib/types.js';
 	import { branchPath, layout, type Placed } from './layout';
 	import { addChild, addSibling, demote, find, move, promote, remove, setPage, setText, toggleCollapsed, type Edit, type MindMap } from './tree';
+	import { activeMap, type MapTools } from './active.svelte';
 
 	let {
 		map,
@@ -96,6 +97,26 @@
 		if (centred || !width) return;
 		centred = true;
 		untrack(() => fit(false));
+	});
+
+	// The selected topic stays in view (new topics, arrows, a map that grew): panned just enough.
+	$effect(() => {
+		const p = byId.get(current);
+		if (!p || !width || !centred) return;
+		const margin = 16;
+		untrack(() => {
+			const left = pan.x + p.x * zoom;
+			const top = pan.y + p.y * zoom;
+			const right = left + p.w * zoom;
+			const bottom = top + p.h * zoom;
+			let dx = 0;
+			let dy = 0;
+			if (left < margin) dx = margin - left;
+			else if (right > width - margin) dx = width - margin - right;
+			if (top < margin) dy = margin - top;
+			else if (bottom > shownHeight - margin - 28) dy = shownHeight - margin - 28 - bottom;
+			if (dx || dy) pan = { x: pan.x + dx, y: pan.y + dy };
+		});
 	});
 
 	// Arrowed onto from the text: the keys come here.
@@ -215,7 +236,7 @@
 	}
 
 	/** In the topic being typed: **bold**, *italic*, `code` around the selection (⌘B, ⌘I, ⌘⇧C). */
-	export function wrap(mark: '**' | '*' | '`') {
+	function wrap(mark: '**' | '*' | '`') {
 		const input = canvas?.querySelector<HTMLTextAreaElement>('textarea');
 		if (!input) {
 			// Not typing: the whole topic.
@@ -316,21 +337,43 @@
 	}
 
 	/** The topic's page link: to the page you're reading, or off. */
-	export function togglePage() {
+	function togglePage() {
 		const t = find(map.root, current)?.topic;
 		if (!t || !editable) return;
 		onchange(setPage(map, t.id, t.page ? undefined : Math.floor(anchor()?.page ?? 1)));
 	}
 
-	/** For the notes' toolbar (5.4): what's selected, and the edits it offers. */
-	export const api = {
+	/** For the notes' toolbar: while this map has focus, the bar shows these. */
+	const tools: MapTools = {
 		addChild: () => apply(addChild(map, current), true),
 		addSibling: () => apply(addSibling(map, current), true),
 		remove: () => apply(remove(map, current)),
+		wrap,
+		togglePage,
+		toggleCollapsed: () => onchange(toggleCollapsed(map, current)),
 		fit: () => fit(),
 		zoomIn: () => zoomBy(1.25),
-		zoomOut: () => zoomBy(0.8)
+		zoomOut: () => zoomBy(0.8),
+		undo: () => undo(),
+		redo: () => redo(),
+		exit: () => exit(),
+		state: () => {
+			const t = find(shown.root, current)?.topic;
+			return { root: current === shown.root.id, page: !!t?.page, children: !!t?.children.length, collapsed: !!t?.collapsed };
+		}
 	};
+	function onfocusin() {
+		focused = true;
+		activeMap.tools = tools;
+	}
+	function onfocusout(e: FocusEvent) {
+		if (canvas?.contains(e.relatedTarget as Node)) return;
+		focused = false;
+		if (activeMap.tools === tools) activeMap.tools = null;
+	}
+	$effect(() => () => {
+		if (activeMap.tools === tools) activeMap.tools = null;
+	});
 
 	function topicClass(p: Placed) {
 		if (p.side === 'root') return 'rounded-xl bg-stone-800 px-4 py-2 font-serif text-[15px] text-white dark:bg-stone-100 dark:text-stone-900';
@@ -349,8 +392,8 @@
 	tabindex="0"
 	class="mind-map relative overflow-hidden rounded-lg border border-stone-200 bg-stone-50 outline-none select-none dark:border-stone-700 dark:bg-stone-950 {focused || selected ? 'ring-2 ring-sky-500/50' : ''}"
 	style:height="{shownHeight}px"
-	onfocusin={() => (focused = true)}
-	onfocusout={(e) => !canvas?.contains(e.relatedTarget as Node) && (focused = false)}
+	{onfocusin}
+	{onfocusout}
 	{onkeydown}
 	{onwheel}
 	{onpointerdown}
@@ -384,7 +427,7 @@
 						<textarea
 							bind:value={draft}
 							onkeydown={onEditKey}
-							onblur={() => endEdit(true)}
+							onblur={() => editing === p.id && endEdit(true)}
 							{@attach focusAtEnd}
 							rows="1"
 							aria-label="Topic"
