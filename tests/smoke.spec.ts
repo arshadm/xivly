@@ -1276,3 +1276,72 @@ test('synced from another device: the library and the open notes show the change
 	await expect(notes).toHaveText('Written on the other Mac.');
 	expect(errs).toEqual([]);
 });
+
+/** A library file's bytes (base64), and writing them back, as a sync client would. */
+const readLibraryBytes = (page: Page, path: string) =>
+	page.evaluate(async (path) => {
+		const parts = path.split('/');
+		let dir = await navigator.storage.getDirectory();
+		for (const p of parts.slice(0, -1)) dir = await dir.getDirectoryHandle(p);
+		const bytes = new Uint8Array(await (await (await dir.getFileHandle(parts.at(-1)!)).getFile()).arrayBuffer());
+		return btoa(Array.from(bytes, (b) => String.fromCharCode(b)).join(''));
+	}, path);
+const writeLibraryBytes = (page: Page, path: string, base64: string) =>
+	page.evaluate(
+		async ([path, base64]) => {
+			const parts = path.split('/');
+			let dir = await navigator.storage.getDirectory();
+			for (const p of parts.slice(0, -1)) dir = await dir.getDirectoryHandle(p);
+			const w = await (await dir.getFileHandle(parts.at(-1)!, { create: true })).createWritable();
+			await w.write(Uint8Array.from(atob(base64), (c) => c.charCodeAt(0)));
+			await w.close();
+		},
+		[path, base64]
+	);
+
+test('the open PDF changed on another device: shown at once, or a choice when annotations here are unsaved', async ({ page, context }) => {
+	const reader = await addPaper(page, context);
+	const errs = errors(reader);
+	const firstPage = reader.locator('[data-pdf-page]').first();
+	await expect(firstPage.locator('[data-pdf-canvas]')).toBeVisible();
+	const [id] = await paperIds(page);
+	const pdf = `papers/${id}/paper.pdf`;
+	const original = await readLibraryBytes(reader, pdf);
+	const drawBox = async () => {
+		await reader.getByRole('button', { name: 'Box a region' }).click();
+		const box = (await firstPage.boundingBox())!;
+		await reader.mouse.move(box.x + box.width * 0.1, box.y + box.height * 0.06);
+		await reader.mouse.down();
+		await reader.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.12, { steps: 5 });
+		await reader.mouse.up();
+		await expect(reader.getByRole('dialog', { name: 'Annotation' }).getByRole('textbox', { name: 'Add a note…' })).toBeFocused();
+		await reader.keyboard.type('Boxed on this Mac');
+		await expect(firstPage.locator('[data-pdf-annotation]')).toHaveCount(1);
+	};
+
+	// Saved here, then the other device's version (without the box) arrives: shown.
+	await drawBox();
+	await reader.keyboard.press('ControlOrMeta+s');
+	await expect(reader.getByRole('button', { name: 'Annotations are saved in the PDF' })).toBeVisible();
+	await writesDone(reader);
+	await writeLibraryBytes(reader, pdf, original);
+	await announceChanges(reader, [pdf]);
+	await expect(firstPage.locator('[data-pdf-canvas]')).toBeVisible();
+	await expect(reader.locator('[data-pdf-annotation]')).toHaveCount(0);
+
+	// A box not saved yet, and another new version arrives: asked; "Keep mine" saves over it.
+	await drawBox();
+	await expect(reader.getByRole('button', { name: 'Unsaved changes: save now' })).toBeVisible();
+	await writeLibraryBytes(reader, pdf, btoa(atob(original) + '\n%another version\n'));
+	await announceChanges(reader, [pdf]);
+	const dialog = reader.getByRole('dialog', { name: 'This paper changed on another device' });
+	await expect(dialog).toBeVisible();
+	await dialog.getByRole('button', { name: 'Keep mine' }).click();
+	await expect(reader.getByRole('button', { name: 'Annotations are saved in the PDF' })).toBeVisible();
+	await expect(reader.locator('[data-pdf-annotation]')).toHaveCount(1);
+	// Its own save isn't a change from elsewhere: no question.
+	await announceChanges(reader, [pdf]);
+	await reader.waitForTimeout(500);
+	await expect(dialog).toBeHidden();
+	expect(errs).toEqual([]);
+});

@@ -8,6 +8,7 @@
 	import { Tooltip } from 'bits-ui';
 	import { onMount, type Snippet } from 'svelte';
 	import { addFiles } from '#lib/add-paper.js';
+	import { forgetCover } from '#lib/covers.js';
 	import { onDiskChange, touchesLibrary, touchesPaper, watchLibrary } from '#lib/disk-changes.js';
 	import { flushAll, hasUnsaved } from '#lib/flush.js';
 	import { library } from '#lib/library.svelte.js';
@@ -163,6 +164,8 @@
 		const stopWatch = watchLibrary();
 		const stop = onDiskChange((paths) => {
 			const id = page.route.id === '/read' ? searchParams(page.url).get('id') : null;
+			// A PDF saved elsewhere: its cover is drawn again.
+			if (!id) for (const p of paths) if (p.endsWith('/paper.pdf')) forgetCover(p.split('/')[1]);
 			if (id ? paths.some((p) => touchesPaper(id, p)) : paths.some(touchesLibrary)) void (id ? library.reloadPaper(id) : library.reload());
 		});
 		return () => {

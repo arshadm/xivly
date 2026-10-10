@@ -31,6 +31,8 @@
 		comboLabel
 	} from 'svelte-pdf-mini';
 	import { forgetCover } from '#lib/covers.js';
+	import { onDiskChange } from '#lib/disk-changes.js';
+	import { sha256 } from '#lib/duplicates.js';
 	import { exportPdfInWorker } from '#lib/export.js';
 	import { metadataCache } from '#lib/metadata-cache.js';
 	import { onFlush } from '#lib/flush.js';
@@ -212,8 +214,11 @@
 			warmPdf();
 			repo
 				?.readPdf(current)
-				.then((b) => {
+				.then(async (b) => {
+					// Before pdf.js takes the bytes: a change on disk is then told from what's shown.
+					const hash = b && (await sha256(b as Uint8Array<ArrayBuffer>));
 					if (current !== id) return;
+					pdfHash = hash;
 					restoring = !!resumeAt();
 					bytes = b;
 					load = b ? { status: 'ready' } : { status: 'missing' };
@@ -266,6 +271,8 @@
 			try {
 				const data = await target.viewer.document.getData();
 				const out = await exportPdfInWorker(data, $state.snapshot(target.store.annotations) as Annotation[], { producer: 'Xivly', remove: [...target.store.removedForeign] });
+				// Ours: the folder watcher reporting this write isn't a change from elsewhere.
+				if (target.id === id) pdfHash = await sha256(out as Uint8Array<ArrayBuffer>);
 				await target.repo.savePdf(target.id, out);
 				forgetCover(target.id);
 				savedRev = Math.max(savedRev, r);
@@ -325,6 +332,55 @@
 		})
 	);
 
+	// ── The PDF changed on disk (another device saved it, synced) ───────
+	/** The PDF as shown (read, or last saved here). */
+	let pdfHash: string | null = null;
+	/** Bumped to show the PDF read again. */
+	let pdfVersion = $state(0);
+	/** Where to reopen it then (where the reader was). */
+	let reloadAt: number | undefined;
+	let checkingPdf = false;
+	$effect(() => {
+		const current = id;
+		return onDiskChange((paths) => {
+			if (paths.includes(`papers/${current}/paper.pdf`)) void pdfChanged(current);
+		});
+	});
+	async function pdfChanged(current: string) {
+		if (checkingPdf || access !== 'mine' || load.status !== 'ready' || !library.repo) return;
+		checkingPdf = true;
+		try {
+			// A save under way first: its write is ours.
+			await chain;
+			const b = await library.repo.readPdf(current);
+			if (!b || current !== id) return;
+			const hash = await sha256(b as Uint8Array<ArrayBuffer>);
+			if (hash === pdfHash) return;
+			pdfHash = hash;
+			if (rev !== savedRev) {
+				const choice = await prompts.choose(
+					'This paper changed on another device',
+					[
+						{ value: 'theirs', label: 'Load the new version' },
+						{ value: 'mine', label: 'Keep mine' }
+					],
+					{ message: 'A new version of this PDF was saved elsewhere, and your annotations here aren’t saved yet. Load the new version (your unsaved annotations are lost), or keep yours (saved over it now).' }
+				);
+				if (choice !== 'theirs') return void save({ explicit: true });
+			}
+			savedRev = rev;
+			reloadAt = viewer?.position;
+			restoring = true;
+			bytes = b;
+			pdfVersion++;
+			forgetCover(current);
+		} catch {
+			// Unreadable just now (a sync client mid-write): the next change, or reopening, shows it.
+		} finally {
+			checkingPdf = false;
+		}
+	}
+
 	// Remember the reading position (no hook, debounced).
 	let posTimer: ReturnType<typeof setTimeout> | undefined;
 	$effect(() => {
@@ -338,7 +394,7 @@
 	});
 
 	// Reopen where you left off: the pages stay hidden until they're there (no jump from page 1).
-	const resumeAt = () => (s.resumePosition && paper?.position && paper.position >= 1.01 ? paper.position : undefined);
+	const resumeAt = () => reloadAt ?? (s.resumePosition && paper?.position && paper.position >= 1.01 ? paper.position : undefined);
 	let restoring = $state(false);
 	async function restorePosition() {
 		const position = resumeAt();
@@ -354,6 +410,7 @@
 		} finally {
 			clearTimeout(reveal);
 			restoring = false;
+			reloadAt = undefined;
 		}
 	}
 
@@ -715,6 +772,7 @@
 		</div>
 	</div>
 {:else if bytes}
+	{#key pdfVersion}
 	<Document.Root src={source} onLoad={restorePosition}>
 		<Viewer.Root
 			bind:viewer
@@ -1025,6 +1083,7 @@
 			</Find.Root>
 		</Viewer.Root>
 	</Document.Root>
+	{/key}
 {:else if access === 'elsewhere' || access === 'waiting'}
 	{@const where = platform.kind === 'desktop' ? 'window' : 'tab'}
 	<div class="grid h-full place-items-center bg-stone-100 px-6 text-center text-sm text-muted dark:bg-stone-950" data-tauri-drag-region>
