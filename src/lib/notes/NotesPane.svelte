@@ -6,6 +6,7 @@
 	import { onFlush } from '#lib/flush.js';
 	import { library } from '#lib/library.svelte.js';
 	import type { NotesDoc, PaperAnchor } from '#lib/types.js';
+	import type { MindMap } from '#lib/mindmap/tree.js';
 	import { Saver } from './saver.svelte';
 	import { IMAGE_TYPES, imageMime, type NoteAssets } from './images';
 
@@ -75,6 +76,12 @@
 
 	/** Find in the notes (⌘F while in them). */
 	export const openFind = () => editor?.openFind();
+
+	/** A whole mind map at the end of the notes, once they're loaded. */
+	export async function appendMindMap(map: MindMap) {
+		for (let i = 0; i < 120 && !editor && notes.status !== 'error'; i++) await new Promise(requestAnimationFrame);
+		editor?.appendMindMap(map);
+	}
 
 	/** A passage as a mind-map topic (see NotesEditor), once the notes are loaded. */
 	export async function addToMindMap(text: string, page?: number) {

@@ -59,6 +59,7 @@
 	import NotesPane, { flushNotes } from '#lib/notes/NotesPane.svelte';
 	import ChatPane from '#lib/chat/ChatPane.svelte';
 	import { answerHeading, answerToNotesHtml } from '#lib/chat/to-notes.js';
+	import type { MindMap } from '#lib/mindmap/tree.js';
 	import BookmarkPicker from '#lib/pdf/BookmarkPicker.svelte';
 	import { anchorAt, anchorAtPdfY, jumpTo } from '#lib/anchor.js';
 	import { quoteContent } from '#lib/notes/paper-link.js';
@@ -481,6 +482,13 @@
 		for (let i = 0; i < 60 && !notesPane; i++) await new Promise(requestAnimationFrame);
 		await notesPane?.append(answerHeading(question) + answerToNotesHtml(answer) + '<p></p>');
 		toast('Added to your notes', 'info', { label: 'Show', run: () => settings.set('paneTab', 'notes') });
+	}
+
+	/** A mind map (from a chat answer) at the end of the notes. */
+	async function mapToNotes(map: MindMap) {
+		for (let i = 0; i < 60 && !notesPane; i++) await new Promise(requestAnimationFrame);
+		await notesPane?.appendMindMap(map);
+		toast('Added a mind map to your notes', 'info', { label: 'Show', run: () => settings.set('paneTab', 'notes') });
 	}
 
 	/** A passage of the paper, quoted with its page (as Claude cites pages). */
@@ -958,7 +966,7 @@
 											<NotesPane bind:this={notesPane} bind:status={notesStatus} {id} onjump={(a) => viewer && jumpTo(viewer, a)} anchor={readingAnchor} />
 										</div>
 										<div class="flex min-h-0 flex-1 flex-col" class:hidden={s.paneTab !== 'chat'}>
-											<ChatPane bind:this={chatPane} {id} title={paper.title} onpage={(page) => viewer && jumpTo(viewer, { page })} context={promptContext} onnotes={answerToNotes} />
+											<ChatPane bind:this={chatPane} {id} title={paper.title} onpage={(page) => viewer && jumpTo(viewer, { page })} context={promptContext} onnotes={answerToNotes} onmap={mapToNotes} />
 										</div>
 									</SplitPane>
 								{/if}

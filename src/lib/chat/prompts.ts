@@ -17,7 +17,12 @@ export const DEFAULT_PROMPTS: SavedPrompt[] = [
 	{ id: 'method', name: 'Method, step by step', text: 'Explain the method step by step.' },
 	{ id: 'limitations', name: 'Limitations', text: 'What are the limitations, and what would you try next?' },
 	{ id: 'selection', name: 'Explain the selection', text: 'Explain this passage in plain terms, and how it fits the rest of the paper:\n\n{{selection}}' },
-	{ id: 'notes', name: 'Check my notes', text: 'Here are my notes on this paper. Is anything wrong or missing?\n\n{{notes}}' }
+	{ id: 'notes', name: 'Check my notes', text: 'Here are my notes on this paper. Is anything wrong or missing?\n\n{{notes}}' },
+	{
+		id: 'mindmap',
+		name: 'Mind map of the paper',
+		text: 'Make a mind map of this paper as one nested Markdown list: the main idea first, then its main parts (problem, method, results, limitations…), each with a few short points of a few words. Cite pages as [p. N]. Reply with only the list.'
+	}
 ];
 
 /** The placeholders a prompt can use. */

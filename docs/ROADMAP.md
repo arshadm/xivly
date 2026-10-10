@@ -137,7 +137,11 @@ Decided 2026-10-10:
   - *Test:* an e2e test (built with the keyboard, bold, undo and redo, empty topics, arrows, kept after a reload, outline in the export).
 - [x] **5.4 Toolbar that follows:** while a map is selected, the bar shows map tools (child, sibling, delete, bold, italic, code, link to page, tidy, fit, zoom, export) instead of text formatting.
 - [x] **5.5 Links to the paper:** a topic can carry a **p. N** link (to the page you're reading) that jumps there. In the PDF, right-click a selection › "Add to mind map" adds it as a topic with its page.
-- [ ] **5.6 Out and in:** export as PNG or SVG, or copy as an outline. `notes.md` and the Markdown export show maps as outlines. A saved prompt has Claude draft a map of the paper, and an answer can be inserted as a map.
+- [x] **5.6 Out and in:**
+  - The map toolbar copies a map as an outline, or saves it as PNG or SVG (drawn from the layout: plain text, branch colours).
+  - A nested Markdown list becomes a map (`outline.ts`): **Insert as mind map** on a chat answer with a list, and a default prompt, "Mind map of the paper", that asks Claude for one.
+  - `notes.md` and the Markdown export show maps as outlines.
+  - *Test:* `outline.test.ts` and an e2e test (Claude's list to a map with its page link, outline on the clipboard, PNG, SVG).
 
 ## Phase 6: Sync through a synced folder
 

@@ -18,6 +18,11 @@
 	import { branchPath, layout, type Placed } from './layout';
 	import { addChild, addSibling, demote, find, move, promote, remove, setPage, setText, toggleCollapsed, type Edit, type MindMap } from './tree';
 	import { activeMap, type MapTools } from './active.svelte';
+	import { mapSvg, plain, svgToPng } from './image';
+	import { toOutline } from './tree';
+	import { saveFile } from '#lib/windows.js';
+	import { clipboard } from '#lib/ui/clipboard.js';
+	import { toast } from '#lib/components/Toasts.svelte';
 
 	let {
 		map,
@@ -366,7 +371,24 @@
 			onchange(page ? setPage(e.map, e.select, page) : e.map);
 			current = e.select;
 		},
-		within: (el) => !!canvas && el.contains(canvas)
+		within: (el) => !!canvas && el.contains(canvas),
+		async save(kind) {
+			const dark = document.documentElement.classList.contains('dark');
+			const g = document.createElement('canvas').getContext('2d')!;
+			const measure = (s: string, size: number) => ((g.font = `${size}px -apple-system, Helvetica, Arial, sans-serif`), g.measureText(s).width);
+			const svg = mapSvg(map, placed, { colors, dark, measure });
+			const name = (plain(map.root.text) || 'mind map').replace(/[\\/:*?"<>|]+/g, ' ').trim().slice(0, 80);
+			try {
+				if (kind === 'svg') await saveFile(new Blob([svg], { type: 'image/svg+xml' }), `${name}.svg`);
+				else await saveFile(await svgToPng(svg, placed.bounds.w + 48, placed.bounds.h + 48), `${name}.png`);
+			} catch (e) {
+				toast(`Couldn’t save the map: ${e instanceof Error ? e.message : e}`, 'error');
+			}
+		},
+		async copyOutline() {
+			await clipboard.write(toOutline(map));
+			toast('Copied as an outline');
+		}
 	};
 	function onfocusin() {
 		focused = true;

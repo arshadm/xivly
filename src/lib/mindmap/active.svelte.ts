@@ -21,6 +21,9 @@ export interface MapTools {
 	addTopic(text: string, page?: number): void;
 	/** Is this map in that element (one notes editor's)? */
 	within(el: Element): boolean;
+	/** The map as a file (PNG or SVG), or its outline to the clipboard. */
+	save(kind: 'png' | 'svg'): Promise<void>;
+	copyOutline(): Promise<void>;
 }
 
 class ActiveMap {

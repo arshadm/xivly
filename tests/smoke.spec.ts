@@ -75,7 +75,11 @@ async function standInClaude(context: BrowserContext) {
 			async run(r: { sessionId: string; prompt: string }, onEvent: (e: unknown) => void) {
 				w.__claudeRequests.push(r);
 				sessionStorage.setItem('claudeRequests', JSON.stringify(w.__claudeRequests));
-				const answer = r.prompt.includes('again') ? 'Still about **calm** reading.' : 'It is about **calm reading** [p. 1].';
+				const answer = r.prompt.includes('mind map')
+					? '- Calm reading\n  - Annotations in the PDF [p. 1]\n  - One page'
+					: r.prompt.includes('again')
+						? 'Still about **calm** reading.'
+						: 'It is about **calm reading** [p. 1].';
 				const events: unknown[] = [{ type: 'system', subtype: 'init', session_id: r.sessionId }, { type: 'assistant', message: { content: [{ type: 'tool_use', name: 'Read', input: { file_path: 'paper.pdf' } }] } }];
 				for (const word of answer.split(/(?<= )/)) events.push({ type: 'stream_event', event: { type: 'content_block_delta', delta: { type: 'text_delta', text: word } } });
 				events.push({ type: 'result', is_error: false, result: answer, session_id: r.sessionId, total_cost_usd: 0.004 }, { type: 'xivly_exit', code: 0, stderr: '' });
@@ -1124,5 +1128,42 @@ test('add to mind map: a passage of the paper as a topic with its page (a new ma
 	await topics.filter({ hasText: 'Reading papers' }).click();
 	await add(/Ada Lovelace/);
 	await expect(topics.filter({ hasText: 'Ada Lovelace' })).toHaveAttribute('aria-level', '3');
+	expect(errs).toEqual([]);
+});
+
+test('mind maps out and in: PNG / SVG / outline from the map, and a chat answer as a map', async ({ page, context }) => {
+	await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+	await standInClaude(context);
+	const reader = await addPaper(page, context);
+	const errs = errors(reader);
+	await expect(reader.locator('[data-pdf-page]').first().locator('[data-pdf-canvas]')).toBeVisible();
+
+	// Claude drafts a map (the saved prompt), inserted into the notes.
+	await reader.keyboard.press('ControlOrMeta+Shift+e');
+	await reader.getByRole('button', { name: 'Saved prompts' }).click();
+	await reader.getByRole('menuitem', { name: 'Mind map of the paper' }).click();
+	await reader.getByRole('button', { name: 'Insert as mind map' }).click();
+	await reader.getByRole('button', { name: 'Show', exact: true }).click();
+	const map = reader.getByRole('textbox', { name: 'Notes' }).locator('[data-mind-map-canvas]');
+	await expect(map.locator('[data-topic]')).toHaveText(['Calm reading', /Annotations in the PDF/, 'One page']);
+	await expect(map.locator('[data-topic]').nth(1).getByRole('button', { name: 'p. 1' })).toBeVisible();
+
+	// Out: an outline on the clipboard, a PNG and an SVG.
+	await map.locator('[data-topic]').first().click();
+	const bar = reader.getByRole('toolbar', { name: 'Mind map' });
+	await bar.getByRole('button', { name: 'Copy as an outline' }).click();
+	await expect.poll(() => reader.evaluate(() => navigator.clipboard.readText())).toBe('- Calm reading\n  - Annotations in the PDF (p. 1)\n  - One page');
+	let download = reader.waitForEvent('download');
+	await bar.getByRole('button', { name: 'Save as PNG' }).click();
+	expect((await download).suggestedFilename()).toBe('Calm reading.png');
+	download = reader.waitForEvent('download');
+	await bar.getByRole('button', { name: 'Save as SVG' }).click();
+	const file = await download;
+	expect(file.suggestedFilename()).toBe('Calm reading.svg');
+	const chunks: Uint8Array[] = [];
+	for await (const chunk of await file.createReadStream()) chunks.push(chunk as Uint8Array);
+	const svg = new TextDecoder().decode(new Uint8Array(chunks.flatMap((c) => [...c])));
+	expect(svg).toContain('Annotations in the PDF');
+	expect(svg.match(/<path /g)).toHaveLength(2);
 	expect(errs).toEqual([]);
 });

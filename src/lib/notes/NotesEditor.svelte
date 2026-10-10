@@ -26,7 +26,7 @@
 	import { imageFiles, MAX_IMAGE_BYTES, NotesImage, type NoteAssets } from './images';
 	import { MindMapNode } from '#lib/mindmap/node.svelte.js';
 	import { activeMap, type MapTools } from '#lib/mindmap/active.svelte.js';
-	import { addChild, newMap, normalizeMap, setPage } from '#lib/mindmap/tree.js';
+	import { addChild, newMap, normalizeMap, setPage, type MindMap } from '#lib/mindmap/tree.js';
 	import { toast } from '#lib/components/Toasts.svelte';
 
 	let {
@@ -95,6 +95,11 @@
 		void version;
 		if (findOpen && editor) untrack(() => (found = { ...found, count: findMatches(editor!.state.doc, findQuery).length }));
 	});
+
+	/** A whole map at the end of the notes (from an outline, a chat answer…). */
+	export function appendMindMap(map: MindMap) {
+		editor?.chain().focus('end').insertMindMap(map).scrollIntoView().run();
+	}
 
 	/**
 	 * A passage of the paper as a mind-map topic (with its page): under the selected topic of
@@ -338,6 +343,11 @@
 			{ label: 'Zoom out', icon: 'icon-[lucide--zoom-out]', on: t.zoomOut },
 			{ label: 'Zoom in', icon: 'icon-[lucide--zoom-in]', on: t.zoomIn },
 			{ label: 'Fit the map', icon: 'icon-[lucide--maximize]', on: t.fit }
+		],
+		[
+			{ label: 'Copy as an outline', icon: 'icon-[lucide--list-tree]', on: () => void t.copyOutline() },
+			{ label: 'Save as PNG', icon: 'icon-[lucide--image-down]', on: () => void t.save('png') },
+			{ label: 'Save as SVG', icon: 'icon-[lucide--file-code]', on: () => void t.save('svg') }
 		],
 		[
 			{ label: 'Undo', icon: 'icon-[lucide--undo-2]', keys: `${mod}Z`, on: t.undo, disabled: () => !can((e) => e.can().undo()) },

@@ -34,13 +34,16 @@
 	import { prompts as dialogs } from '#lib/ui/prompt.svelte.js';
 	import { toast } from '#lib/components/Toasts.svelte';
 	import { clipboard } from '#lib/ui/clipboard.js';
+	import { fromOutline } from '#lib/mindmap/outline.js';
+	import type { MindMap } from '#lib/mindmap/tree.js';
 
 	let {
 		id,
 		title,
 		onpage,
 		context,
-		onnotes
+		onnotes,
+		onmap
 	}: {
 		id: string;
 		title: string;
@@ -49,6 +52,8 @@
 		context: () => PromptContext;
 		/** "Add to notes" on an answer: the question it answered, and the answer (Markdown). */
 		onnotes?: (question: string, answer: string) => void;
+		/** "Insert as mind map" on an answer with a list: the map it makes. */
+		onmap?: (map: MindMap) => void;
 	} = $props();
 
 	const store = $derived(library.repo ? new ChatStore(library.repo.fs) : null);
@@ -216,6 +221,8 @@
 							{#if m.tools?.length || m.cost}<span class="min-w-0 flex-1 truncate" title={cost(m.cost)}>{m.tools?.join(' · ') ?? ''}</span>{:else}<span class="flex-1"></span>{/if}
 							{#if m.text}
 								{@const asked = session.chat.messages.slice(0, i).findLast((x) => x.role === 'user')?.text ?? ''}
+								{@const asMap = onmap ? fromOutline(m.text, title) : null}
+								{#if asMap}<Tip label="Insert as mind map (in the notes)">{#snippet child({ props })}<button {...props} class={iconButton(6, mutedIcon)} aria-label="Insert as mind map" onclick={() => onmap?.(asMap)}><span class="icon-[lucide--network] size-3.5"></span></button>{/snippet}</Tip>{/if}
 								{#if onnotes}<Tip label="Add to notes">{#snippet child({ props })}<button {...props} class={iconButton(6, mutedIcon)} aria-label="Add to notes" onclick={() => onnotes?.(asked, m.text)}><span class="icon-[lucide--notebook-pen] size-3.5"></span></button>{/snippet}</Tip>{/if}
 								<Tip label="Copy (Markdown)">{#snippet child({ props })}<button {...props} class={iconButton(6, mutedIcon)} aria-label="Copy the answer" onclick={() => clipboard.write(m.text).then(() => toast('Copied'))}><span class="icon-[lucide--copy] size-3.5"></span></button>{/snippet}</Tip>
 							{/if}
