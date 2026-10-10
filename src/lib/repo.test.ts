@@ -341,3 +341,45 @@ describe('notes images', () => {
 		await expect(r.saveNoteAsset(p.id, PNG, 'png')).rejects.toThrow(RemovedError);
 	});
 });
+
+describe('sync conflicts', () => {
+	const w = (fs: MemoryFs, path: string, value: unknown) => fs.write(path, enc.encode(typeof value === 'string' ? value : JSON.stringify(value)));
+	const p = (text: string) => ({ type: 'paragraph', content: [{ type: 'text', text }] });
+
+	it('found in papers, their chats and .xivly', async () => {
+		const { fs, r } = await repo();
+		const a = await r.add(PDF, { title: 'A' });
+		await w(fs, `papers/${a.id}/paper (1).json`, {});
+		await w(fs, `papers/${a.id}/chats/s.json`, {});
+		await w(fs, `papers/${a.id}/chats/s (1).json`, {});
+		await w(fs, '.xivly/library 2.json', {});
+		const found = await r.findConflicts();
+		expect(found.map((c) => c.path).sort()).toEqual(['.xivly/library 2.json', `papers/${a.id}/chats/s (1).json`, `papers/${a.id}/paper (1).json`]);
+		expect(found.find((c) => c.path.includes('chats'))?.paperId).toBe(a.id);
+	});
+
+	it('merged, used or discarded; the copy goes to the trash', async () => {
+		const { fs, r } = await repo();
+		const a = await r.add(PDF, { title: 'A', tags: ['mine'] });
+		await w(fs, `papers/${a.id}/paper (1).json`, { title: 'Other', tags: ['theirs'], year: 2024 });
+		await r.saveNotes(a.id, { type: 'doc', content: [p('mine')] });
+		await w(fs, `papers/${a.id}/notes (1).json`, { version: 1, doc: { type: 'doc', content: [p('theirs')] } });
+		await w(fs, `papers/${a.id}/paper (1).pdf`, '%PDF-1.7 theirs');
+		const [meta, notes, pdf] = ['paper (1).json', 'notes (1).json', 'paper (1).pdf'].map((n) => ({ path: `papers/${a.id}/${n}`, original: `papers/${a.id}/${n.replace(' (1)', '')}`, paperId: a.id }));
+
+		await r.resolveConflict(meta, 'merge');
+		expect(await json(fs, `papers/${a.id}/paper.json`)).toMatchObject({ title: 'A', tags: ['mine', 'theirs'], year: 2024 });
+		await r.resolveConflict(notes, 'merge');
+		expect((await r.readNotes(a.id))!.doc.content).toEqual([p('mine'), expect.objectContaining({ type: 'heading' }), p('theirs')]);
+		expect(dec.decode((await fs.read(`papers/${a.id}/notes.md`))!)).toContain('theirs');
+		await expect(r.resolveConflict(pdf, 'merge')).rejects.toThrow(/can’t be merged/);
+		await r.resolveConflict(pdf, 'use');
+		expect(dec.decode((await fs.read(`papers/${a.id}/paper.pdf`))!)).toBe('%PDF-1.7 theirs');
+		expect(await r.findConflicts()).toEqual([]);
+
+		await w(fs, `papers/${a.id}/notes 2.json`, { version: 1, doc: { type: 'doc', content: [p('gone')] } });
+		await r.resolveConflict({ path: `papers/${a.id}/notes 2.json`, original: `papers/${a.id}/notes.json`, paperId: a.id }, 'discard');
+		expect(JSON.stringify((await r.readNotes(a.id))!.doc)).not.toContain('gone');
+		expect(await r.findConflicts()).toEqual([]);
+	});
+});

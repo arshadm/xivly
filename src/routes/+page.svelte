@@ -24,6 +24,7 @@
 	import ToggleGroup from '#lib/ui/ToggleGroup.svelte';
 	import VirtualGrid from '#lib/ui/VirtualGrid.svelte';
 	import PaperRow from '#lib/components/PaperRow.svelte';
+	import ConflictsDialog, { showConflicts } from '#lib/components/ConflictsDialog.svelte';
 	import FeedView from '#lib/feed/FeedView.svelte';
 	import { disjointViewKey } from '#lib/ui/view-key.js';
 	import { button } from '#lib/ui/button.js';
@@ -170,6 +171,7 @@
 <svelte:window {onkeydown} onpaste={onLibraryPaste} />
 
 <CategoryDialog />
+<ConflictsDialog />
 
 <div class="flex h-full">
 	<Sidebar onNewCategory={newCategory} />
@@ -232,6 +234,13 @@
 
 		{#if library.error}
 			<p class="mx-6 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{library.error}</p>
+		{/if}
+		{#if library.conflicts.length}
+			<div class="mx-6 flex items-center gap-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950/60 dark:text-amber-200" role="status">
+				<span class="icon-[lucide--git-compare] size-4 shrink-0"></span>
+				<p class="min-w-0 flex-1">{library.conflicts.length === 1 ? 'A file was' : `${library.conflicts.length} files were`} changed on two devices at once: a copy of the other version was kept.</p>
+				<button class="shrink-0 font-medium underline underline-offset-2" onclick={() => showConflicts()}>Review…</button>
+			</div>
 		{/if}
 
 		<div bind:this={scroller} class="min-h-0 flex-1 overflow-y-auto px-6 pt-4 pb-10">

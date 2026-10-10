@@ -5,6 +5,7 @@
 -->
 <script lang="ts">
 	import { library } from '#lib/library.svelte.js';
+	import { showConflicts } from './ConflictsDialog.svelte';
 	import { paperMenu } from '#lib/paper-menu.js';
 	import { theme } from '#lib/theme.svelte.js';
 	import type { Paper } from '#lib/types.js';
@@ -18,6 +19,7 @@
 	const color = $derived(library.color(paper));
 	const category = $derived(library.category(paper.category));
 	const authors = $derived(paper.authors?.length ? (paper.authors.length > 3 ? `${paper.authors.slice(0, 3).join(', ')} et al.` : paper.authors.join(', ')) : '');
+	const conflicted = $derived(library.conflicts.some((c) => c.paperId === paper.id));
 	const added = $derived(paper.added ? new Date(paper.added).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '');
 </script>
 
@@ -46,4 +48,13 @@
 		<span class="hidden w-44 shrink-0 truncate text-xs text-muted xl:block">{paper.tags?.map((t) => `#${t}`).join(' ') ?? ''}</span>
 		<span class="hidden w-24 shrink-0 text-right text-xs text-muted tabular-nums md:block">{added}</span>
 	</button>
+	{#if conflicted}
+		<Tip label="Changed on two devices at once: review">
+			{#snippet child({ props })}
+				<button {...props} class="grid size-5 shrink-0 place-items-center rounded-full bg-amber-400 text-amber-950 shadow-sm hover:bg-amber-300" aria-label="Sync conflict: review" onclick={() => showConflicts(paper.id)}>
+					<span class="icon-[lucide--git-compare] size-3"></span>
+				</button>
+			{/snippet}
+		</Tip>
+	{/if}
 </div>

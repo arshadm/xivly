@@ -1364,3 +1364,31 @@ test('a PDF not synced yet: said so, then opened as soon as it arrives', async (
 	await expect(reader.locator('[data-pdf-page]').first().locator('[data-pdf-canvas]')).toBeVisible();
 	expect(errs).toEqual([]);
 });
+
+test('sync conflicts: a banner and a badge; merged, or the other copy discarded', async ({ page, context }) => {
+	await addPaper(page, context);
+	const errs = errors(page);
+	const [id] = await paperIds(page);
+	const p = (text: string) => ({ type: 'paragraph', content: [{ type: 'text', text }] });
+	await writeLibraryFiles(page, {
+		[`papers/${id}/notes.json`]: { version: 1, doc: { type: 'doc', content: [p('Written on this Mac.')] } },
+		[`papers/${id}/notes (1).json`]: { version: 1, doc: { type: 'doc', content: [p('Written on the other Mac.')] } },
+		[`papers/${id}/paper (1).json`]: { title: 'The other title' }
+	});
+	await announceChanges(page, [`papers/${id}/notes (1).json`, `papers/${id}/paper (1).json`]);
+	await expect(page.getByRole('status').filter({ hasText: '2 files were changed on two devices at once' })).toBeVisible();
+
+	await page.getByRole('button', { name: 'Sync conflict: review' }).click();
+	const dialog = page.getByRole('dialog', { name: 'Sync conflicts' });
+	await expect(dialog.getByRole('listitem')).toHaveCount(2);
+	await dialog.getByRole('listitem').filter({ hasText: 'Notes' }).getByRole('button', { name: 'Merge' }).click();
+	await expect(dialog.getByRole('listitem')).toHaveCount(1);
+	expect(JSON.stringify(await readLibraryJson(page, `papers/${id}/notes.json`))).toContain('Written on the other Mac.');
+
+	await dialog.getByRole('button', { name: 'Keep this one' }).click();
+	await page.getByRole('dialog', { name: 'Discard the other copy?' }).getByRole('button', { name: 'Discard' }).click();
+	await expect(dialog).toBeHidden();
+	await expect(page.getByRole('status').filter({ hasText: 'changed on two devices' })).toBeHidden();
+	await expect(page.getByRole('button', { name: new RegExp(title) })).toBeVisible();
+	expect(errs).toEqual([]);
+});

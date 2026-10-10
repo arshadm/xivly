@@ -2,6 +2,7 @@
 	import { coverUrl, loadedCover, whenNear } from '#lib/covers.js';
 	import { coverVersions } from '#lib/cover-versions.svelte.js';
 	import { library } from '#lib/library.svelte.js';
+	import { showConflicts } from './ConflictsDialog.svelte';
 	import { paperMenu } from '#lib/paper-menu.js';
 	import { settings } from '#lib/settings.svelte.js';
 	import { theme } from '#lib/theme.svelte.js';
@@ -40,6 +41,7 @@
 	});
 
 	const toggleRead = () => library.toggleRead(paper);
+	const conflicted = $derived(library.conflicts.some((c) => c.paperId === paper.id));
 </script>
 
 <!-- Click opens; right-click for everything else; the bookmark ribbon toggles read. -->
@@ -78,6 +80,15 @@
 				</button>
 			{/snippet}
 		</Tip>
+		{#if conflicted}
+			<Tip label="Changed on two devices at once: review">
+				{#snippet child({ props })}
+					<button {...props} class="absolute right-2 bottom-2 grid size-6 shrink-0 place-items-center rounded-full bg-amber-400 text-amber-950 shadow-sm hover:bg-amber-300" aria-label="Sync conflict: review" onclick={() => showConflicts(paper.id)}>
+						<span class="icon-[lucide--git-compare] size-3.5"></span>
+					</button>
+				{/snippet}
+			</Tip>
+		{/if}
 	</div>
 </div>
 

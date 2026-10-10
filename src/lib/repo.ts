@@ -2,6 +2,7 @@
 // for the layout. paper.json / library.json are merged, never rewritten
 // from scratch, so fields added by users, hooks or agents survive.
 import { parseBookmarks } from './bookmarks';
+import { conflictKind, conflictsIn, mergeJson, mergeNotesDocs, type Conflict } from './conflicts';
 import { sha256 } from './duplicates';
 import { isPaperPath } from './notes/images';
 import { notesToMarkdown } from './notes/markdown';
@@ -446,6 +447,51 @@ export class Repo {
 			await this.fs.write(`papers/${id}/paper.pdf`, bytes);
 		});
 		this.#hook('paper-saved', id);
+	}
+
+	// ── Sync conflicts ────────────────────────────────────────────────────
+
+	/** Conflict copies a sync client left (see conflicts.ts): in the papers' folders, their chats, and .xivly. */
+	async findConflicts(): Promise<Conflict[]> {
+		const entries = (dir: string) => this.fs.list(dir).catch(() => []);
+		const inDir = async (dir: string, list?: { name: string; dir: boolean }[]) => conflictsIn(dir, (list ?? (await entries(dir))).filter((e) => !e.dir).map((e) => e.name));
+		const papers = (await entries('papers')).filter((e) => e.dir && !e.name.startsWith('.'));
+		const found = await Promise.all([
+			...['.xivly', '.xivly/feed', '.xivly/feed/papers'].map((d) => inDir(d)),
+			...papers.map(async ({ name }) => {
+				const list = await entries(`papers/${name}`);
+				const chats = list.some((e) => e.dir && e.name === 'chats') ? await inDir(`papers/${name}/chats`) : [];
+				return [...(await inDir(`papers/${name}`, list)), ...chats.map((c) => ({ ...c, paperId: name }))];
+			})
+		]);
+		return found.flat();
+	}
+
+	/**
+	 * Resolve a conflict copy, then trash it: `merge` keeps what either version kept (notes,
+	 * and JSON the app knows), `use` puts the copy in place of the file, `discard` only trashes it.
+	 */
+	async resolveConflict(c: Conflict, action: 'merge' | 'use' | 'discard') {
+		const kind = conflictKind(c);
+		if (action === 'merge' && kind !== 'notes' && kind !== 'json') throw new Error('These two versions can’t be merged: use one or the other');
+		if (action !== 'discard' && kind === 'notes' && c.paperId) {
+			const theirs = normalizeNotes((await this.#readJson<Json>(c.path)) ?? {});
+			if (!theirs) throw new Error(`${c.path} doesn’t hold notes`);
+			const ours = (await this.readNotes(c.paperId))?.doc ?? { type: 'doc', content: [] };
+			await this.saveNotes(c.paperId, action === 'use' ? theirs.doc : mergeNotesDocs(ours, theirs.doc));
+		} else if (action === 'merge') {
+			await this.#lock(c.original, async () => {
+				const theirs = await this.#readJson(c.path);
+				const ours = await this.#readJson(c.original);
+				await this.#writeJson(c.original, mergeJson(ours ?? {}, theirs ?? {}));
+			});
+		} else if (action === 'use') {
+			const bytes = await this.fs.read(c.path);
+			if (!bytes) throw new Error(`${c.path} is gone`);
+			if (c.original.endsWith('.pdf') && !isPdf(bytes)) throw new Error('The copy isn’t a PDF');
+			await this.#lock(c.original, () => this.fs.write(c.original, bytes));
+		}
+		await this.fs.trash(c.path);
 	}
 
 	async remove(id: string) {

@@ -5,6 +5,7 @@ import { toast } from './components/Toasts.svelte';
 import { forgetCover, warmCovers } from './covers';
 import { onFlush } from './flush';
 import { parseArxiv } from './arxiv';
+import type { Conflict } from './conflicts';
 import { DeviceStore, deviceId, type Visit } from './devices';
 import { sha256 } from './duplicates';
 import { filterPapers, type View } from './filter';
@@ -47,6 +48,8 @@ class Library {
 	query = $state('');
 	/** Each paper's notes (lower-cased) for search: loaded once a search starts (`loadNotesText`). */
 	notesText = $state.raw<ReadonlyMap<string, string>>(new Map());
+	/** Copies a sync client left when two devices changed a file at once (see conflicts.ts). */
+	conflicts = $state.raw<Conflict[]>([]);
 	#notesTextAt = 0;
 
 	categories = $derived(this.file.categories);
@@ -137,8 +140,10 @@ class Library {
 		this.papers = [];
 		this.view = { kind: 'all' };
 		this.tagFilter = { [ARCHIVED]: 'out' };
+		this.conflicts = [];
 		await this.reload();
 		this.status = 'ready';
+		void this.scanConflicts();
 	}
 
 	async reload() {
@@ -176,6 +181,21 @@ class Library {
 
 	#readVisits(): Promise<Map<string, Visit>> {
 		return this.devices?.readAll().catch(() => new Map<string, Visit>()) ?? Promise.resolve(new Map());
+	}
+
+	/** Look for conflict copies (on opening, and when the folder watcher sees one come or go). */
+	async scanConflicts() {
+		const repo = this.repo;
+		if (!repo) return;
+		const found = await repo.findConflicts().catch(() => null);
+		if (found && repo === this.repo && JSON.stringify(found) !== JSON.stringify(this.conflicts)) this.conflicts = found;
+	}
+
+	/** Resolve a conflict copy (see Repo.resolveConflict), then show the result. */
+	async resolveConflict(c: Conflict, action: 'merge' | 'use' | 'discard') {
+		await this.repo!.resolveConflict(c, action);
+		if (c.original.endsWith('/paper.pdf') && c.paperId && action === 'use') forgetCover(c.paperId);
+		await Promise.all([this.scanConflicts(), this.reload()]);
 	}
 
 	#setFile(file: LibraryFile) {
