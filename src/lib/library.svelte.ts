@@ -5,6 +5,7 @@ import { toast } from './components/Toasts.svelte';
 import { forgetCover, warmCovers } from './covers';
 import { onFlush } from './flush';
 import { parseArxiv } from './arxiv';
+import { DeviceStore, deviceId, type Visit } from './devices';
 import { sha256 } from './duplicates';
 import { filterPapers, type View } from './filter';
 import { fetchHfPaper } from './huggingface';
@@ -143,9 +144,9 @@ class Library {
 	async reload() {
 		if (!this.repo) return;
 		try {
-			const [file, papers] = await Promise.all([this.repo.readLibrary(), this.repo.listPapers(new Map(this.papers.map((p) => [p.id, p])))]);
+			const [file, papers, visits] = await Promise.all([this.repo.readLibrary(), this.repo.listPapers(new Map(this.papers.map((p) => [p.id, p]))), this.#readVisits()]);
 			this.#setFile(file);
-			this.#setPapers(papers);
+			this.#setPapers(papers, visits);
 			this.error = null;
 		} catch (e) {
 			this.error = String(e);
@@ -156,12 +157,25 @@ class Library {
 	async reloadPaper(id: string) {
 		if (!this.repo) return;
 		try {
-			const [file, paper] = await Promise.all([this.repo.readLibrary(), this.repo.readPaper(id, this.get(id))]);
+			const [file, paper, visits] = await Promise.all([this.repo.readLibrary(), this.repo.readPaper(id, this.get(id)), this.#readVisits()]);
 			this.#setFile(file);
-			this.#setPapers(paper ? [...this.papers.filter((p) => p.id !== id), paper] : this.papers.filter((p) => p.id !== id));
+			this.#setPapers(paper ? [...this.papers.filter((p) => p.id !== id), paper] : this.papers.filter((p) => p.id !== id), visits, id);
 		} catch (e) {
 			this.error = String(e);
 		}
+	}
+
+	/** Where each paper was read, on any device (`.xivly/devices/`): kept out of paper.json, which syncs. */
+	#devices: DeviceStore | null = null;
+	get devices(): DeviceStore | null {
+		const fs = this.repo?.fs;
+		if (!fs) return null;
+		if (this.#devices?.fs !== fs) this.#devices = new DeviceStore(fs, deviceId());
+		return this.#devices;
+	}
+
+	#readVisits(): Promise<Map<string, Visit>> {
+		return this.devices?.readAll().catch(() => new Map<string, Visit>()) ?? Promise.resolve(new Map());
 	}
 
 	#setFile(file: LibraryFile) {
@@ -173,16 +187,18 @@ class Library {
 	 * every window reloads on focus, which must not re-render (and re-measure)
 	 * the whole grid when nothing changed.
 	 */
-	#setPapers(papers: Paper[]) {
+	#setPapers(papers: Paper[], visits: Map<string, Visit>, only?: string) {
 		const old = new Map(this.papers.map((p) => [p.id, p]));
 		let changed = papers.length !== this.papers.length;
 		const next = papers.map((raw, i) => {
 			const before = old.get(raw.id);
+			// Only the paper reloaded takes the visits (the others keep what they show).
+			const visit = !only || raw.id === only ? visits.get(raw.id) : undefined;
 			// The very object read last time (its paper.json didn't change): nothing to compare.
 			let p = this.#shown.get(raw);
-			if (!p || p !== before) {
+			if (!p || p !== before || (visit && withVisit(p, visit) !== p)) {
 				// Shown tidied; written back only if the paper is edited.
-				p = { ...raw, title: tidyTitle(raw.title) };
+				p = withVisit({ ...raw, title: tidyTitle(raw.title) }, visit);
 				if (before && JSON.stringify(before) === JSON.stringify(p)) p = before;
 				this.#shown.set(raw, p);
 			}
@@ -352,15 +368,22 @@ class Library {
 		}
 	}
 
-	/** Bookkeeping (last opened, position): no hook, no reload. */
+	/**
+	 * Bookkeeping: no hook, no reload. When it was opened and where it's being
+	 * read go to this device's own file, not paper.json (another device's
+	 * reading never conflicts with this one's).
+	 */
 	touch(id: string, patch: PaperPatch) {
 		const i = this.papers.findIndex((p) => p.id === id);
 		if (i >= 0) this.papers[i] = merge(this.papers[i], patch as Record<string, unknown>);
-		return this.#writing(this.repo!.touch(id, patch));
+		const { opened, position, ...rest } = patch;
+		if (opened != null || position != null) this.devices?.note(id, { ...(opened != null && { opened }), ...(position != null && { position }) });
+		return Object.keys(rest).length ? this.#writing(this.repo!.touch(id, rest)) : Promise.resolve();
 	}
 
 	async remove(id: string) {
 		await this.repo!.remove(id);
+		this.devices?.forget(id);
 		forgetCover(id);
 		this.papers = this.papers.filter((p) => p.id !== id);
 		// Its reader window (if open) closes: it must not save into a folder that's gone.
@@ -465,7 +488,18 @@ function uniqueId(base: string, taken: Set<string>) {
 export const library = new Library();
 
 // Closing a window or quitting waits for paper.json writes still under way (a bookmark just added…).
-onFlush({ dirty: () => library.writes.size > 0, flush: () => Promise.allSettled([...library.writes]).then(() => true) });
+onFlush({
+	dirty: () => library.writes.size > 0 || !!library.devices?.dirty,
+	flush: () => Promise.allSettled([...library.writes, library.devices?.flush()]).then(() => true)
+});
 
 const HF_REFRESH_MS = 7 * 86_400_000;
 const IMPORT_CONCURRENCY = 3;
+
+/** A paper as last read on any device: the latest opening, the newest position. */
+function withVisit(p: Paper, visit: Visit | undefined): Paper {
+	if (!visit) return p;
+	const opened = [p.opened, visit.opened].filter(Boolean).sort().at(-1);
+	const position = visit.position ?? p.position;
+	return opened === p.opened && position === p.position ? p : { ...p, opened, position };
+}

@@ -8,7 +8,7 @@ Planned features for this fork: split-view notes, a mind map per paper, named bo
 |---|---|
 | Platforms | Mac (Tauri desktop) first. Tablet and phone later, so files stay sync-friendly. |
 | Web app / Chrome extension | They may lag behind, but must keep building (CI). |
-| Sync | The library folder lives in a synced folder (iCloud Drive or Dropbox). No server. |
+| Sync | The library folder lives in Google Drive, through Google Drive for desktop (`~/Library/CloudStorage/GoogleDrive-…/My Drive/…`). Xivly only sees a folder, so iCloud Drive or Dropbox would work too. No server. |
 | LLM | The Claude Code CLI (`claude -p`), using your subscription login. Desktop only. |
 | Notes | Rich text, stored as editor JSON in `papers/<id>/notes.json`. |
 | Mind map | Blocks inside the notes (several per paper), balanced radial layout, topics with a little formatting. |
@@ -145,13 +145,13 @@ Decided 2026-10-10:
 
 ## Phase 6: Sync through a synced folder
 
-- [ ] **6.1 Keep per-device data out of shared files.** Move `position` and `opened` out of `paper.json` into per-device storage, with a migration.
+- [x] **6.1 Keep per-device data out of shared files.** `position` and `opened` now go to each device's own file, `.xivly/devices/<device>.json`, and never to `paper.json`. Reading merges every device's file: the latest opening wins, and so does the newest position. Values already in `paper.json` are still read until a newer one replaces them.
 - [ ] **6.2 Watch for changes on disk** with the Rust `notify` crate, and reload the library and open notes or mind maps when their files change. *Test:* edit a file by hand while the app is open.
 - [ ] **6.3 An open PDF changed on disk:** reload it quietly, or ask which version to keep if there are unsaved annotations.
-- [ ] **6.4 iCloud files not downloaded yet** (`.paper.pdf.icloud`): ask macOS to download them, and show progress on the cover. *Test:* `brctl evict`.
-- [ ] **6.5 Conflict copies** (`paper 2.json`, `… (conflicted copy) …`): detect them, show a badge, and offer to resolve or merge.
-- [ ] **6.6 Test with two Macs** (or two user accounts) on the same iCloud folder.
-- [ ] **6.7 Mobile later:** Tauri 2 iOS with access to the iCloud container and a touch-friendly layout. This is its own project.
+- [ ] **6.4 Files not downloaded yet.** In Drive's "Stream files" mode, a file's contents download the first time it's read, so a cover or PDF can be slow to open, or fail when offline. Show a loading state, and a clear error offline. Recommend making the library folder *Available offline* (or using "Mirror files"). *Test:* mark a paper's folder online-only, then open it.
+- [ ] **6.5 Conflict copies** (when two devices edit a file before it syncs, Drive keeps both, the second under a changed name): detect them, show a badge, and offer to resolve or merge.
+- [ ] **6.6 Test with two Macs** (or two user accounts) signed in to the same Google Drive folder.
+- [ ] **6.7 Mobile later:** Tauri 2 iOS. iOS has no Drive folder like the Mac's, so it would read the library through the Google Drive API or the Files app. It also needs a touch-friendly layout. This is its own project.
 
 ## Order
 

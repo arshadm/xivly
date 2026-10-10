@@ -129,3 +129,34 @@ describe('bookmarks', () => {
 		expect(file.bookmarks.map((x: { name: string }) => x.name)).toEqual(['One', 'Two', 'From elsewhere']);
 	});
 });
+
+describe('Reading on several devices', () => {
+	it('position and last opened go to this device’s file, never paper.json', async () => {
+		const p = await repo.add(PDF, { title: 'A paper with a long title' });
+		await library.reload();
+		const before = dec.decode((await fs.read(`papers/${p.id}/paper.json`))!);
+		await library.touch(p.id, { position: 4.25, opened: '2026-10-10T08:00:00.000Z' });
+		await library.devices!.flush();
+		expect(dec.decode((await fs.read(`papers/${p.id}/paper.json`))!)).toBe(before);
+		const [file] = await fs.list('.xivly/devices');
+		expect((await json(`.xivly/devices/${file.name}`)).papers[p.id]).toMatchObject({ position: 4.25, opened: '2026-10-10T08:00:00.000Z' });
+		expect(library.get(p.id)).toMatchObject({ position: 4.25, opened: '2026-10-10T08:00:00.000Z' });
+	});
+
+	it('another device read on later: the paper opens where it left off', async () => {
+		const p = await repo.add(PDF, { title: 'A paper with a long title' });
+		await library.touch(p.id, { position: 2 });
+		await library.devices!.flush();
+		await new Promise((r) => setTimeout(r, 5));
+		await fs.write('.xivly/devices/other-mac.json', enc.encode(JSON.stringify({ papers: { [p.id]: { position: 9.5, opened: '2999-01-01T00:00:00.000Z', at: new Date().toISOString() } } })));
+		await library.reload();
+		expect(library.get(p.id)).toMatchObject({ position: 9.5, opened: '2999-01-01T00:00:00.000Z' });
+	});
+
+	it('other bookkeeping still goes to paper.json', async () => {
+		const p = await repo.add(PDF, { title: 'A paper with a long title' });
+		await library.reload();
+		await library.touch(p.id, { category: null, position: 3 });
+		expect(await json(`papers/${p.id}/paper.json`)).not.toHaveProperty('position');
+	});
+});
