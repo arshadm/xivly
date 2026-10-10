@@ -24,6 +24,7 @@
 	import { findMatches, findStep, NotesFind, setFindQuery } from './find';
 	import { NotesBlockMath, NotesInlineMath } from './maths';
 	import { imageFiles, MAX_IMAGE_BYTES, NotesImage, type NoteAssets } from './images';
+	import { MindMapNode } from '#lib/mindmap/node.svelte.js';
 	import { toast } from '#lib/components/Toasts.svelte';
 
 	let {
@@ -32,6 +33,7 @@
 		onjump,
 		anchor,
 		assets,
+		title = 'Topic',
 		editable = true
 	}: {
 		/** The notes as loaded (null: none yet). Read once: the editor owns the document after that. */
@@ -43,6 +45,8 @@
 		anchor?: () => PaperAnchor | null;
 		/** Where images are kept (none: images can't be added). */
 		assets?: NoteAssets;
+		/** The paper's title (a new mind map's central topic). */
+		title?: string;
 		editable?: boolean;
 	} = $props();
 
@@ -119,7 +123,8 @@
 				// A formula with an error shows as its source (red), never breaks the notes.
 				NotesInlineMath.configure({ katexOptions: { throwOnError: false }, onClick: (node, pos) => void editMath(node, pos) }),
 				NotesBlockMath.configure({ katexOptions: { throwOnError: false, displayMode: true }, onClick: (node, pos) => void editMath(node, pos) }),
-				NotesImage.configure({ assets: assets ?? null })
+				NotesImage.configure({ assets: assets ?? null }),
+				MindMapNode.configure({ title: () => title, onjump: (a) => onjump?.(a), anchor: () => anchor?.() ?? null })
 			],
 			editorProps: {
 				attributes: { class: 'notes-editor min-h-full px-5 py-4 outline-none', role: 'textbox', 'aria-multiline': 'true', 'aria-label': 'Notes', 'data-notes-editor': '' },
@@ -276,7 +281,8 @@
 			{ label: 'Table', icon: 'icon-[lucide--table]', on: () => run((c) => c.insertTable({ rows: 3, cols: 3, withHeaderRow: true })), isActive: () => active('table') },
 			{ label: 'Equation ($…$)', icon: 'icon-[lucide--sigma]', on: inlineMath },
 			{ label: 'Equation block ($$…$$)', icon: 'icon-[lucide--square-sigma]', on: blockMath },
-			{ label: 'Image (or paste / drop one)', icon: 'icon-[lucide--image-plus]', on: () => picker?.click(), disabled: () => !assets }
+			{ label: 'Image (or paste / drop one)', icon: 'icon-[lucide--image-plus]', on: () => picker?.click(), disabled: () => !assets },
+			{ label: 'Mind map', icon: 'icon-[lucide--network]', on: () => run((c) => c.insertMindMap()) }
 		],
 		[
 			{ label: 'Undo', icon: 'icon-[lucide--undo-2]', keys: `${mod}Z`, on: () => run((c) => c.undo()), disabled: () => !can((e) => e.can().undo()) },
@@ -593,6 +599,13 @@
 		min-height: 2.5em;
 		min-width: 8em;
 		background: rgb(0 0 0 / 0.05);
+	}
+	/* Mind maps: a block of their own, with room around it. */
+	:global(.notes-editor .mind-map-block) {
+		margin: 0.8em 0;
+	}
+	:global(.notes-editor .mind-map-block.ProseMirror-selectednode > [data-mind-map-canvas]) {
+		outline: 2px solid rgb(14 165 233 / 0.6);
 	}
 	/* Find in the notes. */
 	:global(.notes-editor .notes-match) {

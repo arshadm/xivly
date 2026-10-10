@@ -996,3 +996,63 @@ test('an answer into the notes: under the question, its [p. N] as page chips, ke
 	await expect(notes.locator('[data-paper-link]')).toHaveText('p. 1');
 	expect(errs).toEqual([]);
 });
+
+test('mind maps in the notes: built with the keyboard, formatted, undone, kept, exported as an outline', async ({ page, context }) => {
+	const { reader, notes } = await openNotes(page, context);
+	const errs = errors(reader);
+	await reader.keyboard.type('My map:');
+	await reader.getByRole('button', { name: 'Mind map', exact: true }).click();
+	const map = notes.locator('[data-mind-map-canvas]');
+	const topics = map.locator('[data-topic]');
+	await expect(topics).toHaveText([title]);
+
+	// Tab: a child; Enter: done typing; Enter again: a sibling.
+	await topics.first().click();
+	await reader.keyboard.press('Tab');
+	await reader.keyboard.type('Method');
+	await reader.keyboard.press('Enter');
+	await reader.keyboard.press('Tab');
+	await reader.keyboard.type('Fusion of **kernels**');
+	await reader.keyboard.press('Enter');
+	await reader.keyboard.press('Enter');
+	await reader.keyboard.type('Tiling');
+	await reader.keyboard.press('Enter');
+	await expect(topics).toHaveText([title, 'Method', 'Fusion of kernels', 'Tiling']);
+	await expect(map.locator('strong')).toHaveText('kernels');
+	const box = async (text: string) => (await topics.filter({ hasText: text }).first().boundingBox())!;
+	expect((await box('Tiling')).x).toBeGreaterThan((await box('Method')).x);
+	expect((await box('Tiling')).y).toBeGreaterThan((await box('Fusion')).y);
+
+	// A new topic left empty goes away.
+	await reader.keyboard.press('Tab');
+	await reader.keyboard.press('Enter');
+	await expect(topics).toHaveCount(4);
+
+	// ⌘Z undoes a whole new topic (added and typed: one step); ⌘⇧Z brings it back.
+	await reader.keyboard.press('ControlOrMeta+z');
+	await expect(topics).toHaveText([title, 'Method', 'Fusion of kernels']);
+	await reader.keyboard.press('ControlOrMeta+Shift+z');
+	await expect(topics).toHaveText([title, 'Method', 'Fusion of kernels', 'Tiling']);
+	await reader.keyboard.press('ControlOrMeta+z');
+	await expect(topics).toHaveText([title, 'Method', 'Fusion of kernels']);
+
+	// Arrows move between topics.
+	await topics.first().click();
+	await reader.keyboard.press('ArrowRight');
+	await expect(topics.filter({ hasText: 'Method' })).toHaveAttribute('aria-selected', 'true');
+
+	// Kept, and an outline in the Markdown export.
+	await expect(reader.getByText('Saved', { exact: true })).toBeVisible();
+	await writesDone(reader);
+	await reader.reload();
+	await expect(notes.locator('[data-mind-map-canvas] [data-topic]')).toHaveText([title, 'Method', 'Fusion of kernels']);
+	await reader.locator('[data-pdf-page]').first().click({ position: { x: 20, y: 20 } });
+	await reader.keyboard.press('ControlOrMeta+i');
+	const download = reader.waitForEvent('download');
+	await reader.getByRole('button', { name: 'Export notes' }).click();
+	const chunks: Uint8Array[] = [];
+	for await (const chunk of await (await download).createReadStream()) chunks.push(chunk as Uint8Array);
+	const md = new TextDecoder().decode(new Uint8Array(chunks.flatMap((c) => [...c])));
+	expect(md).toContain(`- ${title}\n  - Method\n    - Fusion of **kernels**`);
+	expect(errs).toEqual([]);
+});

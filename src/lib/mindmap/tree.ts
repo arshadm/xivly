@@ -20,9 +20,9 @@ export interface MindMap {
 const newId = () => crypto.randomUUID().slice(0, 8);
 const topic = (text = ''): Topic => ({ id: newId(), text, children: [] });
 
-/** A new map: the central topic, and one branch to start typing in. */
+/** A new map: just the central topic (Tab adds the first branch). */
 export function newMap(title: string): MindMap {
-	return { root: { ...topic(title || 'Topic'), children: [topic()] } };
+	return { root: topic(title || 'Topic') };
 }
 
 export interface Found {

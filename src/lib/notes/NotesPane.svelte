@@ -111,7 +111,7 @@
 <div class="contents" data-notes-pane>
 <div class="min-h-0 flex-1 border-t border-stone-200 bg-white dark:border-stone-800 dark:bg-stone-900">
 	{#if notes.status === 'ready'}
-		{#key id}<NotesEditor bind:this={editor} content={notes.doc as JSONContent | null} onupdate={(doc) => saver.change(doc as NotesDoc)} {onjump} {anchor} assets={assetsFor(id)} />{/key}
+		{#key id}<NotesEditor bind:this={editor} content={notes.doc as JSONContent | null} onupdate={(doc) => saver.change(doc as NotesDoc)} {onjump} {anchor} assets={assetsFor(id)} title={library.get(id)?.title ?? 'Topic'} />{/key}
 	{:else if notes.status === 'error'}
 		<div class="m-4 rounded-lg border border-red-200 bg-red-50 p-3 text-[13px] text-red-800 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-200">
 			<p class="font-medium">These notes couldn’t be read, so they’re left as they are.</p>

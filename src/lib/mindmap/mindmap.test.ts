@@ -9,10 +9,10 @@ const ids = (ts: Topic[]) => ts.map((x) => x.id);
 describe('mind map edits', () => {
 	const m = map(t('root', [t('a', [t('a1'), t('a2')]), t('b')]));
 
-	it('a new map: the title in the middle and a branch to type in', () => {
+	it('a new map: the title in the middle', () => {
 		const n = newMap('Fusing kernels');
 		expect(n.root.text).toBe('Fusing kernels');
-		expect(n.root.children).toHaveLength(1);
+		expect(n.root.children).toHaveLength(0);
 	});
 
 	it('child, sibling (a branch from the central topic), and they get selected', () => {

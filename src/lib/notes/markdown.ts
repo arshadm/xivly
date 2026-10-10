@@ -3,6 +3,7 @@
 import { anchorLabel } from '#lib/anchor.js';
 import type { NotesDoc } from '#lib/types.js';
 import { toAnchor } from './paper-link';
+import { normalizeMap, toOutline } from '#lib/mindmap/tree.js';
 
 interface Node {
 	type: string;
@@ -62,6 +63,8 @@ function block(n: Node, opts: MarkdownOptions): string | null {
 			return image(n);
 		case 'table':
 			return table(n);
+		case 'mindMap':
+			return toOutline(normalizeMap(n.attrs?.map));
 		default:
 			// Unknown blocks (a future node type): their text, rather than nothing.
 			return n.content ? blocks(n.content, opts) : null;

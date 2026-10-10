@@ -75,6 +75,11 @@ describe('notesToMarkdown', () => {
 		expect(md(table)).toBe('| Model | Score |\n| --- | --- |\n| a\\|b | 0.9 |');
 	});
 
+	it('mind maps as outlines', () => {
+		const m = { type: 'mindMap', attrs: { map: { root: { id: 'r', text: 'Paper', children: [{ id: 'a', text: 'Method', page: 3, children: [{ id: 'b', text: '**fusion**', children: [] }] }] } } } };
+		expect(md(m)).toBe('- Paper\n  - Method (p. 3)\n    - **fusion**');
+	});
+
 	it('an unknown block keeps its text', () => {
 		expect(md({ type: 'callout', content: [p(t('still here'))] })).toBe('still here');
 	});
