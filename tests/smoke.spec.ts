@@ -1230,3 +1230,49 @@ test('mind map folding shows: a “+N” badge on a folded branch unfolds it; a 
 	await expect(topics).toHaveCount(4);
 	expect(errs).toEqual([]);
 });
+
+/** Announce changed library files to a window, as the desktop's folder watcher does. */
+const announceChanges = (page: Page, paths: string[]) => page.evaluate((detail) => window.dispatchEvent(new CustomEvent('xivly:test-library-changed', { detail })), paths);
+
+/** A paper's folder in the browser-storage library: its id. */
+const paperIds = (page: Page) =>
+	page.evaluate(async () => {
+		const ids: string[] = [];
+		for await (const [name] of (await (await navigator.storage.getDirectory()).getDirectoryHandle('papers')) as unknown as AsyncIterable<[string]>) ids.push(name);
+		return ids;
+	});
+
+const readLibraryJson = (page: Page, path: string) =>
+	page.evaluate(async (path) => {
+		const parts = path.split('/');
+		let dir = await navigator.storage.getDirectory();
+		for (const p of parts.slice(0, -1)) dir = await dir.getDirectoryHandle(p);
+		return JSON.parse(await (await (await dir.getFileHandle(parts.at(-1)!)).getFile()).text());
+	}, path);
+
+test('synced from another device: the library and the open notes show the change without a reload', async ({ page, context }) => {
+	const { reader, notes } = await openNotes(page, context);
+	const errs = errors(reader);
+	await reader.keyboard.type('Written on this Mac.');
+	await expect(reader.getByText('Saved', { exact: true })).toBeVisible();
+	await writesDone(reader);
+	const [id] = await paperIds(page);
+
+	// Its title changed on another device.
+	const meta = await readLibraryJson(page, `papers/${id}/paper.json`);
+	await writeLibraryFiles(page, { [`papers/${id}/paper.json`]: { ...meta, title: 'Renamed on the other Mac' } });
+	await announceChanges(page, [`papers/${id}/paper.json`]);
+	await expect(page.getByRole('button', { name: /Renamed on the other Mac/ })).toBeVisible();
+
+	// And its notes.
+	const file = await readLibraryJson(reader, `papers/${id}/notes.json`);
+	await writeLibraryFiles(reader, { [`papers/${id}/notes.json`]: { ...file, doc: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Written on the other Mac.' }] }] } } });
+	await announceChanges(reader, [`papers/${id}/notes.json`]);
+	await expect(notes).toHaveText('Written on the other Mac.');
+	// Not an edit here: nothing to save, and nothing to undo.
+	await expect(reader.getByText('Saved', { exact: true })).toBeVisible();
+	await notes.click();
+	await reader.keyboard.press('ControlOrMeta+z');
+	await expect(notes).toHaveText('Written on the other Mac.');
+	expect(errs).toEqual([]);
+});

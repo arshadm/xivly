@@ -13,10 +13,15 @@
 	// One saver per paper, outliving the pane: hiding it (⌘E) mid-save loses nothing,
 	// and closing the window or quitting waits for the last write.
 	const savers = new Map<string, Saver<NotesDoc>>();
+	/** Each paper's notes as this window last read or wrote them (JSON): a change on disk that's not one of ours differs. */
+	const known = new Map<string, string>();
 	function saverFor(id: string) {
 		let saver = savers.get(id);
 		if (!saver) {
-			const s = new Saver<NotesDoc>((doc) => library.repo!.saveNotes(id, doc));
+			const s = new Saver<NotesDoc>(async (doc) => {
+				known.set(id, JSON.stringify(doc));
+				await library.repo!.saveNotes(id, doc);
+			});
 			onFlush({ dirty: () => s.dirty, flush: () => s.flush().then(() => true) });
 			savers.set(id, (saver = s));
 		}
@@ -56,6 +61,7 @@
 <script lang="ts">
 	import type { JSONContent } from '@tiptap/core';
 	import { onDestroy } from 'svelte';
+	import { onDiskChange } from '#lib/disk-changes.js';
 	import NotesEditor from './NotesEditor.svelte';
 
 	let {
@@ -106,9 +112,28 @@
 		void s
 			.flush()
 			.then(() => library.repo!.readNotes(current))
-			.then((file) => current === id && (notes = { status: 'ready', doc: file?.doc ?? null }))
+			.then((file) => {
+				if (current !== id) return;
+				known.set(current, JSON.stringify(file?.doc ?? null));
+				notes = { status: 'ready', doc: file?.doc ?? null };
+			})
 			.catch((e) => current === id && (notes = { status: 'error', error: e instanceof Error ? e.message : String(e) }));
 	});
+	// The notes changed on disk (another device, synced): shown here, unless there are edits
+	// here still to save (they're written over it; see the roadmap's 6.5, conflicts).
+	$effect(() => {
+		const current = id;
+		const s = saver;
+		return onDiskChange(async (paths) => {
+			if (!paths.includes(`papers/${current}/notes.json`) || s.dirty || notes.status !== 'ready') return;
+			const file = await library.repo!.readNotes(current).catch(() => null);
+			const json = JSON.stringify(file?.doc ?? null);
+			if (!file || current !== id || s.dirty || json === known.get(current)) return;
+			known.set(current, json);
+			editor?.replace(file.doc as JSONContent);
+		});
+	});
+
 	// Hidden (⌘E) or the window going: write what's waiting now.
 	onDestroy(() => void saver.flush());
 

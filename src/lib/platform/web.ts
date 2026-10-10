@@ -149,6 +149,12 @@ export const webPlatform: Platform = {
 	onDisk: hasPicker,
 	// No claude on the web; end-to-end tests stand one in (tests/smoke.spec.ts) to drive the Chat tab.
 	claude: (globalThis as { __xivlyTestClaude?: Platform['claude'] }).__xivlyTestClaude,
+	// Nothing watches browser storage; end-to-end tests announce their changes (`xivly:test-library-changed`).
+	watch(onChange) {
+		const listener = (e: Event) => onChange((e as CustomEvent<string[]>).detail);
+		window.addEventListener('xivly:test-library-changed', listener);
+		return () => window.removeEventListener('xivly:test-library-changed', listener);
+	},
 	async restore() {
 		if (!hasPicker) return localStorage.getItem('xivly:opfs') ? opfs() : null;
 		const h = await loadHandle().catch(() => undefined);

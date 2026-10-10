@@ -8,6 +8,7 @@
 	import { Tooltip } from 'bits-ui';
 	import { onMount, type Snippet } from 'svelte';
 	import { addFiles } from '#lib/add-paper.js';
+	import { onDiskChange, touchesLibrary, touchesPaper, watchLibrary } from '#lib/disk-changes.js';
 	import { flushAll, hasUnsaved } from '#lib/flush.js';
 	import { library } from '#lib/library.svelte.js';
 	import { platform } from '#lib/platform/index.js';
@@ -154,6 +155,21 @@
 		const id = page.route.id === '/read' ? searchParams(page.url).get('id') : null;
 		void (id ? library.reloadPaper(id) : library.reload());
 	}
+
+	// Changes on disk while the app is open (above all, synced from another device): shown
+	// right away, not only on the next focus. A reader window only refreshes its own paper.
+	$effect(() => {
+		if (library.status !== 'ready' || !library.repo) return;
+		const stopWatch = watchLibrary();
+		const stop = onDiskChange((paths) => {
+			const id = page.route.id === '/read' ? searchParams(page.url).get('id') : null;
+			if (id ? paths.some((p) => touchesPaper(id, p)) : paths.some(touchesLibrary)) void (id ? library.reloadPaper(id) : library.reload());
+		});
+		return () => {
+			stop();
+			stopWatch();
+		};
+	});
 
 	// HTML5 drag & drop: same code path in Tauri (dragDropEnabled: false) and browsers.
 	const hasFiles = (e: DragEvent) => e.dataTransfer?.types.includes('Files');

@@ -60,6 +60,11 @@ export const tauriPlatform: Platform = {
 		return dir && !Array.isArray(dir) ? dir : null;
 	},
 	readArxivFetch: (dir) => invoke('feed_import_arxiv_fetch', { dir }),
+	watch(onChange) {
+		void invoke('library_watch', { rootDir }).catch((e) => console.warn('Not watching the library folder:', e));
+		const stop = import('@tauri-apps/api/event').then(({ listen }) => listen<string[]>('library-changed', ({ payload }) => onChange(payload)));
+		return () => void stop.then((f) => f());
+	},
 	claude: {
 		locate: (path) => invoke('claude_locate', { path: path || null }),
 		run(request, onEvent) {

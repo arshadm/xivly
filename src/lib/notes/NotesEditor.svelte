@@ -132,6 +132,18 @@
 		editor?.chain().focus('end').insertContent(nodes).scrollIntoView().run();
 	}
 
+	/**
+	 * The notes as changed elsewhere (synced from another device): shown in place,
+	 * without an update (it's no edit here) or an undo step; the cursor stays where it can.
+	 */
+	export function replace(doc: JSONContent) {
+		if (!editor) return;
+		const { from, to } = editor.state.selection;
+		editor.chain().setMeta('addToHistory', false).setContent(doc, { emitUpdate: false }).run();
+		const end = editor.state.doc.content.size;
+		if (editor.isFocused) editor.commands.setTextSelection({ from: Math.min(from, end), to: Math.min(to, end) });
+	}
+
 	let element = $state<HTMLElement>();
 	let editor = $state.raw<Editor>();
 	// Bumped on every transaction: the bar's active states follow the selection.

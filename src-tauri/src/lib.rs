@@ -4,6 +4,7 @@ mod error;
 mod feed_import;
 mod hooks;
 mod library;
+mod watch;
 
 use std::collections::HashSet;
 use std::sync::Mutex;
@@ -94,6 +95,7 @@ pub fn run() {
                 config_error: std::sync::Mutex::new(config_error),
             });
             app.manage(claude::ClaudeState::default());
+            app.manage(watch::WatchState::default());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -115,6 +117,7 @@ pub fn run() {
             claude::claude_cancel,
             library::fs_abs,
             library::run_hook,
+            watch::library_watch,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

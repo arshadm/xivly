@@ -71,4 +71,6 @@ export interface Platform {
 	readArxivFetch?(dir: string): Promise<ArxivFetchExport>;
 	/** Desktop only: the claude CLI (Claude Code), run in a paper's folder. */
 	claude?: ClaudeCli;
+	/** Desktop: files of the library changed on disk (paths relative to it), e.g. synced from another device. Returns the stop function. */
+	watch?(onChange: (paths: string[]) => void): () => void;
 }
