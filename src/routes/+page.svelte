@@ -25,6 +25,7 @@
 	import VirtualGrid from '#lib/ui/VirtualGrid.svelte';
 	import PaperRow from '#lib/components/PaperRow.svelte';
 	import ConflictsDialog, { showConflicts } from '#lib/components/ConflictsDialog.svelte';
+	import ReadingView from '#lib/components/ReadingView.svelte';
 	import FeedView from '#lib/feed/FeedView.svelte';
 	import { disjointViewKey } from '#lib/ui/view-key.js';
 	import { button } from '#lib/ui/button.js';
@@ -38,7 +39,7 @@
 	const title = $derived.by(() => {
 		const v = library.view;
 		if (v.kind === 'category') return library.category(v.id)?.name ?? '';
-		return { all: 'All papers', recent: 'Recent', uncategorized: 'Uncategorized', feed: 'arXiv feed' }[v.kind];
+		return { all: 'All papers', recent: 'Recent', uncategorized: 'Uncategorized', feed: 'arXiv feed', reading: 'Reading' }[v.kind];
 	});
 	$effect(() => void setWindowTitle(library.name ? `Xivly — ${library.name}` : 'Xivly'));
 	// Web: a reader opened from this tab switches back to it (showLibrary).
@@ -178,6 +179,8 @@
 
 	{#if library.view.kind === 'feed'}
 		<FeedView />
+	{:else if library.view.kind === 'reading'}
+		<ReadingView />
 	{:else}
 	<main class="flex min-w-0 flex-1 flex-col">
 		<!-- A container: at narrow widths labels and the read filter fold away (720px windows). -->

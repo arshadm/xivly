@@ -2,8 +2,8 @@
 import type { SortKey } from './settings.svelte';
 import type { Paper } from './types';
 
-/** `feed`: the arXiv feed (its own view, not papers of the library). */
-export type View = { kind: 'all' } | { kind: 'recent' } | { kind: 'uncategorized' } | { kind: 'category'; id: string } | { kind: 'feed' };
+/** `feed`: the arXiv feed (its own view, not papers of the library); `reading`: the reading list (its own view too). */
+export type View = { kind: 'all' } | { kind: 'recent' } | { kind: 'uncategorized' } | { kind: 'category'; id: string } | { kind: 'feed' } | { kind: 'reading' };
 
 export interface FilterOptions {
 	view: View;
@@ -56,6 +56,7 @@ export function filterPapers(papers: Paper[], o: FilterOptions): Paper[] {
 		if (v.kind === 'category' && p.category !== v.id) return false;
 		if (v.kind === 'uncategorized' && o.isCategory(p.category)) return false;
 		if (v.kind === 'recent' && !(p.opened && Date.parse(p.opened) >= o.recentSince)) return false;
+		if (v.kind === 'reading' && !p.reading && p.queue === undefined) return false;
 		for (const [t, mode] of Object.entries(o.tagFilter)) if (!!p.tags?.includes(t) !== (mode === 'in')) return false;
 		if (o.readFilter !== 'all' && !!p.read !== (o.readFilter === 'read')) return false;
 		return !q || haystack(p).includes(q) || !!o.notesText?.(p.id)?.includes(q);

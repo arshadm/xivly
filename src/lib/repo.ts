@@ -88,6 +88,8 @@ export function normalizePaper(id: string, meta: Json): Paper {
 		// Read: a timestamp; any other truthy value still counts as read.
 		read: str(meta.read) ?? (meta.read ? String(meta.read) : undefined),
 		position: num(meta.position),
+		reading: str(meta.reading),
+		queue: num(meta.queue),
 		bookmarks: parseBookmarks(meta.bookmarks),
 		abstract: str(meta.abstract),
 		doi: str(meta.doi),

@@ -153,6 +153,10 @@ Decided 2026-10-10:
 - [ ] **6.6 Test with two Macs** (or two user accounts) signed in to the same Google Drive folder.
 - [ ] **6.7 Mobile later:** Tauri 2 iOS. iOS has no Drive folder like the Mac's, so it would read the library through the Google Drive API or the Files app. It also needs a touch-friendly layout. This is its own project.
 
+## Phase 7: Reading list
+
+- [x] **7.1 Reading now and Up next.** A *Reading* view at the top of the sidebar, with counts. *Reading now* holds only papers you mark (right-click › *Mark as reading*), most recently opened first, with the page you're on. *Up next* is a queue in your order: right-click › *Add to Up next*, drag a row to reorder, or *Move to the top of Up next*; *Start reading* opens it and moves it to Reading now. Marking a paper read takes it off both. Stored per paper in `paper.json` (`reading`: when marked; `queue`: a rank, lower first), so reordering on one device changes only the paper moved.
+
 ## Order
 
 1. **0 → 1:** quick wins that set up the anchor type.

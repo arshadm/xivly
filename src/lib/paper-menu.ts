@@ -8,6 +8,7 @@ import { platform } from './platform';
 import type { Paper } from './types';
 import type { MenuItem } from './ui/context-menu.svelte';
 import { prompts } from './ui/prompt.svelte';
+import { upNext } from './reading';
 import { openPaper } from './windows';
 
 const fail = (e: unknown) => toast(String(e), 'error');
@@ -48,6 +49,16 @@ export function paperMenu(p: Paper): MenuItem[] {
 			? { label: 'Mark as unread', icon: 'icon-[lucide--circle-dashed]', onSelect: () => library.toggleRead(p) }
 			: { label: 'Mark as read', icon: 'icon-[lucide--circle-check]', onSelect: () => library.toggleRead(p) }
 	);
+	// The reading list (see reading.ts).
+	if (p.reading) items.push({ label: 'Stop reading', icon: 'icon-[lucide--book-x]', separatorBefore: true, onSelect: () => library.setReading(p.id, false).catch(fail) });
+	else {
+		items.push({ label: 'Mark as reading', icon: 'icon-[lucide--book-open-check]', separatorBefore: true, onSelect: () => library.setReading(p.id, true).catch(fail) });
+		if (p.queue === undefined) items.push({ label: 'Add to Up next', icon: 'icon-[lucide--list-plus]', onSelect: () => library.enqueue(p.id).then(() => toast('Added to Up next'), fail) });
+		else {
+			if (upNext(library.papers)[0]?.id !== p.id) items.push({ label: 'Move to the top of Up next', icon: 'icon-[lucide--arrow-up-to-line]', onSelect: () => library.enqueue(p.id, 'top').catch(fail) });
+			items.push({ label: 'Remove from Up next', icon: 'icon-[lucide--list-minus]', onSelect: () => library.dequeue(p.id).catch(fail) });
+		}
+	}
 	items.push(
 		{
 			label: 'Category',

@@ -72,6 +72,10 @@ export interface Paper {
 	sample?: boolean;
 	/** ISO timestamp of when it was marked read (absent: unread). */
 	read?: string;
+	/** ISO timestamp of when you marked it as being read (the Reading list). */
+	reading?: string;
+	/** Its place in Up next (lower comes first; absent: not queued). */
+	queue?: number;
 	/** Reading position (fractional page) restored on open. */
 	position?: number;
 	/** Named places in the paper, in page order. */

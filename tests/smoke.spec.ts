@@ -1392,3 +1392,39 @@ test('sync conflicts: a banner and a badge; merged, or the other copy discarded'
 	await expect(page.getByRole('button', { name: new RegExp(title) })).toBeVisible();
 	expect(errs).toEqual([]);
 });
+
+test('the reading list: up next in my order (menu, drag, move to top), reading now, done', async ({ page }) => {
+	const errs = errors(page);
+	await startLibrary(page);
+	await writeLibraryFiles(page, Object.fromEntries(['Alpha', 'Beta', 'Gamma'].map((t) => [`papers/${t.toLowerCase()}/paper.json`, { title: `${t} paper`, added: '2026-10-01T00:00:00Z' }])));
+	await page.reload();
+	const menu = async (name: RegExp, item: string, within = page.locator('main')) => {
+		await within.getByRole('button', { name }).first().click({ button: 'right' });
+		await page.getByRole('menuitem', { name: item }).click();
+	};
+	for (const t of ['Alpha', 'Beta', 'Gamma']) await menu(new RegExp(`${t} paper`), 'Add to Up next');
+	await page.getByRole('button', { name: /^Reading/ }).click();
+	const next = page.getByRole('list', { name: 'Up next' }).getByRole('listitem');
+	const order = () => next.locator('.font-serif').allTextContents();
+	await expect.poll(order).toEqual(['Alpha paper', 'Beta paper', 'Gamma paper']);
+
+	// Dragged: Gamma onto Alpha's top half goes first.
+	const alpha = (await next.nth(0).boundingBox())!;
+	await next.nth(2).dragTo(next.nth(0), { targetPosition: { x: alpha.width / 2, y: 4 } });
+	await expect.poll(order).toEqual(['Gamma paper', 'Alpha paper', 'Beta paper']);
+	await menu(/Beta paper/, 'Move to the top of Up next');
+	await expect.poll(order).toEqual(['Beta paper', 'Gamma paper', 'Alpha paper']);
+
+	// Reading now: marked by hand; done takes it off the list.
+	await menu(/Gamma paper/, 'Mark as reading');
+	const now = page.getByRole('list', { name: 'Reading now' }).getByRole('listitem');
+	await expect(now).toHaveText(/Gamma paper/);
+	await expect.poll(order).toEqual(['Beta paper', 'Alpha paper']);
+	await writesDone(page);
+	await page.reload();
+	await page.getByRole('button', { name: /^Reading/ }).click();
+	await expect.poll(order).toEqual(['Beta paper', 'Alpha paper']);
+	await page.getByRole('button', { name: 'Mark “Gamma paper” as read' }).click();
+	await expect(page.getByText('Nothing yet. Right-click a paper')).toBeVisible();
+	expect(errs).toEqual([]);
+});

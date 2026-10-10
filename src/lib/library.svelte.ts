@@ -8,6 +8,7 @@ import { parseArxiv } from './arxiv';
 import type { Conflict } from './conflicts';
 import { DeviceStore, deviceId, type Visit } from './devices';
 import { sha256 } from './duplicates';
+import { rankAt, upNext } from './reading';
 import { filterPapers, type View } from './filter';
 import { fetchHfPaper } from './huggingface';
 import { platform } from './platform';
@@ -83,8 +84,31 @@ class Library {
 	}
 
 	/** Mark read (now) or unread. */
+	/** Read: off the reading list too. */
 	setRead(id: string, read: boolean) {
-		return this.update(id, { read: read ? new Date().toISOString() : null });
+		return this.update(id, read ? { read: new Date().toISOString(), reading: null, queue: null } : { read: null });
+	}
+
+	// ── The reading list (see reading.ts) ────────────────────────────────
+
+	/** Mark as being read (it leaves Up next), or not any more. */
+	setReading(id: string, on: boolean) {
+		return this.update(id, on ? { reading: new Date().toISOString(), queue: null, read: null } : { reading: null });
+	}
+
+	/** Add to Up next, at the end (or the top), or move it there. */
+	enqueue(id: string, where: 'top' | 'end' = 'end') {
+		const queue = upNext(this.papers);
+		return this.moveInQueue(id, where === 'top' ? 0 : queue.length);
+	}
+
+	/** Put a paper at `index` of Up next. */
+	moveInQueue(id: string, index: number) {
+		return this.update(id, { queue: rankAt(upNext(this.papers), id, index) });
+	}
+
+	dequeue(id: string) {
+		return this.update(id, { queue: null });
 	}
 
 	/** Flip read / unread (buttons and menus; a failure is shown, not thrown). */

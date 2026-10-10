@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { readingNow, upNext } from '#lib/reading.js';
 	import { feed } from '#lib/feed/feed.svelte.js';
 	import { iconButton, mutedIcon } from '#lib/ui/button.js';
 	import { paperColors } from 'svelte-pdf-mini';
@@ -82,6 +83,8 @@
 	const tags = $derived(library.allTags.filter((t) => t !== ARCHIVED));
 	const shownTags = $derived(allTagsShown || tags.length <= TAGS_SHOWN + 2 ? tags : tags.filter((t, i) => i < TAGS_SHOWN || library.tagFilter[t]));
 
+	const reading = $derived({ now: readingNow(library.papers).length, next: upNext(library.papers).length });
+
 	const item = 'flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-[13px] hover:bg-stone-200/60 data-[active]:bg-stone-200 dark:hover:bg-stone-800/60 dark:data-[active]:bg-stone-800';
 	const iconBtn = iconButton(6, mutedIcon);
 
@@ -99,6 +102,10 @@
 		<button class={item} data-active={isView({ kind: 'all' }) || undefined} aria-current={isView({ kind: 'all' }) ? 'page' : undefined} onclick={() => (library.view = { kind: 'all' })}>
 			<span class="icon-[lucide--library] size-4 text-stone-500"></span><span class="flex-1">All papers</span>
 			<span class="text-xs text-muted tabular-nums">{counted.length}</span>
+		</button>
+		<button class={item} data-active={isView({ kind: 'reading' }) || undefined} aria-current={isView({ kind: 'reading' }) ? 'page' : undefined} onclick={() => (library.view = isView({ kind: 'reading' }) ? { kind: 'all' } : { kind: 'reading' })}>
+			<span class="icon-[lucide--book-open-check] size-4 text-stone-500"></span><span class="flex-1">Reading</span>
+			{#if reading.now || reading.next}<span class="text-xs text-muted tabular-nums" title="{reading.now} reading now, {reading.next} up next">{reading.now} · {reading.next}</span>{/if}
 		</button>
 		<button class={item} data-active={isView({ kind: 'recent' }) || undefined} aria-current={isView({ kind: 'recent' }) ? 'page' : undefined} onclick={() => (library.view = isView({ kind: 'recent' }) ? { kind: 'all' } : { kind: 'recent' })}>
 			<span class="icon-[lucide--clock] size-4 text-stone-500"></span><span class="flex-1">Recent</span>
