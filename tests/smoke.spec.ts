@@ -1345,3 +1345,22 @@ test('the open PDF changed on another device: shown at once, or a choice when an
 	await expect(dialog).toBeHidden();
 	expect(errs).toEqual([]);
 });
+
+test('a PDF not synced yet: said so, then opened as soon as it arrives', async ({ page, context }) => {
+	const reader = await addPaper(page, context);
+	const errs = errors(reader);
+	await expect(reader.locator('[data-pdf-page]').first().locator('[data-pdf-canvas]')).toBeVisible();
+	const [id] = await paperIds(page);
+	const pdf = `papers/${id}/paper.pdf`;
+	const original = await readLibraryBytes(reader, pdf);
+	await writesDone(reader);
+	await reader.evaluate(async (id) => (await (await (await navigator.storage.getDirectory()).getDirectoryHandle('papers')).getDirectoryHandle(id)).removeEntry('paper.pdf'), id);
+	await reader.reload();
+	await expect(reader.getByText('This paper’s PDF is missing from its folder.')).toBeVisible();
+	await expect(reader.getByRole('button', { name: 'Try again' })).toBeVisible();
+
+	await writeLibraryBytes(reader, pdf, original);
+	await announceChanges(reader, [pdf]);
+	await expect(reader.locator('[data-pdf-page]').first().locator('[data-pdf-canvas]')).toBeVisible();
+	expect(errs).toEqual([]);
+});

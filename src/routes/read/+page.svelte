@@ -105,6 +105,10 @@
 	/** The PDF: being read (a spinner after a moment), there, missing or unreadable. */
 	let load = $state<{ status: 'loading' | 'ready' | 'missing' | 'error'; error?: string }>({ status: 'loading' });
 	let slow = $state(false);
+	/** Still opening after a few seconds (a synced folder downloading it): said why. */
+	let verySlow = $state(false);
+	/** Bumped to read the PDF again (Try again, or it arrived on disk). */
+	let attempt = $state(0);
 	let viewer = $state<ViewerState>();
 	let store = $state<AnnotationStore>();
 	let paperState = $state<PaperState>();
@@ -204,13 +208,15 @@
 		const current = id;
 		const repo = library.repo;
 		const mine = access === 'mine';
+		const again = attempt > 0;
 		untrack(() => {
 			bytes = null;
 			load = { status: 'loading' };
-			slow = false;
+			slow = verySlow = false;
 			if (!mine) return;
-			// Large PDFs (or iCloud downloading one) take a moment: a spinner then, not at once.
+			// Large PDFs (or a synced folder downloading one) take a moment: a spinner then, not at once.
 			const spinner = setTimeout(() => (slow = true), 300);
+			const explain = setTimeout(() => (verySlow = true), 3000);
 			warmPdf();
 			repo
 				?.readPdf(current)
@@ -224,7 +230,11 @@
 					load = b ? { status: 'ready' } : { status: 'missing' };
 				})
 				.catch((e) => current === id && (load = { status: 'error', error: e instanceof Error ? e.message : String(e) }))
-				.finally(() => clearTimeout(spinner));
+				.finally(() => {
+					clearTimeout(spinner);
+					clearTimeout(explain);
+				});
+			if (again) return;
 			library.touch(current, { opened: new Date().toISOString() }).catch(() => {});
 			// Hugging Face links (models, datasets, project page…), at most weekly.
 			library.refreshHf(current).catch(() => {});
@@ -343,7 +353,10 @@
 	$effect(() => {
 		const current = id;
 		return onDiskChange((paths) => {
-			if (paths.includes(`papers/${current}/paper.pdf`)) void pdfChanged(current);
+			if (!paths.includes(`papers/${current}/paper.pdf`)) return;
+			// Missing or unreadable until now (still syncing): read it again.
+			if (load.status === 'missing' || load.status === 'error') attempt++;
+			else void pdfChanged(current);
 		});
 	});
 	async function pdfChanged(current: string) {
@@ -1101,7 +1114,9 @@
 		<div>
 			<p class="text-stone-700 dark:text-stone-300">{load.status === 'missing' ? 'This paper’s PDF is missing from its folder.' : 'The PDF couldn’t be opened.'}</p>
 			{#if load.error}<p class="mt-1 max-w-md text-xs">{load.error}</p>{/if}
+			{#if platform.onDisk}<p class="mx-auto mt-3 max-w-md text-xs">If your library is in Google Drive (or another synced folder), the PDF may not have arrived yet: check you’re online, or make the library folder available offline. It opens as soon as it’s there.</p>{/if}
 			<div class="mt-4 flex justify-center gap-2">
+				<button class={button('secondary')} onclick={() => attempt++}>Try again</button>
 				{#if platform.reveal}<button class={button('secondary')} onclick={() => platform.reveal?.(`papers/${id}/paper.json`)}>Show in {fileManager}</button>{/if}
 				<button class={button('primary')} onclick={closeWindow}>Close</button>
 			</div>
@@ -1109,7 +1124,10 @@
 	</div>
 {:else}
 	<div class="grid h-full place-items-center bg-stone-100 dark:bg-stone-950" data-tauri-drag-region>
-		{#if slow}<span class="icon-[lucide--loader-circle] size-5 animate-spin text-stone-400" aria-label="Opening the PDF"></span>{/if}
+		<div class="text-center">
+			{#if slow}<span class="icon-[lucide--loader-circle] size-5 animate-spin text-stone-400" aria-label="Opening the PDF"></span>{/if}
+			{#if verySlow && platform.onDisk}<p class="mt-2 max-w-sm px-6 text-xs text-muted">Still opening… A library in Google Drive downloads a paper the first time it’s opened.</p>{/if}
+		</div>
 	</div>
 {/if}
 
