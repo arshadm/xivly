@@ -11,7 +11,7 @@ Planned features for this fork: split-view notes, a mind map per paper, named bo
 | Sync | The library folder lives in a synced folder (iCloud Drive or Dropbox). No server. |
 | LLM | The Claude Code CLI (`claude -p`), using your subscription login. Desktop only. |
 | Notes | Rich text, stored as editor JSON in `papers/<id>/notes.json`. |
-| Mind map | One per paper, in the split view. |
+| Mind map | Blocks inside the notes (several per paper), balanced radial layout, topics with a little formatting. |
 | Bookmarks | A named spot (fractional page) inside one paper. |
 | arXiv | A feed in the library, imported from `tools/arxiv/arxiv_fetch.py` (which keeps fetching and scoring, run by hand). Papers are added by hand. |
 
@@ -117,14 +117,25 @@ Catchup pages don't allow cross-origin reads, so fetching (and running `claude`)
 
 Run only your own installed and logged-in `claude` CLI. Xivly never reads or reuses its login tokens.
 
-## Phase 5: Mind map per paper
+## Phase 5: Mind maps in the notes
 
-- [ ] **5.1 Svelte Flow (`@xyflow/svelte`)** as a Mind map tab in the right pane, with a root node named after the paper's title.
-- [ ] **5.2 Editing:** child node (Tab), sibling node (Enter), edit text in place, delete, drag, automatic tree layout. *Test:* the layout function has unit tests.
-- [ ] **5.3 Save** `papers/<id>/mindmap.json` (`{version, nodes, edges}`) after typing and on close.
-- [ ] **5.4 Nodes linked to the paper** (`PaperAnchor`), plus "Add selection as node".
-- [ ] **5.5 Export** as PNG or SVG, and as a Markdown outline.
-- [ ] **5.6 Optional:** generate a map with Claude (Phase 4).
+Decided 2026-10-10:
+- **Blocks in the notes:** a mind map is a block inside the notes document (like a table or a maths block), not a separate tab or cell list. Text around it grows and shrinks as usual, each map has its own height (resizable), undo covers both, and the toolbar follows what's being edited.
+- **Radial ("balanced") layout:** the central topic in the middle, its branches split left and right by size, each growing outward.
+- **Topics with a little formatting:** bold, italic, code, maths, page links.
+- **Drawn without a graph library:** HTML topics plus SVG curves, with pan, zoom and fit.
+
+- [ ] **5.1 Model and layout** (`src/lib/mindmap/`):
+  - **Tree:** each topic has `{id, text, page?, collapsed?, children}`, and the map stores its height.
+  - **Edits:** add child, add sibling, delete, move among siblings, promote, demote. Pure functions.
+  - **Balanced layout:** works from measured topic sizes.
+  - **Outline:** the map as nested Markdown, for `notes.md`, export and Claude.
+  - *Test:* unit tests for edits, layout (sides balanced, no overlaps) and the outline.
+- [ ] **5.2 The block:** a TipTap `mindMap` node whose block view is isolated from the text editor (its keys, mouse and selection), with a drag handle to resize its height. Every map change is an editor transaction, so ⌘Z undoes it with the text. Inserted from the toolbar, it starts with the paper's title as the root.
+- [ ] **5.3 Drawing and editing:** topics with inline formatting, curved branches, pan (drag the background), zoom (⌘-scroll, pinch, buttons), fit. Click to select. Tab adds a child, Enter a sibling, Delete removes, arrow keys move between topics, ⌥-arrows move a topic. Typing or double-click edits; Esc or Enter finishes. Branches collapse and expand.
+- [ ] **5.4 Toolbar that follows:** while a map is selected, the bar shows map tools (child, sibling, delete, bold, italic, code, link to page, tidy, fit, zoom, export) instead of text formatting.
+- [ ] **5.5 Links to the paper:** a topic can carry a **p. N** link (to the page you're reading) that jumps there. In the PDF, right-click a selection › "Add to mind map" adds it as a topic with its page.
+- [ ] **5.6 Out and in:** export as PNG or SVG, or copy as an outline. `notes.md` and the Markdown export show maps as outlines. A saved prompt has Claude draft a map of the paper, and an answer can be inserted as a map.
 
 ## Phase 6: Sync through a synced folder
 
@@ -142,5 +153,5 @@ Run only your own installed and logged-in `claude` CLI. Xivly never reads or reu
 2. **2.1–2.6:** the core of the notes work.
 3. **3:** the arXiv feed (imported from arxiv_fetch).
 4. **4:** builds on the notes tab.
-5. **5:** reuses the right pane and anchors.
+5. **5:** mind maps as blocks in the notes.
 6. **6.1 early, the rest last:** 6.1 is cheap and prevents conflicts later.
