@@ -125,7 +125,7 @@ Decided 2026-10-10:
 - **Topics with a little formatting:** bold, italic, code, maths, page links.
 - **Drawn without a graph library:** HTML topics plus SVG curves, with pan, zoom and fit.
 
-- [ ] **5.1 Model and layout** (`src/lib/mindmap/`):
+- [x] **5.1 Model and layout** (`src/lib/mindmap/`):
   - **Tree:** each topic has `{id, text, page?, collapsed?, children}`, and the map stores its height.
   - **Edits:** add child, add sibling, delete, move among siblings, promote, demote. Pure functions.
   - **Balanced layout:** works from measured topic sizes.
