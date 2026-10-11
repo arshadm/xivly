@@ -40,6 +40,8 @@ const defaults = {
 	wheelZoom: true,
 	/** Reopen papers where you left off (else at the top). */
 	resumePosition: true,
+	/** Desktop: the papers open when the app quit open again at launch. */
+	reopenPapers: true,
 
 	// Reading: panels & aids
 	sidePanel: false,

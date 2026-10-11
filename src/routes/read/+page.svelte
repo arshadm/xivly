@@ -32,6 +32,7 @@
 	} from 'svelte-pdf-mini';
 	import { forgetCover } from '#lib/covers.js';
 	import { onDiskChange } from '#lib/disk-changes.js';
+	import { rememberOpen } from '#lib/session.js';
 	import { sha256 } from '#lib/duplicates.js';
 	import { exportPdfInWorker } from '#lib/export.js';
 	import { metadataCache } from '#lib/metadata-cache.js';
@@ -163,6 +164,10 @@
 		lock = l;
 		void l.claim();
 		return () => l.dispose();
+	});
+	// Desktop: open at the next launch too, unless its window is closed (see +layout.svelte).
+	$effect(() => {
+		if (platform.kind === 'desktop' && access === 'mine') rememberOpen(id);
 	});
 	// Web: the tab holding the paper is the one `openPaper` finds by name (and focuses).
 	$effect(() => {

@@ -780,9 +780,8 @@ test('the arXiv feed: dismiss (with undo), and restore from the dismissed ones',
 
 	await page.getByRole('button', { name: 'Dismiss Paper 2610.00001' }).click();
 	await expect(cards).toHaveCount(1);
-	// Kept after a reload (written to the feed file).
+	// Kept after a reload (written to the feed file); the feed is still the view shown.
 	await page.reload();
-	await page.getByRole('button', { name: /arXiv feed/ }).click();
 	await expect(cards).toHaveCount(1);
 	await page.getByRole('button', { name: /Dismissed 1/ }).click();
 	await page.getByRole('button', { name: 'Restore Paper 2610.00001' }).click();
@@ -1421,8 +1420,9 @@ test('the reading list: up next in my order (menu, drag, move to top), reading n
 	await expect(now).toHaveText(/Gamma paper/);
 	await expect.poll(order).toEqual(['Beta paper', 'Alpha paper']);
 	await writesDone(page);
+	// Reloaded: back on the Reading view (the library's view is remembered).
 	await page.reload();
-	await page.getByRole('button', { name: /^Reading/ }).click();
+	await expect(page.getByRole('heading', { name: 'Reading', level: 1 })).toBeVisible();
 	await expect.poll(order).toEqual(['Beta paper', 'Alpha paper']);
 	await page.getByRole('button', { name: 'Mark “Gamma paper” as read' }).click();
 	await expect(page.getByText('Nothing yet. Right-click a paper')).toBeVisible();

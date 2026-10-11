@@ -9,6 +9,7 @@ import type { Conflict } from './conflicts';
 import { DeviceStore, deviceId, type Visit } from './devices';
 import { sha256 } from './duplicates';
 import { rankAt, upNext } from './reading';
+import { lastView } from './session';
 import { filterPapers, type View } from './filter';
 import { fetchHfPaper } from './huggingface';
 import { platform } from './platform';
@@ -166,6 +167,8 @@ class Library {
 		this.tagFilter = { [ARCHIVED]: 'out' };
 		this.conflicts = [];
 		await this.reload();
+		// Where the library was left (on this device), if that view is still there.
+		this.view = lastView((id) => this.file.categories.some((c) => c.id === id)) ?? { kind: 'all' };
 		this.status = 'ready';
 		void this.scanConflicts();
 	}

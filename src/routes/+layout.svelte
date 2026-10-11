@@ -10,6 +10,7 @@
 	import { addFiles } from '#lib/add-paper.js';
 	import { forgetCover } from '#lib/covers.js';
 	import { mayBeConflictCopy } from '#lib/conflicts.js';
+	import { forgetOpen } from '#lib/session.js';
 	import { onDiskChange, touchesLibrary, touchesPaper, watchLibrary } from '#lib/disk-changes.js';
 	import { flushAll, hasUnsaved } from '#lib/flush.js';
 	import { library } from '#lib/library.svelte.js';
@@ -77,9 +78,14 @@
 			// Closing this window: unsaved work is saved, discarded or the close cancelled.
 			win.onCloseRequested(async (e) => {
 				await settings.flush();
-				if (!hasUnsaved()) return;
+				// A paper closed by hand isn't reopened at the next launch (quitting closes none).
+				const paper = page.route.id === '/read' ? searchParams(page.url).get('id') : null;
+				if (!hasUnsaved()) return void (paper && forgetOpen(paper));
 				e.preventDefault();
-				if (await flushAll()) await win.destroy();
+				if (await flushAll()) {
+					if (paper) forgetOpen(paper);
+					await win.destroy();
+				}
 			}),
 			// ⌘Q: every window answers (Rust quits once all agree), whatever happens:
 			// an exception must not leave the quit waiting for this window forever.

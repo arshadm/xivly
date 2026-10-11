@@ -13,7 +13,10 @@
 	import Kbd from '#lib/ui/Kbd.svelte';
 	import Tip from '#lib/ui/Tip.svelte';
 	import { setFallbackMenu, type MenuItem } from '#lib/ui/context-menu.svelte.js';
-	import { LIBRARY_TAB, setWindowTitle } from '#lib/windows.js';
+	import { LIBRARY_TAB, openPaper, setWindowTitle } from '#lib/windows.js';
+	import { openPapers, rememberView } from '#lib/session.js';
+	import { untrack } from 'svelte';
+	import { platform } from '#lib/platform/index.js';
 	import { readOptions, sortMenu, sortOptions } from '#lib/sort-menu.js';
 	import { onLibraryPaste, pickFiles } from '#lib/add-paper.js';
 	import AddPapers, { addPapers } from '#lib/components/AddPapers.svelte';
@@ -42,6 +45,26 @@
 		return { all: 'All papers', recent: 'Recent', uncategorized: 'Uncategorized', feed: 'arXiv feed', reading: 'Reading' }[v.kind];
 	});
 	$effect(() => void setWindowTitle(library.name ? `Xivly — ${library.name}` : 'Xivly'));
+	// Back to this view at the next launch.
+	$effect(() => {
+		if (library.status === 'ready') rememberView(library.view);
+	});
+	// At launch (no reader window open yet): the papers open when the app quit, open again.
+	$effect(() => {
+		if (library.status !== 'ready' || platform.kind !== 'desktop' || !settings.values.reopenPapers) return;
+		untrack(() => void reopenPapers());
+	});
+	let reopened = false;
+	async function reopenPapers() {
+		if (reopened) return;
+		reopened = true;
+		const { getAllWebviewWindows } = await import('@tauri-apps/api/webviewWindow');
+		if ((await getAllWebviewWindows()).some((w) => w.label.startsWith('paper-'))) return;
+		for (const id of openPapers()) {
+			const paper = library.get(id);
+			if (paper) await openPaper(paper.id, paper.title);
+		}
+	}
 	// Web: a reader opened from this tab switches back to it (showLibrary).
 	$effect(() => {
 		window.name = LIBRARY_TAB;
