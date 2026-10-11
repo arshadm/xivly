@@ -20,6 +20,7 @@
     "icon": "tauri icon src-tauri/icons/icon.svg",
     "release": "node scripts/release.js",
     "seed": "bun scripts/seed-demo.ts",
+    "import-zotero": "bun scripts/import-zotero.ts",
     "tauri:demo": "XIVLY_LIBRARY=\"$PWD/demo-library\" tauri dev"
   },
   "license": "MIT",
