@@ -111,6 +111,8 @@ const defaults = {
 	/** A notebook window's right-hand pane, and what it shows: a linked paper or the chat. */
 	notebookPane: false,
 	notebookPaneTab: 'paper' as 'paper' | 'chat',
+	/** How a paper beside a notebook's text scrolls (the reader's own is `scrollMode`). */
+	notebookScrollMode: 'vertical' as ScrollMode,
 
 	// Desktop
 	hookToasts: 'errors' as 'all' | 'errors' | 'off',
@@ -275,6 +277,7 @@ const validators: Partial<Record<string, (v: unknown) => boolean>> = {
 	libraryLayout: (v) => v === 'cards' || v === 'list',
 	paneTab: (v) => v === 'notes' || v === 'chat',
 	notebookPaneTab: (v) => v === 'paper' || v === 'chat',
+	notebookScrollMode: (v) => v === 'vertical' || v === 'page' || v === 'horizontal',
 	recentWindow: (v) => typeof v === 'string' && v in recentWindows,
 	freetextFont: (v) => FREETEXT_FONT_FAMILIES.includes(v as FreeTextFontFamily),
 	notebooksExpanded: (v) => Array.isArray(v) && v.every((id) => typeof id === 'string'),

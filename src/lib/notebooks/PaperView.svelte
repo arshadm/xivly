@@ -1,11 +1,12 @@
 <!--
 	A linked paper beside a notebook's text: its pages to read (no annotating here: that's
-	the reader's, in its own window), at a page when asked. A PDF still downloading (a
+	the reader's, in its own window), at a page when asked; zoomed and scrolled as in the
+	reader (pinch or ⌘-wheel, the zoom buttons, Continuous / Paged / Horizontal). A PDF still downloading (a
 	synced folder) or missing says so, as the reader does.
 -->
 <script lang="ts">
 	import { untrack } from 'svelte';
-	import { Document, pageThemes, paperHex, Viewer, type ViewerState } from 'svelte-pdf-mini';
+	import { comboLabel, Document, PageNav, pageThemes, paperHex, Viewer, Zoom, type KeymapAction, type ScrollMode, type ViewerState } from 'svelte-pdf-mini';
 	import { anchorAt, jumpTo } from '#lib/anchor.js';
 	import { library } from '#lib/library.svelte.js';
 	import { onDiskChange } from '#lib/disk-changes.js';
@@ -13,7 +14,12 @@
 	import { settings } from '#lib/settings.svelte.js';
 	import { theme } from '#lib/theme.svelte.js';
 	import type { PaperAnchor } from '#lib/types.js';
-	import { button } from '#lib/ui/button.js';
+	import { icons } from '#lib/pdf/icons.js';
+	import { button, iconButton } from '#lib/ui/button.js';
+	import CycleButton, { type CycleOption } from '#lib/ui/CycleButton.svelte';
+	import Separator from '#lib/ui/Separator.svelte';
+	import Tip from '#lib/ui/Tip.svelte';
+	import ZoomSelect from '#lib/ui/ZoomSelect.svelte';
 
 	let { paperId, page }: { paperId: string; page?: number } = $props();
 
@@ -58,6 +64,15 @@
 	/** Where the paper is being read, for a chip to this page. */
 	export const anchor = (): PaperAnchor | null => (viewer?.document.status === 'ready' ? anchorAt(viewer.position) : null);
 
+	const scrollModes: CycleOption<ScrollMode>[] = [
+		{ value: 'vertical', label: 'Continuous', icon: 'icon-[lucide--move-vertical]' },
+		{ value: 'page', label: 'Paged', icon: 'icon-[lucide--gallery-vertical]' },
+		{ value: 'horizontal', label: 'Horizontal', icon: 'icon-[lucide--move-horizontal]' }
+	];
+	const iconBtn = iconButton(7);
+	/** A viewer shortcut's label ("⌘+"), from its keymap. */
+	const viewKey = (action: KeymapAction) => (viewer ? comboLabel(viewer.keymap, action) : undefined);
+
 	function opened() {
 		if (page && viewer) void viewer.restorePosition(page);
 	}
@@ -66,8 +81,34 @@
 {#if load.status === 'ready' && source}
 	{#key source}
 		<Document.Root src={source} onLoad={opened}>
-			<Viewer.Root bind:viewer {pageTheme} pageFrame={s.pageFrame} theme={theme.dark ? 'dark' : 'light'} zoomMode="page-width" minZoom={0.4} maxZoom={3} overscan={1} keyboard class="flex h-full min-h-0 flex-col">
-				<Viewer.Viewport class="h-full bg-stone-100 dark:bg-stone-950 [--pdf-page-gap:14px] [--pdf-pages-padding:14px]" aria-label="Pages of {paper?.title ?? 'the paper'}">
+			<Viewer.Root
+				bind:viewer
+				{pageTheme}
+				pageFrame={s.pageFrame}
+				theme={theme.dark ? 'dark' : 'light'}
+				zoomMode="page-width"
+				minZoom={0.4}
+				maxZoom={3}
+				overscan={1}
+				bind:scrollMode={() => s.notebookScrollMode, (v) => settings.set('notebookScrollMode', v)}
+				smoothZoom={s.smoothZoom}
+				wheelZoom={s.wheelZoom}
+				keyboard
+				class="flex h-full min-h-0 flex-col"
+			>
+				<div class="@container flex h-9 shrink-0 items-center gap-1 border-b border-stone-200 px-2 dark:border-stone-800">
+					<Tip label="Previous page" shortcut={viewKey('nav.prevPage')}>{#snippet child({ props })}<PageNav.Prev {...props} class={iconBtn}><span class="{icons.up} size-4"></span></PageNav.Prev>{/snippet}</Tip>
+					<PageNav.Input class="h-6 w-10 shrink-0 rounded-md bg-black/5 text-center text-xs tabular-nums dark:bg-white/10" />
+					<span class="hidden shrink-0 px-1 text-xs text-muted tabular-nums @xs:inline">/ {viewer?.document.numPages ?? '–'}</span>
+					<Tip label="Next page" shortcut={viewKey('nav.nextPage')}>{#snippet child({ props })}<PageNav.Next {...props} class={iconBtn}><span class="{icons.down} size-4"></span></PageNav.Next>{/snippet}</Tip>
+					<div class="min-w-1 flex-1"></div>
+					<Tip label="Zoom out" shortcut={viewKey('view.zoomOut')}>{#snippet child({ props })}<Zoom.Out {...props} class={iconBtn}><span class="{icons.zoomOut} size-4"></span></Zoom.Out>{/snippet}</Tip>
+					{#if viewer}<ZoomSelect {viewer} class="hidden h-7 w-28 shrink-0 border-transparent bg-black/5 text-xs @sm:inline-flex dark:bg-white/10" />{/if}
+					<Tip label="Zoom in" shortcut={viewKey('view.zoomIn')}>{#snippet child({ props })}<Zoom.In {...props} class={iconBtn}><span class="{icons.zoomIn} size-4"></span></Zoom.In>{/snippet}</Tip>
+					<Separator />
+					<CycleButton title="Scrolling" options={scrollModes} value={s.notebookScrollMode} onchange={(v) => settings.set('notebookScrollMode', v)} />
+				</div>
+				<Viewer.Viewport class="min-h-0 flex-1 bg-stone-100 dark:bg-stone-950 [--pdf-page-gap:14px] [--pdf-pages-padding:14px]" aria-label="Pages of {paper?.title ?? 'the paper'}">
 					<Viewer.Pages>
 						{#snippet children({ pageNumber })}
 							<Viewer.Page {pageNumber}>

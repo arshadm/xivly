@@ -1604,6 +1604,18 @@ test('linked papers: Add to notebook… from the library, listed in the notebook
 	await panel.getByRole('button', { name: new RegExp(`^${title}`) }).click();
 	await expect(tab.getByRole('tab', { name: 'Paper' })).toHaveAttribute('aria-selected', 'true');
 	await expect(tab.locator('canvas').first()).toBeVisible();
+	// Zoomed and scrolled as in the reader.
+	const pageWidth = async () => (await tab.locator('[data-pdf-page]').first().boundingBox())!.width;
+	const before = await pageWidth();
+	await tab.getByRole('button', { name: 'Zoom in' }).click();
+	await expect.poll(pageWidth).toBeGreaterThan(before + 4);
+	const zoomed = await pageWidth();
+	await tab.getByRole('button', { name: 'Zoom out' }).click();
+	await expect.poll(pageWidth).toBeLessThan(zoomed - 4);
+	await tab.getByRole('button', { name: 'Scrolling: Continuous' }).click();
+	await expect(tab.getByRole('button', { name: 'Scrolling: Paged' })).toBeVisible();
+	await tab.getByRole('button', { name: 'Scrolling: Paged' }).click({ modifiers: ['Shift'] });
+	await expect(tab.getByRole('button', { name: 'Scrolling: Continuous' })).toBeVisible();
 	await tab.getByRole('textbox', { name: 'Notes' }).click();
 	await tab.getByRole('button', { name: 'Link this page in the text' }).click();
 	const chip = tab.getByRole('textbox', { name: 'Notes' }).locator('[data-paper-ref]');
