@@ -10,11 +10,13 @@
 	import { library } from '#lib/library.svelte.js';
 	import { notebooks } from '#lib/notebooks/notebooks.svelte.js';
 	import NotesPane, { flushNotes } from '#lib/notes/NotesPane.svelte';
+	import { paperRefsIn, searchPapers, type PaperRefs } from '#lib/notes/paper-ref.js';
+	import type { NotesDoc } from '#lib/types.js';
 	import { platform } from '#lib/platform/index.js';
 	import { ReaderLock } from '#lib/reader-lock.svelte.js';
 	import { rememberNotebook } from '#lib/session.js';
 	import { button } from '#lib/ui/button.js';
-	import { closeWindow, notebookTab, searchParams, setWindowTitle } from '#lib/windows.js';
+	import { closeWindow, notebookTab, openPaper, searchParams, setWindowTitle } from '#lib/windows.js';
 
 	const id = $derived(searchParams(page.url).get('id') ?? '');
 	const notebook = $derived(notebooks.get(id));
@@ -72,6 +74,24 @@
 	}
 
 	let status = $state({ text: '', error: null as string | null });
+
+	// ── Linked papers: chips in the text, and the ones linked by hand ─────
+	let doc = $state.raw<NotesDoc | null>(null);
+	/** How many chips each paper has, in order of first mention. */
+	const mentions = $derived(paperRefsIn(doc));
+	const linked = $derived(new Set([...mentions.keys(), ...(notebook?.papers ?? [])]));
+
+	function openLinked(paperId: string, page?: number) {
+		const p = library.get(paperId);
+		if (p) void openPaper(p.id, p.title);
+		void page;
+	}
+
+	const papers: PaperRefs = {
+		search: (query) => searchPapers(library.papers, query, linked),
+		get: (paperId) => library.get(paperId) ?? null,
+		open: (paperId, page) => openLinked(paperId, page)
+	};
 	const chrome = 'bg-stone-50 dark:bg-stone-900';
 </script>
 
@@ -122,7 +142,7 @@
 				<span class="shrink-0 truncate text-[11px] {status.error ? 'text-red-600 dark:text-red-400' : 'text-muted'}" title={status.error ?? undefined} aria-live="polite">{status.text}</span>
 			</header>
 			<div class="mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col">
-				{#key id}<NotesPane {id} kind="notebook" bind:status title={notebook.title} placeholder="Write about this idea… Type @ to link a paper." />{/key}
+				{#key id}<NotesPane {id} kind="notebook" bind:status title={notebook.title} placeholder="Write about this idea… Type @ to link a paper." {papers} ondoc={(d) => (doc = d)} />{/key}
 			</div>
 		</div>
 	</div>

@@ -21,6 +21,7 @@
 	import Tip from '#lib/ui/Tip.svelte';
 	import type { PaperAnchor } from '#lib/types.js';
 	import { PaperLink, paperLinkNode, toAnchor } from './paper-link';
+	import { PaperRef, paperMention, refLabel, type MentionMenu, type PaperRefs } from './paper-ref';
 	import { findMatches, findStep, NotesFind, setFindQuery } from './find';
 	import { NotesBlockMath, NotesInlineMath } from './maths';
 	import { imageFiles, MAX_IMAGE_BYTES, NotesImage, type NoteAssets } from './images';
@@ -37,6 +38,7 @@
 		assets,
 		title = 'Topic',
 		placeholder = 'Write your notes about this paper…',
+		papers,
 		editable = true
 	}: {
 		/** The notes as loaded (null: none yet). Read once: the editor owns the document after that. */
@@ -52,6 +54,8 @@
 		title?: string;
 		/** Shown while the document is empty. */
 		placeholder?: string;
+		/** Chips for papers of the library, typed with @ (a notebook's text). */
+		papers?: PaperRefs;
 		editable?: boolean;
 	} = $props();
 
@@ -149,6 +153,9 @@
 
 	let element = $state<HTMLElement>();
 	let editor = $state.raw<Editor>();
+	/** The @ menu (papers to link), while open. */
+	let mention = $state.raw<MentionMenu | null>(null);
+	let innerWidth = $state(1280);
 	// Bumped on every transaction: the bar's active states follow the selection.
 	let version = $state(0);
 
@@ -164,6 +171,8 @@
 				Code.extend({ addKeyboardShortcuts: () => ({}) }),
 				Placeholder.configure({ placeholder }),
 				PaperLink,
+				PaperRef.configure({ refs: papers ?? null }),
+				...(papers ? [paperMention(() => papers ?? null, (m) => (mention = m))] : []),
 				NotesFind,
 				TaskList,
 				TaskItem.configure({ nested: true }),
@@ -179,6 +188,10 @@
 				// ⌘-click (Ctrl-click) a link: open it in the browser.
 				// A page chip: jump there.
 				handleClickOn: (_view, _pos, node) => {
+					if (node.type.name === 'paperRef') {
+						if (papers?.get(node.attrs.paperId)) papers.open(node.attrs.paperId, node.attrs.page ?? undefined);
+						return true;
+					}
 					if (node.type.name !== 'paperLink') return false;
 					onjump?.(toAnchor(node.attrs));
 					return true;
@@ -295,6 +308,14 @@
 		input.value = '';
 	}
 
+	/** Start an @ (the papers menu opens), after a space unless at the start of a word. */
+	function linkPaper() {
+		if (!editor) return;
+		const from = editor.state.selection.from;
+		const before = editor.state.doc.textBetween(Math.max(0, from - 1), from, ' ');
+		run((c) => c.insertContent(before && !/\s/.test(before) ? ' @' : '@'));
+	}
+
 	function linkHere() {
 		const a = anchor?.();
 		if (a) run((c) => c.insertContent([paperLinkNode(a), { type: 'text', text: ' ' }]));
@@ -313,6 +334,7 @@
 			{ label: 'Strikethrough', icon: 'icon-[lucide--strikethrough]', keys: `${mod}${shift}S`, on: () => run((c) => c.toggleStrike()), isActive: () => active('strike') },
 			{ label: 'Inline code', icon: 'icon-[lucide--code]', on: () => run((c) => c.toggleCode()), isActive: () => active('code') },
 			{ label: 'Link', icon: 'icon-[lucide--link]', on: editLink, isActive: () => active('link') },
+			...(untrack(() => papers) ? [{ label: 'Link a paper (@)', icon: 'icon-[lucide--at-sign]', on: linkPaper }] : []),
 			// Only where there's a page being read (a paper's notes; fixed for the editor's life).
 			...(untrack(() => anchor) ? [{ label: 'Link to the page you’re reading', icon: 'icon-[lucide--file-symlink]', on: linkHere, disabled: () => !anchor?.() }] : [])
 		],
@@ -384,6 +406,8 @@
 	];
 </script>
 
+<svelte:window bind:innerWidth />
+
 <div class="flex h-full min-h-0 flex-col">
 	{#if editable}
 		<div class="flex shrink-0 flex-wrap items-center gap-0.5 border-b border-stone-200 px-3 py-1 dark:border-stone-800 {activeMap.tools ? 'bg-sky-50/70 dark:bg-sky-950/30' : ''}" role="toolbar" aria-label={activeMap.tools ? 'Mind map' : 'Formatting'}>
@@ -430,6 +454,31 @@
 		</div>
 	{/if}
 	<div class="min-h-0 flex-1 overflow-y-auto" bind:this={element}></div>
+	{#if mention && mention.rect}
+		{@const m = mention}
+		<div
+			class="fixed z-(--z-menu) max-h-72 w-80 overflow-y-auto rounded-lg border border-stone-200 bg-white p-1 text-[13px] shadow-lg dark:border-stone-700 dark:bg-stone-900"
+			style:left="{Math.min(m.rect!.left, innerWidth - 330)}px"
+			style:top="{m.rect!.bottom + 4}px"
+			role="listbox"
+			aria-label="Papers"
+		>
+			{#each m.items as p, i (p.id)}
+				<button
+					type="button"
+					role="option"
+					aria-selected={i === m.index}
+					class="flex w-full flex-col rounded-md px-2 py-1 text-left aria-selected:bg-stone-100 dark:aria-selected:bg-stone-800"
+					onmousedown={(e) => (e.preventDefault(), m.choose(p))}
+				>
+					<span class="truncate">{p.title}</span>
+					<span class="truncate text-[11px] text-muted">{refLabel(p)}</span>
+				</button>
+			{:else}
+				<p class="px-2 py-1.5 text-xs text-muted">No paper matches.</p>
+			{/each}
+		</div>
+	{/if}
 	<input bind:this={picker} type="file" accept="image/png,image/jpeg,image/gif,image/webp,image/avif,image/svg+xml" multiple hidden onchange={onpick} />
 </div>
 
@@ -605,6 +654,35 @@
 	:global(.dark .notes-editor .paper-link) {
 		background: rgb(56 189 248 / 0.16);
 		color: var(--color-sky-300, #7dd3fc);
+	}
+	/* A link to a paper of the library (a notebook's text). */
+	:global(.notes-editor .paper-ref) {
+		display: inline-block;
+		cursor: pointer;
+		border-radius: 0.35em;
+		padding: 0 0.4em;
+		font-size: 0.85em;
+		font-family: var(--font-sans);
+		line-height: 1.55;
+		vertical-align: 0.05em;
+		background: rgb(245 158 11 / 0.14);
+		color: var(--color-amber-900, #78350f);
+		white-space: nowrap;
+	}
+	:global(.notes-editor .paper-ref:hover) {
+		background: rgb(245 158 11 / 0.26);
+	}
+	:global(.notes-editor .paper-ref.ProseMirror-selectednode) {
+		outline: 2px solid rgb(245 158 11 / 0.6);
+	}
+	:global(.notes-editor .paper-ref[data-missing]) {
+		cursor: default;
+		text-decoration: line-through;
+		opacity: 0.6;
+	}
+	:global(.dark .notes-editor .paper-ref) {
+		background: rgb(251 191 36 / 0.16);
+		color: var(--color-amber-200, #fde68a);
 	}
 	/* Tables: ruled cells, the header row shaded; scrolls sideways when wide. */
 	:global(.notes-editor .tableWrapper) {

@@ -3,6 +3,7 @@
 import { anchorLabel } from '#lib/anchor.js';
 import type { NotesDoc } from '#lib/types.js';
 import { toAnchor } from './paper-link';
+import { paperRefMarkdown } from './paper-ref';
 import { normalizeMap, toOutline } from '#lib/mindmap/tree.js';
 
 interface Node {
@@ -127,6 +128,8 @@ function inlineNode(n: Node): string {
 			return '  \n';
 		case 'paperLink':
 			return `(${anchorLabel(toAnchor(n.attrs ?? {}))})`;
+		case 'paperRef':
+			return paperRefMarkdown(n.attrs ?? {});
 		case 'inlineMath':
 			return `$${String(n.attrs?.latex ?? '')}$`;
 		default:

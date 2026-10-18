@@ -315,7 +315,7 @@
 	{:else}
 		<p class="px-2 py-1 text-xs text-muted">
 			A notebook for each idea you're working on, with links to its papers.
-			<button class="underline underline-offset-2 hover:text-stone-800 dark:hover:text-stone-200" onclick={() => add('notebook')}>New notebook</button>
+			<button class="underline underline-offset-2 hover:text-stone-800 dark:hover:text-stone-200" onclick={() => add('notebook')}>Start one</button>
 		</p>
 	{/if}
 </section>

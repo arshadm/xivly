@@ -1464,6 +1464,8 @@ test('notebooks: folders and notebooks in the sidebar, renamed, moved by drag, M
 	await expect(tree.getByRole('treeitem')).toHaveText(['Attention', 'Linear attention', 'Sparse variants']);
 	await page.keyboard.press('Alt+ArrowLeft');
 	await expect(item('Linear attention')).toHaveAttribute('aria-level', '1');
+	// The moved row keeps the focus (once drawn again).
+	await expect(item('Linear attention')).toBeFocused();
 
 	// Renamed with F2; then everything is as it was after a reload (the folder still open).
 	await item('Sparse variants').focus();
@@ -1520,5 +1522,48 @@ test('a notebook opens in its own tab: its text is kept, the title is edited the
 	await page.evaluate(() => window.dispatchEvent(new Event('focus')));
 	await page.getByRole('treeitem', { name: 'Top-k attention' }).click();
 	await expect.poll(() => context.pages().length).toBe(2);
+	expect([...errs, ...tabErrs]).toEqual([]);
+});
+
+/** A new notebook in the library's sidebar, opened in its tab. */
+async function openNewNotebook(page: Page, context: BrowserContext, name: string) {
+	await page.bringToFront();
+	await page.getByRole('button', { name: 'New notebook' }).click();
+	await page.getByRole('textbox', { name: 'Name' }).fill(name);
+	await page.keyboard.press('Enter');
+	const opened = context.waitForEvent('page');
+	await page.getByRole('treeitem', { name }).click();
+	const tab = await opened;
+	await expect(tab.getByRole('textbox', { name: 'Notebook title' })).toHaveValue(name);
+	return tab;
+}
+
+test('notebooks link papers: @ opens a menu of papers, ↵ inserts a chip that stays after a reload', async ({ page, context }) => {
+	const errs = errors(page);
+	await addPaper(page, context);
+	const tab = await openNewNotebook(page, context, 'Calm reading');
+	const tabErrs = errors(tab);
+	const editor = tab.getByRole('textbox', { name: 'Notes' });
+	await editor.click();
+	await tab.keyboard.type('See @tiny');
+	const menu = tab.getByRole('listbox', { name: 'Papers' });
+	await expect(menu.getByRole('option')).toHaveCount(1);
+	await expect(menu.getByRole('option').first()).toContainText(title);
+	await tab.keyboard.press('Enter');
+	await expect(menu).toBeHidden();
+	await tab.keyboard.type('for the idea.');
+	const chip = editor.locator('[data-paper-ref]');
+	await expect(chip).toHaveCount(1);
+	await expect(editor).toContainText('for the idea.');
+
+	// Nothing matches: the menu says so, and Esc closes it.
+	await tab.keyboard.type(' @zzzz');
+	await expect(menu).toContainText('No paper matches.');
+	await tab.keyboard.press('Escape');
+	await expect(menu).toBeHidden();
+
+	await expect(tab.getByText('Saved')).toBeVisible();
+	await tab.reload();
+	await expect(tab.getByRole('textbox', { name: 'Notes' }).locator('[data-paper-ref]')).toHaveAttribute('title', title);
 	expect([...errs, ...tabErrs]).toEqual([]);
 });

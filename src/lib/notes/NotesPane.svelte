@@ -77,6 +77,7 @@
 	import { onDestroy } from 'svelte';
 	import { onDiskChange } from '#lib/disk-changes.js';
 	import NotesEditor from './NotesEditor.svelte';
+	import type { PaperRefs } from './paper-ref';
 
 	let {
 		id,
@@ -85,6 +86,8 @@
 		anchor,
 		title,
 		placeholder,
+		papers,
+		ondoc,
 		status = $bindable({ text: '', error: null })
 	}: {
 		id: string;
@@ -98,6 +101,10 @@
 		title?: string;
 		/** Shown in the empty editor. */
 		placeholder?: string;
+		/** Chips for papers of the library, typed with @ (a notebook's text). */
+		papers?: PaperRefs;
+		/** The document as loaded, then after each change. */
+		ondoc?: (doc: NotesDoc | null) => void;
 	} = $props();
 
 	let editor = $state<NotesEditor>();
@@ -140,6 +147,7 @@
 				if (current !== key) return;
 				known.set(current, JSON.stringify(file?.doc ?? null));
 				notes = { status: 'ready', doc: file?.doc ?? null };
+				ondoc?.(file?.doc ?? null);
 			})
 			.catch((e) => current === key && (notes = { status: 'error', error: e instanceof Error ? e.message : String(e) }));
 	});
@@ -156,6 +164,7 @@
 			if (!file || current !== key || s.dirty || json === known.get(current)) return;
 			known.set(current, json);
 			editor?.replace(file.doc as JSONContent);
+			ondoc?.(file.doc);
 		});
 	});
 
@@ -174,7 +183,7 @@
 <div class="contents" data-notes-pane>
 <div class="min-h-0 flex-1 border-t border-stone-200 bg-white dark:border-stone-800 dark:bg-stone-900">
 	{#if notes.status === 'ready'}
-		{#key key}<NotesEditor bind:this={editor} content={notes.doc as JSONContent | null} onupdate={(doc) => saver.change(doc as NotesDoc)} {onjump} {anchor} {placeholder} assets={assetsFor(kind, id)} title={title ?? library.get(id)?.title ?? 'Topic'} />{/key}
+		{#key key}<NotesEditor bind:this={editor} content={notes.doc as JSONContent | null} onupdate={(doc) => (saver.change(doc as NotesDoc), ondoc?.(doc as NotesDoc))} {onjump} {anchor} {placeholder} {papers} assets={assetsFor(kind, id)} title={title ?? library.get(id)?.title ?? 'Topic'} />{/key}
 	{:else if notes.status === 'error'}
 		<div class="m-4 rounded-lg border border-red-200 bg-red-50 p-3 text-[13px] text-red-800 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-200">
 			<p class="font-medium">These notes couldn’t be read, so they’re left as they are.</p>
