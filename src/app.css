@@ -130,6 +130,17 @@ textarea,
   user-select: text;
 }
 
+/* A chat's questions and answers: selected to copy (its buttons stay out of a selection). */
+[data-chat-answers] {
+  -webkit-user-select: text;
+  user-select: text;
+  cursor: auto;
+}
+[data-chat-answers] :is(button, [role='button'], [role='menuitem']) {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 /* Portaled UI (dialogs, menus, popovers, tooltips) inherits from here, not
    from the app wrapper: give it readable colors in both themes. */
 html {

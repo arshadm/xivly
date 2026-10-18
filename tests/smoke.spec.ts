@@ -913,6 +913,12 @@ test('chat with Claude (a stand-in claude): ⌘⇧E, streamed answers with page 
 	const chat = reader.locator('.chat');
 	await expect(chat.locator('strong')).toHaveText('calm reading');
 	await expect(chat).toContainText('Reading paper.pdf');
+	// The answer can be selected and copied.
+	await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+	await chat.locator('strong').click({ clickCount: 3 });
+	await expect.poll(() => reader.evaluate(() => getSelection()?.toString() ?? '')).toContain('It is about calm reading');
+	await reader.keyboard.press('ControlOrMeta+c');
+	await expect.poll(() => reader.evaluate(() => navigator.clipboard.readText())).toContain('It is about calm reading');
 	const cite = chat.getByRole('link', { name: 'p. 1' });
 	await cite.click();
 	await expect(reader.getByRole('group', { name: 'Back' })).toBeVisible();
@@ -1857,6 +1863,9 @@ test('a notebook’s chat: Claude reads the text, @ adds a paper’s PDF, then s
 	await tab.keyboard.press('Enter');
 
 	await expect(tab.locator('[data-chat-answers]')).toContainText('It is about calm reading');
+	// The question and answer can be selected.
+	await tab.locator('[data-chat-answers]').getByText('What does say?').click({ clickCount: 3 });
+	await expect.poll(() => tab.evaluate(() => getSelection()?.toString() ?? '')).toContain('What does say?');
 	const [r] = await claudeRequests(tab);
 	expect(r.notebookId).toBeTruthy();
 	expect(r.paperId).toBeUndefined();
