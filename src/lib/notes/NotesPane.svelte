@@ -130,6 +130,12 @@
 		editor?.append(nodes);
 	}
 
+	/** Add content at the cursor, once the notes are loaded. */
+	export async function insert(nodes: JSONContent[]) {
+		for (let i = 0; i < 120 && !editor && notes.status !== 'error'; i++) await new Promise(requestAnimationFrame);
+		editor?.insert(nodes);
+	}
+
 	const saver = $derived(saverFor(kind, id));
 	const key = $derived(`${kind}/${id}`);
 	let notes = $state<{ status: 'loading' } | { status: 'ready'; doc: NotesDoc | null } | { status: 'error'; error: string }>({ status: 'loading' });

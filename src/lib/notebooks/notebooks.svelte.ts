@@ -112,6 +112,20 @@ class Notebooks {
 		this.#gone(id);
 	}
 
+	/** Link a paper to a notebook by hand (`on`), or not any more (chips in its text still link it). */
+	async link(id: string, paperId: string, on = true) {
+		const node = await this.#need().updateNotebook(id, (cur) => ({ papers: on ? [...new Set([...cur.papers, paperId])] : cur.papers.filter((p) => p !== paperId) }));
+		this.#put(node);
+		// An open notebook window shows it at once.
+		void broadcast('notebook-changed', { id });
+		return node;
+	}
+
+	/** The notebooks a paper is linked to by hand. */
+	withPaper(paperId: string) {
+		return this.nodes.filter((n) => n.kind === 'notebook' && n.papers.includes(paperId));
+	}
+
 	/** Trashed: off the list, and its window (if open) closes. */
 	#gone(id: string) {
 		this.#changes++;

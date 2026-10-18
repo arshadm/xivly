@@ -1,6 +1,7 @@
 <!--
-	A notebook in its own window: its title (edited in place) under the folders it's in,
-	and its text (notebooks/<id>/notes.json), saved a moment after you stop typing.
+	A notebook in its own window: its linked papers on the left, its title (edited in
+	place) under the folders it's in, its text (notebooks/<id>/notes.json, saved a moment
+	after you stop typing), and on the right a linked paper to read beside it.
 	One window per notebook (a lock, as for papers): another one offers to take it over.
 -->
 <script lang="ts">
@@ -8,19 +9,25 @@
 	import { broadcast, onBroadcast } from '#lib/broadcast.js';
 	import { toast } from '#lib/components/Toasts.svelte';
 	import { library } from '#lib/library.svelte.js';
+	import LinkedPapers from '#lib/notebooks/LinkedPapers.svelte';
 	import { notebooks } from '#lib/notebooks/notebooks.svelte.js';
+	import PaperView from '#lib/notebooks/PaperView.svelte';
 	import NotesPane, { flushNotes } from '#lib/notes/NotesPane.svelte';
-	import { paperRefsIn, searchPapers, type PaperRefs } from '#lib/notes/paper-ref.js';
-	import type { NotesDoc } from '#lib/types.js';
+	import { paperRefNode, paperRefsIn, searchPapers, type PaperRefs } from '#lib/notes/paper-ref.js';
+	import SplitPane from '#lib/pdf/SplitPane.svelte';
 	import { platform } from '#lib/platform/index.js';
 	import { ReaderLock } from '#lib/reader-lock.svelte.js';
-	import { rememberNotebook } from '#lib/session.js';
-	import { button } from '#lib/ui/button.js';
-	import { closeWindow, notebookTab, openPaper, searchParams, setWindowTitle } from '#lib/windows.js';
+	import { rememberNotebook, usedNotebook } from '#lib/session.js';
+	import { settings } from '#lib/settings.svelte.js';
+	import type { NotesDoc, Paper } from '#lib/types.js';
+	import { button, iconButton, mutedIcon } from '#lib/ui/button.js';
+	import Tip from '#lib/ui/Tip.svelte';
+	import { closeWindow, notebookTab, openPaper, searchParams, setWindowTitle, showLibrary } from '#lib/windows.js';
 
 	const id = $derived(searchParams(page.url).get('id') ?? '');
 	const notebook = $derived(notebooks.get(id));
 	const folders = $derived(notebook ? notebooks.path(id) : []);
+	const s = $derived(settings.values);
 
 	$effect(() => void setWindowTitle(notebook ? notebook.title : 'Notebook'));
 
@@ -33,9 +40,11 @@
 		void l.claim();
 		return () => l.dispose();
 	});
-	// Desktop: open at the next launch too, unless its window is closed (see +layout.svelte).
 	$effect(() => {
-		if (platform.kind === 'desktop' && access === 'mine') rememberNotebook(id);
+		if (access !== 'mine') return;
+		usedNotebook(id);
+		// Desktop: open at the next launch too, unless its window is closed (see +layout.svelte).
+		if (platform.kind === 'desktop') rememberNotebook(id);
 	});
 	// Web: the tab holding the notebook is the one `openNotebook` finds by name.
 	$effect(() => {
@@ -58,6 +67,8 @@
 			void closeWindow();
 		})
 	);
+	// A paper linked from the library (Add to notebook…): shown at once.
+	$effect(() => onBroadcast('notebook-changed', ({ id: changed }) => changed === id && void notebooks.reload()));
 
 	// ── The title ────────────────────────────────────────────────────────
 	let titleInput = $state<HTMLInputElement>();
@@ -74,6 +85,7 @@
 	}
 
 	let status = $state({ text: '', error: null as string | null });
+	let notesPane = $state<NotesPane>();
 
 	// ── Linked papers: chips in the text, and the ones linked by hand ─────
 	let doc = $state.raw<NotesDoc | null>(null);
@@ -81,18 +93,39 @@
 	const mentions = $derived(paperRefsIn(doc));
 	const linked = $derived(new Set([...mentions.keys(), ...(notebook?.papers ?? [])]));
 
-	function openLinked(paperId: string, page?: number) {
-		const p = library.get(paperId);
-		if (p) void openPaper(p.id, p.title);
-		void page;
+	// ── The paper beside the text ────────────────────────────────────────
+	let shown = $state<{ paperId: string; page?: number } | null>(null);
+	let paperView = $state<PaperView>();
+	const shownPaper = $derived(shown ? library.get(shown.paperId) : undefined);
+
+	/** Show a paper on the right (at a page); the same paper again only jumps. */
+	function show(paperId: string, page?: number) {
+		if (!library.get(paperId)) return;
+		settings.set('notebookPane', true);
+		settings.set('notebookPaneTab', 'paper');
+		if (shown?.paperId === paperId && paperView) {
+			if (page) paperView.jump(page);
+			return;
+		}
+		shown = { paperId, page };
+	}
+
+	const openReader = (p: Paper) => void openPaper(p.id, p.title);
+
+	/** A chip at the cursor for the page shown on the right. */
+	function linkThisPage() {
+		const a = paperView?.anchor();
+		if (shownPaper && a) void notesPane?.insert([paperRefNode(shownPaper, Math.floor(a.page)), { type: 'text', text: ' ' }]);
 	}
 
 	const papers: PaperRefs = {
 		search: (query) => searchPapers(library.papers, query, linked),
 		get: (paperId) => library.get(paperId) ?? null,
-		open: (paperId, page) => openLinked(paperId, page)
+		open: (paperId, page) => show(paperId, page)
 	};
+
 	const chrome = 'bg-stone-50 dark:bg-stone-900';
+	const iconBtn = iconButton(7, mutedIcon);
 </script>
 
 <svelte:document {onvisibilitychange} />
@@ -120,9 +153,16 @@
 	</div>
 {:else}
 	<div class="flex h-full min-h-0 bg-white text-stone-800 dark:bg-stone-900 dark:text-stone-100">
+		{#if s.notebookPanel}
+			<LinkedPapers {notebook} {mentions} shown={s.notebookPane && s.notebookPaneTab === 'paper' ? (shown?.paperId ?? null) : null} onshow={(paperId) => show(paperId)} onreader={openReader} oninsert={(p) => void notesPane?.insert([paperRefNode(p), { type: 'text', text: ' ' }])} />
+		{/if}
+
 		<div class="flex min-w-0 flex-1 flex-col">
-			<header class="flex h-11 shrink-0 items-center gap-2 border-b border-stone-200/80 pr-2 pl-3 lights:pl-20 {chrome} dark:border-stone-800" data-tauri-drag-region>
-				<div class="flex min-w-0 flex-1 items-baseline gap-1.5" data-tauri-drag-region>
+			<header class="flex h-11 shrink-0 items-center gap-1 border-b border-stone-200/80 pr-2 pl-2 {s.notebookPanel ? '' : 'lights:pl-20'} {chrome} dark:border-stone-800" data-tauri-drag-region>
+				<Tip label={s.notebookPanel ? 'Hide linked papers' : 'Show linked papers'}>
+					{#snippet child({ props })}<button {...props} class={iconBtn} aria-label="Linked papers" aria-pressed={s.notebookPanel} data-active={s.notebookPanel || undefined} onclick={() => settings.set('notebookPanel', !s.notebookPanel)}><span class="icon-[lucide--panel-left] size-4"></span></button>{/snippet}
+				</Tip>
+				<div class="ml-1 flex min-w-0 flex-1 items-baseline gap-1.5" data-tauri-drag-region>
 					{#each folders as f (f.id)}
 						<span class="shrink-0 truncate text-xs text-muted" data-tauri-drag-region>{f.title}</span>
 						<span class="icon-[lucide--chevron-right] size-3 shrink-0 self-center text-stone-400" aria-hidden="true"></span>
@@ -139,15 +179,48 @@
 						onblur={saveTitle}
 					/>
 				</div>
-				<span class="shrink-0 truncate text-[11px] {status.error ? 'text-red-600 dark:text-red-400' : 'text-muted'}" title={status.error ?? undefined} aria-live="polite">{status.text}</span>
+				<span class="shrink-0 truncate px-1 text-[11px] {status.error ? 'text-red-600 dark:text-red-400' : 'text-muted'}" title={status.error ?? undefined} aria-live="polite">{status.text}</span>
+				<Tip label={s.notebookPane ? 'Hide the right pane' : 'Show the right pane'}>
+					{#snippet child({ props })}<button {...props} class={iconBtn} aria-label="Right pane" aria-pressed={s.notebookPane} data-active={s.notebookPane || undefined} onclick={() => settings.set('notebookPane', !s.notebookPane)}><span class="icon-[lucide--panel-right] size-4"></span></button>{/snippet}
+				</Tip>
+				<Tip label="Library">
+					{#snippet child({ props })}<button {...props} class={iconBtn} aria-label="Show the library" onclick={showLibrary}><span class="icon-[lucide--library] size-4"></span></button>{/snippet}
+				</Tip>
 			</header>
 			<div class="mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col">
-				{#key id}<NotesPane {id} kind="notebook" bind:status title={notebook.title} placeholder="Write about this idea… Type @ to link a paper." {papers} ondoc={(d) => (doc = d)} />{/key}
+				{#key id}<NotesPane bind:this={notesPane} {id} kind="notebook" bind:status title={notebook.title} placeholder="Write about this idea… Type @ to link a paper." {papers} ondoc={(d) => (doc = d)} />{/key}
 			</div>
 		</div>
+
+		{#if s.notebookPane}
+			<SplitPane class="text-[13px] {chrome}">
+				<div class="flex h-11 shrink-0 items-center gap-1 pr-2 pl-3" data-tauri-drag-region>
+					<div class="flex gap-0.5" role="tablist" aria-label="Pane">
+						<button role="tab" aria-selected={s.notebookPaneTab === 'paper'} class="flex h-7 items-center gap-1.5 rounded-md px-2 text-xs text-muted hover:text-stone-900 aria-selected:bg-stone-200/80 aria-selected:text-stone-900 dark:hover:text-stone-100 dark:aria-selected:bg-stone-800 dark:aria-selected:text-stone-100" onclick={() => settings.set('notebookPaneTab', 'paper')}>
+							<span class="icon-[lucide--file-text] size-3.5"></span>Paper
+						</button>
+					</div>
+					<span class="min-w-0 flex-1 truncate px-1 font-serif text-xs" title={shownPaper?.title} data-tauri-drag-region>{s.notebookPaneTab === 'paper' ? (shownPaper?.title ?? '') : ''}</span>
+					{#if s.notebookPaneTab === 'paper' && shownPaper}
+						<Tip label="Link this page in the text">
+							{#snippet child({ props })}<button {...props} class={iconBtn} aria-label="Link this page in the text" onclick={linkThisPage}><span class="icon-[lucide--file-symlink] size-4"></span></button>{/snippet}
+						</Tip>
+						<Tip label="Open in the reader (to annotate)">
+							{#snippet child({ props })}<button {...props} class={iconBtn} aria-label="Open in the reader" onclick={() => openReader(shownPaper)}><span class="icon-[lucide--square-arrow-out-up-right] size-4"></span></button>{/snippet}
+						</Tip>
+					{/if}
+					<Tip label="Hide the pane">
+						{#snippet child({ props })}<button {...props} class={iconBtn} aria-label="Hide the pane" onclick={() => settings.set('notebookPane', false)}><span class="icon-[lucide--x] size-4"></span></button>{/snippet}
+					</Tip>
+				</div>
+				<div class="flex min-h-0 flex-1 flex-col border-t border-stone-200 dark:border-stone-800" class:hidden={s.notebookPaneTab !== 'paper'}>
+					{#if shown && shownPaper}
+						{#key shown.paperId}<PaperView bind:this={paperView} paperId={shown.paperId} page={shown.page} />{/key}
+					{:else}
+						<p class="m-auto max-w-56 px-4 text-center text-xs text-muted">Click a linked paper, or a link in the text, to read it here.</p>
+					{/if}
+				</div>
+			</SplitPane>
+		{/if}
 	</div>
 {/if}
-
-<svelte:head><title>{notebook?.title ?? 'Notebook'}</title></svelte:head>
-<!-- The library loads in every window (+layout.svelte); this one needs it for its papers. -->
-{#if library.error}<p class="sr-only">{library.error}</p>{/if}

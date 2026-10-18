@@ -106,6 +106,11 @@ const defaults = {
 	recentWindow: 'week' as RecentWindow,
 	/** The notebook folders open in the sidebar (on this device). */
 	notebooksExpanded: [] as readonly string[],
+	/** A notebook window's linked papers, on the left. */
+	notebookPanel: true,
+	/** A notebook window's right-hand pane, and what it shows: a linked paper or the chat. */
+	notebookPane: false,
+	notebookPaneTab: 'paper' as 'paper' | 'chat',
 
 	// Desktop
 	hookToasts: 'errors' as 'all' | 'errors' | 'off',
@@ -269,6 +274,7 @@ const validators: Partial<Record<string, (v: unknown) => boolean>> = {
 	coverStyle: (v) => coverStyles.some((c) => c.value === v),
 	libraryLayout: (v) => v === 'cards' || v === 'list',
 	paneTab: (v) => v === 'notes' || v === 'chat',
+	notebookPaneTab: (v) => v === 'paper' || v === 'chat',
 	recentWindow: (v) => typeof v === 'string' && v in recentWindows,
 	freetextFont: (v) => FREETEXT_FONT_FAMILIES.includes(v as FreeTextFontFamily),
 	notebooksExpanded: (v) => Array.isArray(v) && v.every((id) => typeof id === 'string'),

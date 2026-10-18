@@ -139,6 +139,11 @@
 		editor?.chain().focus('end').insertContent(nodes).scrollIntoView().run();
 	}
 
+	/** Add content where the cursor is (where it last was), and go on writing after it. */
+	export function insert(nodes: JSONContent[]) {
+		editor?.chain().focus().insertContent(nodes).scrollIntoView().run();
+	}
+
 	/**
 	 * The notes as changed elsewhere (synced from another device): shown in place,
 	 * without an update (it's no edit here) or an undo step; the cursor stays where it can.

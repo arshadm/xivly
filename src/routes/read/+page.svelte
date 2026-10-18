@@ -61,6 +61,7 @@
 	import SplitPane from '#lib/pdf/SplitPane.svelte';
 	import NotesPane, { flushNotes } from '#lib/notes/NotesPane.svelte';
 	import ChatPane from '#lib/chat/ChatPane.svelte';
+	import { notebookPicker } from '#lib/notebooks/NotebookPicker.svelte';
 	import { answerHeading, answerToNotesHtml } from '#lib/chat/to-notes.js';
 	import type { MindMap } from '#lib/mindmap/tree.js';
 	import BookmarkPicker from '#lib/pdf/BookmarkPicker.svelte';
@@ -710,6 +711,7 @@
 			{ label: 'Find in paper', icon: icons.search, shortcut: keys.find, onSelect: () => openPanel('search') },
 			{ label: 'Add bookmark…', icon: 'icon-[lucide--bookmark-plus]', shortcut: keys.addBookmark, onSelect: () => addBookmark() },
 			{ label: 'Go to bookmark…', icon: 'icon-[lucide--bookmark]', shortcut: keys.goToBookmark, disabled: !bookmarks.length, onSelect: () => (bookmarkPicker = true) },
+			{ label: 'Add to notebook…', icon: 'icon-[lucide--notebook-text]', disabled: !paper, onSelect: () => paper && notebookPicker.show(paper) },
 			{ label: 'View', icon: icons.eye, separatorBefore: true, items: viewItems() },
 			{ label: 'Layout', icon: icons.columns, items: layoutItems() },
 			{ label: 'Export', icon: 'icon-[lucide--share]', items: exportItems() },

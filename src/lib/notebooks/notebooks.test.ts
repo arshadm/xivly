@@ -108,3 +108,25 @@ describe('a reload while something changes', () => {
 		expect(notebooks.children().map((n) => n.title)).toEqual(['Fresh']);
 	});
 });
+
+describe('linking papers by hand', () => {
+	it('adds once, removes, and knows a paper’s notebooks', async () => {
+		const a = await notebooks.create('notebook', 'A');
+		await notebooks.create('notebook', 'B');
+		await notebooks.link(a.id, 'p1');
+		await notebooks.link(a.id, 'p1');
+		await notebooks.link(a.id, 'p2');
+		expect(notebooks.get(a.id)?.papers).toEqual(['p1', 'p2']);
+		expect(notebooks.withPaper('p1').map((n) => n.id)).toEqual(['a']);
+		await notebooks.link(a.id, 'p1', false);
+		expect((await json('notebooks/a/notebook.json')).papers).toEqual(['p2']);
+		expect(notebooks.withPaper('p1')).toEqual([]);
+	});
+
+	it('keeps a link made meanwhile by another window', async () => {
+		const a = await notebooks.create('notebook', 'A');
+		await fs.write('notebooks/a/notebook.json', enc.encode(JSON.stringify({ ...(await json('notebooks/a/notebook.json')), papers: ['elsewhere'] })));
+		await notebooks.link(a.id, 'here');
+		expect(notebooks.get(a.id)?.papers).toEqual(['elsewhere', 'here']);
+	});
+});

@@ -6,6 +6,7 @@ import type { View } from './filter';
 
 const PAPERS = 'xivly:session-papers';
 const NOTEBOOKS = 'xivly:session-notebooks';
+const USED = 'xivly:recent-notebooks';
 const VIEW = 'xivly:session-view';
 
 function read<T>(key: string): T | null {
@@ -47,6 +48,14 @@ export function rememberNotebook(id: string) {
 /** Its window was closed by hand. */
 export function forgetNotebook(id: string) {
 	write(NOTEBOOKS, openNotebooks().filter((n) => n !== id));
+}
+
+/** Notebooks opened or linked to lately on this device, most recent first. */
+export const recentNotebooks = (): string[] => (read<unknown[]>(USED) ?? []).filter((id): id is string => typeof id === 'string');
+
+/** A notebook was opened, or a paper linked to it. */
+export function usedNotebook(id: string) {
+	write(USED, [id, ...recentNotebooks().filter((n) => n !== id)].slice(0, 20));
 }
 
 export function rememberView(view: View) {

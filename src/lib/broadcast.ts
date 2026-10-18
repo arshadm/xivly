@@ -13,6 +13,8 @@ export interface Messages {
 	'reader-kept': { id: string; error: string };
 	/** A notebook went to the trash: its window closes. */
 	'notebook-removed': { id: string };
+	/** A notebook's notebook.json changed (a paper linked from the library): its window reads it again. */
+	'notebook-changed': { id: string };
 	/** "Hand this notebook over": its window saves the text, then lets go. */
 	'notebook-take-over': { id: string };
 }

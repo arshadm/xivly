@@ -1565,5 +1565,59 @@ test('notebooks link papers: @ opens a menu of papers, ↵ inserts a chip that s
 	await expect(tab.getByText('Saved')).toBeVisible();
 	await tab.reload();
 	await expect(tab.getByRole('textbox', { name: 'Notes' }).locator('[data-paper-ref]')).toHaveAttribute('title', title);
+
+	// A chip shows its paper beside the text.
+	await tab.getByRole('textbox', { name: 'Notes' }).locator('[data-paper-ref]').click();
+	await expect(tab.getByRole('tab', { name: 'Paper' })).toHaveAttribute('aria-selected', 'true');
+	await expect(tab.locator('canvas').first()).toBeVisible();
+	expect([...errs, ...tabErrs]).toEqual([]);
+});
+
+test('linked papers: Add to notebook… from the library, listed in the notebook, read beside the text, unlinked', async ({ page, context }) => {
+	const errs = errors(page);
+	await addPaper(page, context);
+	await page.bringToFront();
+	await page.getByRole('button', { name: 'New notebook' }).click();
+	await page.getByRole('textbox', { name: 'Name' }).fill('Calm reading');
+	await page.keyboard.press('Enter');
+
+	// From the paper's menu: the notebook, then it's ticked.
+	await page.getByRole('button', { name: new RegExp(title) }).click({ button: 'right' });
+	await page.getByRole('menuitem', { name: 'Add to notebook…' }).click();
+	await page.getByRole('option', { name: /Calm reading/ }).click();
+	await expect(page.getByText(`Linked “${title}” to “Calm reading”`)).toBeVisible();
+	await page.getByRole('button', { name: new RegExp(title) }).click({ button: 'right' });
+	await page.getByRole('menuitem', { name: 'Add to notebook…' }).click();
+	await expect(page.getByRole('option', { name: /Calm reading/ })).toHaveAttribute('aria-checked', 'true');
+	await page.keyboard.press('Escape');
+
+	const opened = context.waitForEvent('page');
+	await page.getByRole('treeitem', { name: 'Calm reading' }).click();
+	const tab = await opened;
+	const tabErrs = errors(tab);
+	const panel = tab.getByRole('complementary', { name: 'Linked papers' });
+	await expect(panel.getByRole('button', { name: new RegExp(`^${title}`) })).toBeVisible();
+
+	// Shown beside the text; a chip for the page shown goes in the text.
+	await panel.getByRole('button', { name: new RegExp(`^${title}`) }).click();
+	await expect(tab.getByRole('tab', { name: 'Paper' })).toHaveAttribute('aria-selected', 'true');
+	await expect(tab.locator('canvas').first()).toBeVisible();
+	await tab.getByRole('textbox', { name: 'Notes' }).click();
+	await tab.getByRole('button', { name: 'Link this page in the text' }).click();
+	const chip = tab.getByRole('textbox', { name: 'Notes' }).locator('[data-paper-ref]');
+	await expect(chip).toContainText('p. 1');
+	// Mentioned in the text: it can't be unlinked from the panel, which says so.
+	await expect(panel.getByText('1×')).toBeVisible();
+	await expect(panel.getByRole('button', { name: /^Unlink/ })).toHaveCount(0);
+
+	// The chip removed: linked by hand still, until unlinked.
+	await tab.getByRole('textbox', { name: 'Notes' }).focus();
+	await tab.keyboard.press('ControlOrMeta+End');
+	await tab.keyboard.press('Backspace');
+	await tab.keyboard.press('Backspace');
+	await expect(chip).toHaveCount(0);
+	await panel.getByRole('button', { name: new RegExp(`^${title}`) }).hover();
+	await panel.getByRole('button', { name: `Unlink ${title}` }).click();
+	await expect(panel.getByText('No papers yet.')).toBeVisible();
 	expect([...errs, ...tabErrs]).toEqual([]);
 });

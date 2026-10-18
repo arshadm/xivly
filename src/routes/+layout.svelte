@@ -30,6 +30,7 @@
 	import StarterDialog from '#lib/components/StarterDialog.svelte';
 	import PromptHost from '#lib/ui/PromptHost.svelte';
 	import DetailsDialog from '#lib/components/DetailsDialog.svelte';
+	import NotebookPicker from '#lib/notebooks/NotebookPicker.svelte';
 	import { isEditable, onWindowContextMenu } from '#lib/ui/context-menu.svelte.js';
 	import ShortcutsHelp, { shortcutsHelp } from '#lib/components/ShortcutsHelp.svelte';
 
@@ -240,7 +241,7 @@
 		<ShortcutsHelp />
 		<TitleTooltips />
 		<PromptHost />
-		{#if library.status === 'ready'}<DetailsDialog />{/if}
+		{#if library.status === 'ready'}<DetailsDialog /><NotebookPicker />{/if}
 		{#if settings.ready}<SettingsDialog /><StarterDialog />{/if}
 	</div>
 </Tooltip.Provider>

@@ -4,6 +4,7 @@
 	import { bibtex } from '#lib/cite.js';
 	import { library } from '#lib/library.svelte.js';
 	import { fileManager, trashName } from '#lib/os.js';
+	import { notebookPicker } from '#lib/notebooks/NotebookPicker.svelte';
 	import { trashPaper } from '#lib/paper-menu.js';
 	import { platform } from '#lib/platform/index.js';
 	import type { Paper } from '#lib/types.js';
@@ -29,6 +30,7 @@
 		</Tip>
 	{/snippet}
 	{@render action('Copy BibTeX', 'icon-[lucide--quote]', () => copy(bibtex(paper), 'BibTeX'))}
+	{@render action('Add to notebook…', 'icon-[lucide--notebook-text]', () => notebookPicker.show(paper))}
 	{@render actions?.({ btn })}
 	{#if platform.reveal}{@render action(`Show in ${fileManager}`, 'icon-[lucide--folder-search]', () => platform.reveal?.(`papers/${paper.id}/paper.pdf`))}{/if}
 	{@render action('Refresh metadata (PDF and Hugging Face)', 'icon-[lucide--refresh-cw]', () => library.refreshMetadata(paper.id).then(() => toast('Metadata updated'), fail))}

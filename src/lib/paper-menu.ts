@@ -2,6 +2,7 @@
 import { paperLinks } from './cite';
 import { toast } from './components/Toasts.svelte';
 import { detailsDialog } from './components/DetailsDialog.svelte';
+import { notebookPicker } from './notebooks/NotebookPicker.svelte';
 import { ARCHIVED, library } from './library.svelte';
 import { fileManager, trashName } from './os';
 import { platform } from './platform';
@@ -87,6 +88,7 @@ export function paperMenu(p: Paper): MenuItem[] {
 			]
 		}
 	);
+	items.push({ label: 'Add to notebook…', icon: 'icon-[lucide--notebook-text]', onSelect: () => notebookPicker.show(p) });
 	if (links.length)
 		items.push({ label: 'Links', icon: 'icon-[lucide--link]', items: links.map((l) => ({ label: l.label, icon: l.icon, onSelect: () => platform.openUrl(l.url) })) });
 	items.push({ label: 'Edit details…', icon: 'icon-[lucide--pencil]', separatorBefore: true, onSelect: () => detailsDialog.show(p.id) });
