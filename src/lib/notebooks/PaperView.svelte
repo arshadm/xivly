@@ -1,7 +1,8 @@
 <!--
 	A linked paper beside a notebook's text: its pages to read (no annotating here: that's
 	the reader's, in its own window), at a page when asked; zoomed and scrolled as in the
-	reader (pinch or ⌘-wheel, the zoom buttons, Continuous / Paged / Horizontal). A PDF still downloading (a
+	reader (pinch or ⌘-wheel, the zoom buttons, Continuous / Paged / Horizontal). Shift-drag
+	pans the pages. A PDF still downloading (a
 	synced folder) or missing says so, as the reader does.
 -->
 <script lang="ts">
@@ -73,6 +74,60 @@
 	/** A viewer shortcut's label ("⌘+"), from its keymap. */
 	const viewKey = (action: KeymapAction) => (viewer ? comboLabel(viewer.keymap, action) : undefined);
 
+	// Shift-drag pans (the grab cursor while Shift is held over the pages).
+	let panning = $state(false);
+	let shiftHeld = $state(false);
+	$effect(() => {
+		const el = viewer?.scrollEl;
+		if (!el) return;
+		let from: { x: number; y: number; left: number; top: number } | null = null;
+		let dragged = false;
+		const down = (e: PointerEvent) => {
+			if (!e.shiftKey || e.button !== 0) return;
+			e.preventDefault();
+			window.getSelection()?.removeAllRanges();
+			from = { x: e.clientX, y: e.clientY, left: el.scrollLeft, top: el.scrollTop };
+			dragged = false;
+			el.setPointerCapture(e.pointerId);
+			panning = true;
+		};
+		const move = (e: PointerEvent) => {
+			if (!from) return;
+			dragged ||= Math.hypot(e.clientX - from.x, e.clientY - from.y) > 3;
+			el.scrollTo({ left: from.left - (e.clientX - from.x), top: from.top - (e.clientY - from.y), behavior: 'instant' });
+		};
+		const up = (e: PointerEvent) => {
+			if (!from) return;
+			from = null;
+			panning = false;
+			if (el.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId);
+		};
+		// A pan that ends over a link doesn't follow it.
+		const click = (e: MouseEvent) => {
+			if (dragged) (e.preventDefault(), e.stopPropagation(), (dragged = false));
+		};
+		const key = (e: KeyboardEvent) => (shiftHeld = e.shiftKey);
+		const blur = () => (shiftHeld = false);
+		el.addEventListener('pointerdown', down);
+		el.addEventListener('pointermove', move);
+		el.addEventListener('pointerup', up);
+		el.addEventListener('pointercancel', up);
+		window.addEventListener('keydown', key);
+		window.addEventListener('keyup', key);
+		el.addEventListener('click', click, true);
+		window.addEventListener('blur', blur);
+		return () => {
+			el.removeEventListener('pointerdown', down);
+			el.removeEventListener('pointermove', move);
+			el.removeEventListener('pointerup', up);
+			el.removeEventListener('pointercancel', up);
+			window.removeEventListener('keydown', key);
+			window.removeEventListener('keyup', key);
+			el.removeEventListener('click', click, true);
+			window.removeEventListener('blur', blur);
+		};
+	});
+
 	function opened() {
 		if (page && viewer) void viewer.restorePosition(page);
 	}
@@ -108,7 +163,7 @@
 					<Separator />
 					<CycleButton title="Scrolling" options={scrollModes} value={s.notebookScrollMode} onchange={(v) => settings.set('notebookScrollMode', v)} />
 				</div>
-				<Viewer.Viewport class="min-h-0 flex-1 bg-stone-100 dark:bg-stone-950 [--pdf-page-gap:14px] [--pdf-pages-padding:14px]" aria-label="Pages of {paper?.title ?? 'the paper'}">
+				<Viewer.Viewport class="min-h-0 flex-1 bg-stone-100 {panning ? 'cursor-grabbing select-none [&_*]:cursor-grabbing' : shiftHeld ? 'cursor-grab [&_*]:cursor-grab' : ''} dark:bg-stone-950 [--pdf-page-gap:14px] [--pdf-pages-padding:14px]" aria-label="Pages of {paper?.title ?? 'the paper'}">
 					<Viewer.Pages>
 						{#snippet children({ pageNumber })}
 							<Viewer.Page {pageNumber}>

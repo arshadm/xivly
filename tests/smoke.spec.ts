@@ -1609,6 +1609,21 @@ test('linked papers: Add to notebook… from the library, listed in the notebook
 	const before = await pageWidth();
 	await tab.getByRole('button', { name: 'Zoom in' }).click();
 	await expect.poll(pageWidth).toBeGreaterThan(before + 4);
+	for (let i = 0; i < 4; i++) await tab.getByRole('button', { name: 'Zoom in' }).click();
+	const pages = tab.getByLabel(`Pages of ${title}`);
+	await expect.poll(() => pages.evaluate((el) => el.scrollHeight - el.clientHeight)).toBeGreaterThan(200);
+	// Shift-drag pans the pages.
+	const box = (await pages.boundingBox())!;
+	const offset = () => pages.evaluate((el) => [el.scrollLeft, el.scrollTop]);
+	const [left0, top0] = await offset();
+	await tab.mouse.move(box.x + box.width - 40, box.y + box.height - 40);
+	await tab.keyboard.down('Shift');
+	await tab.mouse.down();
+	await tab.mouse.move(box.x + 40, box.y + 40, { steps: 8 });
+	await tab.mouse.up();
+	await tab.keyboard.up('Shift');
+	await expect.poll(async () => (await offset())[1]).toBeGreaterThan(top0 + 40);
+	expect((await offset())[0]).toBeGreaterThan(left0);
 	const zoomed = await pageWidth();
 	await tab.getByRole('button', { name: 'Zoom out' }).click();
 	await expect.poll(pageWidth).toBeLessThan(zoomed - 4);
