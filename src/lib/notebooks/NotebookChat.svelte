@@ -12,6 +12,7 @@
 	import { settingsDialog } from '#lib/components/SettingsDialog.svelte';
 	import { toast } from '#lib/components/Toasts.svelte';
 	import { locateClaude } from '#lib/chat/locate.js';
+	import { onDiskChange } from '#lib/disk-changes.js';
 	import { library } from '#lib/library.svelte.js';
 	import { refLabel, searchPapers } from '#lib/notes/paper-ref.js';
 	import { platform } from '#lib/platform/index.js';
@@ -75,6 +76,19 @@
 				);
 			});
 		void s.archived(id).then((list) => (archived = list));
+	});
+
+	// The conversation changed on disk (another device, synced): shown here, unless a question is running.
+	$effect(() => {
+		const s = store;
+		const id = notebookId;
+		return onDiskChange(async (paths) => {
+			if (!s || !session || session.running) return;
+			if (paths.some((p) => p.startsWith(`notebooks/${id}/chats/archive/`))) archived = await s.archived(id).catch(() => archived);
+			if (!paths.includes(`notebooks/${id}/chats/current.json`)) return;
+			const chat = await s.current(id).catch(() => null);
+			if (chat && session && !session.running && JSON.stringify(chat) !== JSON.stringify(session.chat)) session.chat = chat;
+		});
 	});
 
 	const shown = $derived(viewing ?? session?.chat ?? null);

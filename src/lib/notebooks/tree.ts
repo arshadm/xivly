@@ -48,7 +48,21 @@ export function normalizeNode(id: string, raw: unknown): NotebookNode {
  * itself; in a loop, the item with the smallest id goes to the top level.
  */
 export function parents(nodes: readonly NotebookNode[]): Map<string, string | undefined> {
+	return walk(nodes).shown;
+}
+
+/**
+ * The items cut out of a loop (two devices each put a folder inside the other): shown at
+ * the top level, so their files should say so too, or moving another item of the loop
+ * would pull them back in. Every device cuts the same ones.
+ */
+export function loopCuts(nodes: readonly NotebookNode[]): string[] {
+	return walk(nodes).cuts;
+}
+
+function walk(nodes: readonly NotebookNode[]) {
 	const byId = new Map(nodes.map((n) => [n.id, n]));
+	const cuts: string[] = [];
 	const out = new Map<string, string | undefined>();
 	for (const n of nodes) out.set(n.id, n.parent && n.parent !== n.id && byId.get(n.parent)?.kind === 'folder' ? n.parent : undefined);
 	const done = new Set<string>();
@@ -60,12 +74,13 @@ export function parents(nodes: readonly NotebookNode[]): Map<string, string | un
 			at = out.get(at);
 		}
 		if (at !== undefined && path.includes(at)) {
-			const loop = path.slice(path.indexOf(at));
-			out.set(loop.toSorted()[0], undefined);
+			const cut = path.slice(path.indexOf(at)).toSorted()[0];
+			out.set(cut, undefined);
+			cuts.push(cut);
 		}
 		path.forEach((id) => done.add(id));
 	}
-	return out;
+	return { shown: out, cuts };
 }
 
 const order = (a: NotebookNode, b: NotebookNode) => a.rank - b.rank || a.title.localeCompare(b.title) || a.id.localeCompare(b.id);

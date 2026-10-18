@@ -440,3 +440,37 @@ describe('notebook notes', () => {
 		expect(await fs.exists('notebooks/ideas')).toBe(false);
 	});
 });
+
+describe('notebook conflict copies', () => {
+	it('are found in notebooks, their chats and archive, and merged', async () => {
+		const { fs, r } = await repo();
+		await r.createNotebook('notebook', 'Ideas', { rank: 0 });
+		await fs.write('notebooks/ideas/notebook (1).json', enc.encode(JSON.stringify({ kind: 'notebook', title: 'Ideas', papers: ['p2'] })));
+		await fs.write('notebooks/ideas/chats/current.json', enc.encode('{}'));
+		await fs.write('notebooks/ideas/chats/current 2.json', enc.encode('{}'));
+		await fs.write('notebooks/ideas/chats/archive/a.json', enc.encode('{}'));
+		await fs.write('notebooks/ideas/chats/archive/a (conflicted copy).json', enc.encode('{}'));
+		const found = await r.findConflicts();
+		expect(found.map((c) => c.path).sort()).toEqual(['notebooks/ideas/chats/archive/a (conflicted copy).json', 'notebooks/ideas/chats/current 2.json', 'notebooks/ideas/notebook (1).json']);
+		expect(found.every((c) => c.notebookId === 'ideas' && !c.paperId)).toBe(true);
+
+		await r.updateNotebook('ideas', { papers: ['p1'] });
+		await r.resolveConflict(found.find((c) => c.path.endsWith('notebook (1).json'))!, 'merge');
+		expect((await json(fs, 'notebooks/ideas/notebook.json')).papers).toEqual(['p1', 'p2']);
+		expect(await fs.exists('notebooks/ideas/notebook (1).json')).toBe(false);
+	});
+
+	it('of a notebook’s text are merged like a paper’s notes', async () => {
+		const { fs, r } = await repo();
+		await r.createNotebook('notebook', 'Ideas', { rank: 0 });
+		const para = (text: string) => ({ type: 'paragraph', content: [{ type: 'text', text }] });
+		await r.saveNotebookNotes('ideas', { type: 'doc', content: [para('Mine')] });
+		await fs.write('notebooks/ideas/notes (1).json', enc.encode(JSON.stringify({ version: 1, doc: { type: 'doc', content: [para('Theirs')] } })));
+		const [c] = await r.findConflicts();
+		expect(c).toMatchObject({ notebookId: 'ideas', original: 'notebooks/ideas/notes.json' });
+		await r.resolveConflict(c, 'merge');
+		const text = JSON.stringify((await r.readNotebookNotes('ideas'))?.doc);
+		expect(text).toContain('Mine');
+		expect(text).toContain('Theirs');
+	});
+});

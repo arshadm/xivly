@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canMove, childrenOf, normalizeNode, parents, rankIn, ranksBetween, subtree, type NotebookNode } from './tree';
+import { canMove, childrenOf, loopCuts, normalizeNode, parents, rankIn, ranksBetween, subtree, type NotebookNode } from './tree';
 
 const node = (id: string, fields: Partial<NotebookNode> = {}): NotebookNode => ({ ...normalizeNode(id, {}), ...fields });
 const folder = (id: string, fields: Partial<NotebookNode> = {}) => node(id, { kind: 'folder', ...fields });
@@ -64,5 +64,12 @@ describe('the tree', () => {
 		expect(ranksBetween(undefined, 5, 2)).toEqual([3, 4]);
 		expect(ranksBetween(2, undefined, 2)).toEqual([3, 4]);
 		expect(ranksBetween(undefined, undefined, 2)).toEqual([0, 1]);
+	});
+});
+
+describe('loopCuts', () => {
+	it('names the item each loop is cut at, and nothing else', () => {
+		expect(loopCuts([folder('b', { parent: 'a' }), folder('a', { parent: 'b' }), folder('c', { parent: 'gone' })])).toEqual(['a']);
+		expect(loopCuts([folder('a'), node('b', { parent: 'a' })])).toEqual([]);
 	});
 });

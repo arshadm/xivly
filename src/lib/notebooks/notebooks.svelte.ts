@@ -4,7 +4,7 @@
 import { broadcast } from '#lib/broadcast.js';
 import { library } from '#lib/library.svelte.js';
 import type { Repo } from '#lib/repo.js';
-import { canMove, childrenOf, parents, rankIn, ranksBetween, subtree, type NotebookKind, type NotebookNode } from './tree';
+import { canMove, childrenOf, loopCuts, parents, rankIn, ranksBetween, subtree, type NotebookKind, type NotebookNode } from './tree';
 
 class Notebooks {
 	nodes = $state<NotebookNode[]>([]);
@@ -40,6 +40,8 @@ class Notebooks {
 			if (JSON.stringify(nodes) !== JSON.stringify(this.nodes)) this.nodes = nodes;
 			this.loaded = true;
 			this.error = null;
+			// A loop (from two devices): its files say where it shows now.
+			for (const id of loopCuts(nodes)) this.#put(await repo.updateNotebook(id, { parent: null }));
 		} catch (e) {
 			this.error = String(e);
 		}

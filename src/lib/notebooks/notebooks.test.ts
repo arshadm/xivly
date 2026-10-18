@@ -130,3 +130,22 @@ describe('linking papers by hand', () => {
 		expect(notebooks.get(a.id)?.papers).toEqual(['elsewhere', 'here']);
 	});
 });
+
+describe('two devices moving at once', () => {
+	it('end the same, nothing lost, when each put a folder inside the other', async () => {
+		const a = await notebooks.create('folder', 'A');
+		const b = await notebooks.create('folder', 'B');
+		await notebooks.create('notebook', 'Inside B', b.id);
+		// This device puts A in B; the other one (synced afterwards) had put B in A.
+		await notebooks.move(a.id, b.id, 0);
+		await fs.write('notebooks/b/notebook.json', enc.encode(JSON.stringify({ ...(await json('notebooks/b/notebook.json')), parent: 'a' })));
+		await notebooks.reload();
+		expect(notebooks.children().map((n) => n.title)).toEqual(['A']);
+		expect(notebooks.children(a.id).map((n) => n.title)).toEqual(['B']);
+		expect(notebooks.children(b.id).map((n) => n.title)).toEqual(['Inside B']);
+		// And moving out of the loop works from there.
+		await notebooks.move(b.id, undefined, 1);
+		expect(notebooks.children().map((n) => n.title)).toEqual(['A', 'B']);
+		expect(notebooks.children(b.id).map((n) => n.title)).toEqual(['Inside B']);
+	});
+});

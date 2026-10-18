@@ -13,6 +13,8 @@ export interface Conflict {
 	original: string;
 	/** The paper it belongs to (the folder under papers/), if any. */
 	paperId?: string;
+	/** The notebook (or folder of notebooks) it belongs to (under notebooks/), if any. */
+	notebookId?: string;
 }
 
 const isObject = (v: unknown): v is Json => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -30,10 +32,11 @@ export function isConflictCopy(name: string, original: string): boolean {
 /** The conflict copies among a folder's files (`dir`: the folder, relative to the library). */
 export function conflictsIn(dir: string, names: string[]): Conflict[] {
 	const paperId = /^papers\/([^/]+)$/.exec(dir)?.[1];
+	const notebookId = /^notebooks\/([^/]+)(\/chats(\/archive)?)?$/.exec(dir)?.[1];
 	const out: Conflict[] = [];
 	for (const name of names) {
 		const original = names.find((o) => o !== name && isConflictCopy(name, o));
-		if (original) out.push({ path: `${dir}/${name}`, original: `${dir}/${original}`, ...(paperId && { paperId }) });
+		if (original) out.push({ path: `${dir}/${name}`, original: `${dir}/${original}`, ...(paperId && { paperId }), ...(notebookId && { notebookId }) });
 	}
 	return out;
 }
@@ -45,7 +48,7 @@ export const mayBeConflictCopy = (path: string) => /([\s_-]\(?\d+\)?|conflict[^/
 export function conflictKind(c: Conflict): 'notes' | 'json' | 'derived' | 'file' {
 	if (c.original.endsWith('/notes.json')) return 'notes';
 	if (c.original.endsWith('/notes.md')) return 'derived';
-	if (/(^papers\/[^/]+\/paper\.json|^\.xivly\/(library|prompts)\.json|^\.xivly\/feed\/.*\.json)$/.test(c.original)) return 'json';
+	if (/(^papers\/[^/]+\/paper\.json|^notebooks\/[^/]+\/notebook\.json|^\.xivly\/(library|prompts)\.json|^\.xivly\/feed\/.*\.json)$/.test(c.original)) return 'json';
 	return 'file';
 }
 

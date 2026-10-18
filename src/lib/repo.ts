@@ -555,12 +555,20 @@ export class Repo {
 
 	// ── Sync conflicts ────────────────────────────────────────────────────
 
-	/** Conflict copies a sync client left (see conflicts.ts): in the papers' folders, their chats, and .xivly. */
+	/** Conflict copies a sync client left (see conflicts.ts): in the papers' folders, their chats, the notebooks' (and their chats), and .xivly. */
 	async findConflicts(): Promise<Conflict[]> {
 		const entries = (dir: string) => this.fs.list(dir).catch(() => []);
 		const inDir = async (dir: string, list?: { name: string; dir: boolean }[]) => conflictsIn(dir, (list ?? (await entries(dir))).filter((e) => !e.dir).map((e) => e.name));
 		const papers = (await entries('papers')).filter((e) => e.dir && !e.name.startsWith('.'));
+		const notebooks = (await entries('notebooks')).filter((e) => e.dir && !e.name.startsWith('.'));
 		const found = await Promise.all([
+			...notebooks.map(async ({ name }) => {
+				const list = await entries(`notebooks/${name}`);
+				if (!list.some((e) => e.dir && e.name === 'chats')) return inDir(`notebooks/${name}`, list);
+				const chats = await entries(`notebooks/${name}/chats`);
+				const archive = chats.some((e) => e.dir && e.name === 'archive') ? await inDir(`notebooks/${name}/chats/archive`) : [];
+				return [...(await inDir(`notebooks/${name}`, list)), ...(await inDir(`notebooks/${name}/chats`, chats)), ...archive];
+			}),
 			...['.xivly', '.xivly/feed', '.xivly/feed/papers'].map((d) => inDir(d)),
 			...papers.map(async ({ name }) => {
 				const list = await entries(`papers/${name}`);
@@ -578,11 +586,12 @@ export class Repo {
 	async resolveConflict(c: Conflict, action: 'merge' | 'use' | 'discard') {
 		const kind = conflictKind(c);
 		if (action === 'merge' && kind !== 'notes' && kind !== 'json') throw new Error('These two versions can’t be merged: use one or the other');
-		if (action !== 'discard' && kind === 'notes' && c.paperId) {
+		if (action !== 'discard' && kind === 'notes' && (c.paperId || c.notebookId)) {
 			const theirs = normalizeNotes((await this.#readJson<Json>(c.path)) ?? {});
 			if (!theirs) throw new Error(`${c.path} doesn’t hold notes`);
-			const ours = (await this.readNotes(c.paperId))?.doc ?? { type: 'doc', content: [] };
-			await this.saveNotes(c.paperId, action === 'use' ? theirs.doc : mergeNotesDocs(ours, theirs.doc));
+			const [read, save] = c.paperId ? [() => this.readNotes(c.paperId!), (d: NotesDoc) => this.saveNotes(c.paperId!, d)] : [() => this.readNotebookNotes(c.notebookId!), (d: NotesDoc) => this.saveNotebookNotes(c.notebookId!, d)];
+			const ours = (await read())?.doc ?? { type: 'doc', content: [] };
+			await save(action === 'use' ? theirs.doc : mergeNotesDocs(ours, theirs.doc));
 		} else if (action === 'merge') {
 			await this.#lock(c.original, async () => {
 				const theirs = await this.#readJson(c.path);

@@ -13,6 +13,7 @@
 	import { Dialog } from 'bits-ui';
 	import { conflictKind, type Conflict } from '#lib/conflicts.js';
 	import { library } from '#lib/library.svelte.js';
+	import { notebooks } from '#lib/notebooks/notebooks.svelte.js';
 	import { button } from '#lib/ui/button.js';
 	import UiDialog from '#lib/ui/Dialog.svelte';
 	import { prompts } from '#lib/ui/prompt.svelte.js';
@@ -28,11 +29,14 @@
 
 	function what(c: Conflict) {
 		const file = c.original.split('/').pop()!;
-		if (c.original.includes('/chats/')) return 'A chat';
+		if (c.original.includes('/chats/')) return c.notebookId ? 'The notebook’s chat' : 'A chat';
+		if (c.notebookId && file === 'notes.json') return 'The notebook’s text';
+		if (c.notebookId && file === 'notes.md') return 'The notebook’s text as Markdown (made from it)';
 		if (c.original.startsWith('.xivly/feed/')) return 'The arXiv feed';
 		return (
 			{
 				'paper.json': 'Details (title, tags, bookmarks…)',
+				'notebook.json': 'Its name, place and linked papers',
 				'notes.json': 'Notes',
 				'notes.md': 'Notes as Markdown (made from the notes)',
 				'paper.pdf': 'The PDF and its annotations',
@@ -41,7 +45,7 @@
 			}[file] ?? file
 		);
 	}
-	const where = (c: Conflict) => (c.paperId ? (library.get(c.paperId)?.title ?? c.paperId) : 'The library');
+	const where = (c: Conflict) => (c.paperId ? (library.get(c.paperId)?.title ?? c.paperId) : c.notebookId ? (notebooks.get(c.notebookId)?.title ?? c.notebookId) : 'The library');
 
 	async function resolve(c: Conflict, action: 'merge' | 'use' | 'discard') {
 		if (action !== 'merge') {
@@ -55,6 +59,7 @@
 		busy = c.path;
 		try {
 			await library.resolveConflict(c, action);
+			if (c.notebookId) await notebooks.reload();
 		} catch (e) {
 			toast(`Couldn’t resolve it: ${e instanceof Error ? e.message : String(e)}`, 'error');
 		} finally {

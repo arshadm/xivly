@@ -189,7 +189,7 @@ Decided 2026-10-17:
 - [x] **8.12 Clear and Summarize:** *Clear* (asks) archives the conversation (`chats/archive/<id>.json`) and starts a new session with nothing in it. *Summarize* asks Claude for a summary in the same session, archives, and starts a new session from it (shown folded at the top; the chips say *summarized*; mention a paper again to add it in full); a failed summary keeps the conversation. A meter shows the conversation's size (the tokens the last model call read, against 200k; amber, then red). *Earlier conversations* reads archived ones. *Test:* `chat-session.test.ts` and an e2e test with a stand-in claude.
 
 **E. Sync**
-- [ ] **8.13 Notebooks through the synced folder:** conflict copies of notebook files are found and resolved (6.5), changes from another device show at once (6.2), two devices moving the same item end the same.
+- [x] **8.13 Notebooks through the synced folder:** conflict copies in notebook folders, their chats and archive are found (with the notebook they belong to) and resolved (6.5): `notebook.json` merged (links from both kept), the text merged like a paper's notes. Changes from another device show at once (6.2): the tree, the text, the conversation (unless a question is running). Two devices each putting a folder inside the other: every device cuts the loop at the same item and writes it to the top level, so the tree ends the same and nothing is lost. *Test:* the notebook conflict tests in `repo.test.ts`, `loopCuts` in `tree.test.ts`, and *two devices moving at once* in `notebooks.test.ts`.
 
 **Later:** a reader tab listing the notebooks that link the paper; *Add to notebook* on a chat answer; search across notebooks; drag a paper from the library onto a notebook; export a notebook (Markdown, PDF).
 
