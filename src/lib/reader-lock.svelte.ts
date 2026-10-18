@@ -15,12 +15,15 @@ export type ReaderAccess = 'checking' | 'mine' | 'elsewhere' | 'waiting';
 /** How long a take-over waits for the other reader (saving a large PDF takes a moment). */
 const TAKE_OVER_MS = 15_000;
 
-const lockName = (id: string) => `xivly:reader:${id}`;
+/** What a window holds: a paper (its reader) or a notebook. */
+type Holder = 'reader' | 'notebook';
 
-/** Whether a reader (any tab or window) shows this paper right now. */
-export async function readerOpen(id: string) {
+const lockName = (id: string, holder: Holder = 'reader') => `xivly:${holder}:${id}`;
+
+/** Whether a reader (any tab or window) shows this paper (or a window this notebook) right now. */
+export async function readerOpen(id: string, holder: Holder = 'reader') {
 	const { held = [] } = await navigator.locks.query();
-	return held.some((l) => l.name === lockName(id));
+	return held.some((l) => l.name === lockName(id, holder));
 }
 
 /** The lock, held until the returned function is called; `null` when `ifAvailable` and it's taken. */
@@ -41,12 +44,15 @@ export class ReaderLock {
 	#waiting: AbortController | null = null;
 	#disposed = false;
 
-	constructor(readonly id: string) {}
+	constructor(
+		readonly id: string,
+		readonly holder: Holder = 'reader'
+	) {}
 
 	/** Hold the lock if no other reader has it (on open, and again when the tab comes back). */
 	async claim() {
 		if (this.access === 'mine' || this.access === 'waiting') return;
-		this.#got(await acquire(lockName(this.id), { ifAvailable: true }));
+		this.#got(await acquire(lockName(this.id, this.holder), { ifAvailable: true }));
 	}
 
 	/**
@@ -59,7 +65,7 @@ export class ReaderLock {
 		this.access = 'waiting';
 		const waiting = (this.#waiting = new AbortController());
 		const timeout = setTimeout(() => waiting.abort(), TAKE_OVER_MS);
-		const lock = acquire(lockName(this.id), { signal: waiting.signal });
+		const lock = acquire(lockName(this.id, this.holder), { signal: waiting.signal });
 		ask();
 		try {
 			this.#got(await lock);

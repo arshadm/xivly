@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { MemoryFs } from './onboarding/memory-fs';
 import type { Platform } from './platform';
+import type { NotesDoc } from './types';
 import { filterPapers } from './filter';
 import { isPdf, merge, normalizeLibrary, normalizePaper, RemovedError, Repo, slugify } from './repo';
 
@@ -413,5 +414,29 @@ describe('notebooks', () => {
 		const raw = await json(fs, 'notebooks/f/notebook.json');
 		expect(raw.id).toBeUndefined();
 		expect(raw.updated >= raw.created).toBe(true);
+	});
+});
+
+describe('notebook notes', () => {
+	const doc: NotesDoc = { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'An idea' }] }] };
+
+	it('are kept in the notebook’s folder, with notes.md and images beside them', async () => {
+		const { fs, r } = await repo();
+		await r.createNotebook('notebook', 'Ideas', { rank: 0 });
+		expect(await r.readNotebookNotes('ideas')).toBeNull();
+		await r.saveNotebookNotes('ideas', doc);
+		expect((await r.readNotebookNotes('ideas'))?.doc).toEqual(doc);
+		expect(dec.decode((await fs.read('notebooks/ideas/notes.md'))!)).toContain('An idea');
+		const path = await r.saveNotebookAsset('ideas', enc.encode('png'), 'png');
+		expect(await r.readNotebookFile('ideas', path)).toEqual(enc.encode('png'));
+		expect(() => r.readNotebookFile('ideas', '../other/notebook.json')).toThrow();
+	});
+
+	it('are never written once the notebook is gone', async () => {
+		const { fs, r } = await repo();
+		await r.createNotebook('notebook', 'Ideas', { rank: 0 });
+		await r.removeNotebook('ideas');
+		await expect(r.saveNotebookNotes('ideas', doc)).rejects.toThrow(/gone/);
+		expect(await fs.exists('notebooks/ideas')).toBe(false);
 	});
 });

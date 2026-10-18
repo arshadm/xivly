@@ -5,6 +5,7 @@
 import type { View } from './filter';
 
 const PAPERS = 'xivly:session-papers';
+const NOTEBOOKS = 'xivly:session-notebooks';
 const VIEW = 'xivly:session-view';
 
 function read<T>(key: string): T | null {
@@ -33,6 +34,19 @@ export function rememberOpen(id: string) {
 /** Its window was closed (not by quitting the app: those are reopened). */
 export function forgetOpen(id: string) {
 	write(PAPERS, openPapers().filter((p) => p !== id));
+}
+
+/** The notebooks open when the app last quit (or now), oldest first. */
+export const openNotebooks = (): string[] => (read<unknown[]>(NOTEBOOKS) ?? []).filter((id): id is string => typeof id === 'string');
+
+/** A window shows this notebook. */
+export function rememberNotebook(id: string) {
+	write(NOTEBOOKS, [...openNotebooks().filter((n) => n !== id), id]);
+}
+
+/** Its window was closed by hand. */
+export function forgetNotebook(id: string) {
+	write(NOTEBOOKS, openNotebooks().filter((n) => n !== id));
 }
 
 export function rememberView(view: View) {

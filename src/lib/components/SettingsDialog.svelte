@@ -123,7 +123,7 @@
 								{@render toggle('smoothZoom', 'Smooth zoom', 'Animate zoom changes')}
 								{@render toggle('wheelZoom', `Pinch & ${mac ? '⌘' : 'Ctrl'}-scroll zoom`)}
 								{@render toggle('resumePosition', 'Resume where you left off', 'Otherwise papers open at the top')}
-								{#if platform.kind === 'desktop'}{@render toggle('reopenPapers', 'Reopen papers at launch', 'The papers open when you quit open again')}{/if}
+								{#if platform.kind === 'desktop'}{@render toggle('reopenPapers', 'Reopen papers at launch', 'The papers and notebooks open when you quit open again')}{/if}
 								{@render toggle('sidePanel', 'Open the side panel', 'Show contents, pages, figures… when a paper opens')}
 								{@render toggle('progressBar', 'Reading progress bar')}
 								{@render toggle('breadcrumb', 'Section breadcrumb', 'Current section next to the title')}

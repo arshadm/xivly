@@ -105,6 +105,42 @@ export async function openPaper(id: string, title = 'Xivly') {
 	});
 }
 
+const notebookPath = (id: string) => `${resolve('/notebook')}?id=${encodeURIComponent(id)}`;
+
+/** Web: the name of the tab showing a notebook (taken by the window holding its lock). */
+export const notebookTab = (id: string) => `xivly-notebook-${id}`;
+
+/** Open a notebook in its own window / tab, or focus it if already open. */
+export async function openNotebook(id: string, title = 'Notebook') {
+	if (platform.kind !== 'desktop') {
+		const tab = window.open('', notebookTab(id));
+		if (tab && isBlank(tab)) tab.location.href = notebookPath(id);
+		tab?.focus();
+		return;
+	}
+	const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow');
+	const { LogicalPosition } = await import('@tauri-apps/api/dpi');
+	const label = `notebook-${id.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+	const existing = await WebviewWindow.getByLabel(label);
+	if (existing) {
+		await existing.unminimize();
+		await existing.setFocus();
+		return;
+	}
+	new WebviewWindow(label, {
+		url: notebookPath(id),
+		title,
+		width: 1280,
+		height: 900,
+		minWidth: 720,
+		minHeight: 480,
+		titleBarStyle: 'overlay',
+		hiddenTitle: true,
+		trafficLightPosition: new LogicalPosition(16, 25),
+		dragDropEnabled: false
+	});
+}
+
 /** Name of the browser tab showing the library (web). */
 export const LIBRARY_TAB = 'xivly-library';
 
@@ -197,7 +233,8 @@ export async function fixRestoredSize() {
 	const { LogicalSize } = await import('@tauri-apps/api/dpi');
 	const win = getCurrentWindow();
 	const library = win.label === 'main';
-	const [min, def] = library ? [[720, 480], [1280, 840]] : [[640, 480], [1180, 900]];
+	const notebook = win.label.startsWith('notebook-');
+	const [min, def] = library ? [[720, 480], [1280, 840]] : notebook ? [[720, 480], [1280, 900]] : [[640, 480], [1180, 900]];
 	const size = (await win.innerSize()).toLogical(await win.scaleFactor());
 	if (size.width >= min[0] && size.height >= min[1]) return;
 	await win.setSize(new LogicalSize(def[0], def[1]));

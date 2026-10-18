@@ -10,7 +10,7 @@
 	import { addFiles } from '#lib/add-paper.js';
 	import { forgetCover } from '#lib/covers.js';
 	import { mayBeConflictCopy } from '#lib/conflicts.js';
-	import { forgetOpen } from '#lib/session.js';
+	import { forgetNotebook, forgetOpen } from '#lib/session.js';
 	import { onDiskChange, touchesLibrary, touchesNotebooks, touchesPaper, watchLibrary } from '#lib/disk-changes.js';
 	import { flushAll, hasUnsaved } from '#lib/flush.js';
 	import { library } from '#lib/library.svelte.js';
@@ -81,10 +81,12 @@
 				await settings.flush();
 				// A paper closed by hand isn't reopened at the next launch (quitting closes none).
 				const paper = page.route.id === '/read' ? searchParams(page.url).get('id') : null;
-				if (!hasUnsaved()) return void (paper && forgetOpen(paper));
+				const notebook = page.route.id === '/notebook' ? searchParams(page.url).get('id') : null;
+				const forget = () => (paper && forgetOpen(paper), notebook && forgetNotebook(notebook));
+				if (!hasUnsaved()) return void forget();
 				e.preventDefault();
 				if (await flushAll()) {
-					if (paper) forgetOpen(paper);
+					forget();
 					await win.destroy();
 				}
 			}),

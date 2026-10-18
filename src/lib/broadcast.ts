@@ -11,6 +11,10 @@ export interface Messages {
 	'reader-take-over': { id: string };
 	/** The paper's reader couldn't save its annotations, so it keeps the paper. */
 	'reader-kept': { id: string; error: string };
+	/** A notebook went to the trash: its window closes. */
+	'notebook-removed': { id: string };
+	/** "Hand this notebook over": its window saves the text, then lets go. */
+	'notebook-take-over': { id: string };
 }
 type Name = keyof Messages;
 

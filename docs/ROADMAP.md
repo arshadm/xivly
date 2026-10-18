@@ -173,8 +173,8 @@ Decided 2026-10-17:
 - [x] **8.3 Moving between levels:** drag onto a folder's middle (into it; a closed folder opens when held over), onto a row's edge (beside it) or below the tree (the top level), with drop indicators; *Move to…* (a folder picker that filters as you type, `MoveToDialog.svelte`); ⌥↑ ⌥↓ among neighbors, ⌥← out of its folder, ⌥→ into the folder above. *Test:* an e2e test (new, rename, drag, Move to…, keys, reload, delete a folder).
 
 **B. The notebook window**
-- [ ] **8.4 Its own window:** a `/notebook?id=` route, `openNotebook` (`windows.ts`), one window per notebook (as `ReaderLock`), the title edited in the header, reopened at launch with the papers (session).
-- [ ] **8.5 The editor:** `NotesEditor` and the saver made independent of papers, saving `notebooks/<id>/notes.json` (and `notes.md`); formatting, maths, mind maps and images come with them.
+- [x] **8.4 Its own window:** a `/notebook?id=` route, `openNotebook` (`windows.ts`; a tab on the web), one window per notebook (`ReaderLock` for notebooks; another window offers *Write here*), the title edited in the header under the folders it's in, reopened at launch with the papers (*Reopen papers at launch*). Deleting a notebook closes its window.
+- [x] **8.5 The editor:** `NotesPane` takes a paper or a notebook (`kind`), and `Repo` keeps both the same way, saving `notebooks/<id>/notes.json`, `notes.md` and `notes-assets/`; formatting, maths, mind maps and images come with them. *Test:* the notebook notes tests in `repo.test.ts`, and an e2e test (open from the sidebar, type, rename, reload, open again finds the tab).
 - [ ] **8.6 Paper chips:** a `paperRef` node (`{paperId, page?, label}`), typed with `@` (linked papers first, then the library), clicked to open the paper in the right pane (at its page). A paper that's gone shows as missing. *Test:* the node and its Markdown, linked papers from the document.
 
 **C. Linked papers**

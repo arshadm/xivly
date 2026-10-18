@@ -1,6 +1,7 @@
 // The notebooks of the open library, as the sidebar and notebook windows show
 // them. Every change is written to the item's own notebook.json (see tree.ts),
 // then the list is updated in place.
+import { broadcast } from '#lib/broadcast.js';
 import { library } from '#lib/library.svelte.js';
 import type { Repo } from '#lib/repo.js';
 import { canMove, childrenOf, parents, rankIn, ranksBetween, subtree, type NotebookKind, type NotebookNode } from './tree';
@@ -8,9 +9,13 @@ import { canMove, childrenOf, parents, rankIn, ranksBetween, subtree, type Noteb
 class Notebooks {
 	nodes = $state<NotebookNode[]>([]);
 	error = $state<string | null>(null);
+	/** Read at least once from the open library. */
+	loaded = $state(false);
 	/** Each item's parent as shown (a missing parent or a loop reads as the top level). */
 	#shown = $derived(parents(this.nodes));
 	#repo: Repo | null = null;
+	/** Bumped by every change made here: a reload that read the folder before it reads again. */
+	#changes = 0;
 
 	#need(): Repo {
 		const repo = library.repo;
@@ -23,10 +28,17 @@ class Notebooks {
 		const repo = library.repo;
 		if (!repo) return;
 		// Another library: nothing of the old one is kept.
-		if (repo !== this.#repo) [this.#repo, this.nodes] = [repo, []];
+		if (repo !== this.#repo) [this.#repo, this.nodes, this.loaded] = [repo, [], false];
 		try {
-			const nodes = await repo.listNotebooks(new Map(this.nodes.map((n) => [n.id, n])));
-			if (repo === library.repo && JSON.stringify(nodes) !== JSON.stringify(this.nodes)) this.nodes = nodes;
+			let nodes: NotebookNode[];
+			let before: number;
+			do {
+				before = this.#changes;
+				nodes = await repo.listNotebooks(new Map(this.nodes.map((n) => [n.id, n])));
+			} while (before !== this.#changes);
+			if (repo !== library.repo) return;
+			if (JSON.stringify(nodes) !== JSON.stringify(this.nodes)) this.nodes = nodes;
+			this.loaded = true;
 			this.error = null;
 		} catch (e) {
 			this.error = String(e);
@@ -42,6 +54,13 @@ class Notebooks {
 		return childrenOf(this.nodes, parent, this.#shown);
 	}
 
+	/** The folders an item is in, outermost first. */
+	path(id: string): NotebookNode[] {
+		const out: NotebookNode[] = [];
+		for (let p = this.parentOf(id); p; p = this.parentOf(p)) out.unshift(this.get(p)!);
+		return out;
+	}
+
 	/** The folder an item shows in (none: the top level). */
 	parentOf(id: string) {
 		return this.#shown.get(id);
@@ -51,6 +70,7 @@ class Notebooks {
 	async create(kind: NotebookKind, title: string, parent?: string) {
 		if (parent !== undefined && this.get(parent)?.kind !== 'folder') throw new Error('Only a folder can hold notebooks');
 		const node = await this.#need().createNotebook(kind, title.trim() || (kind === 'folder' ? 'New folder' : 'Untitled'), { parent, rank: rankIn(this.nodes, '', parent, Infinity) });
+		this.#changes++;
 		this.nodes = [...this.nodes, node];
 		return node;
 	}
@@ -77,7 +97,7 @@ class Notebooks {
 		if (contents === 'trash') {
 			for (const n of subtree(this.nodes, id, this.#shown).toReversed()) {
 				await repo.removeNotebook(n);
-				this.nodes = this.nodes.filter((x) => x.id !== n);
+				this.#gone(n);
 			}
 			return;
 		}
@@ -89,10 +109,18 @@ class Notebooks {
 			for (const [k, n] of inside.entries()) this.#put(await repo.updateNotebook(n.id, { parent: parent ?? null, rank: ranks[k] }));
 		}
 		await repo.removeNotebook(id);
+		this.#gone(id);
+	}
+
+	/** Trashed: off the list, and its window (if open) closes. */
+	#gone(id: string) {
+		this.#changes++;
 		this.nodes = this.nodes.filter((n) => n.id !== id);
+		void broadcast('notebook-removed', { id });
 	}
 
 	#put(node: NotebookNode) {
+		this.#changes++;
 		this.nodes = this.nodes.map((n) => (n.id === node.id ? node : n));
 	}
 }

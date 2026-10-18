@@ -1483,3 +1483,42 @@ test('notebooks: folders and notebooks in the sidebar, renamed, moved by drag, M
 	await expect(tree.getByRole('treeitem')).toHaveText(['Sparse attention', 'Linear attention']);
 	expect(errs).toEqual([]);
 });
+
+test('a notebook opens in its own tab: its text is kept, the title is edited there, and opening it again finds that tab', async ({ page, context }) => {
+	const errs = errors(page);
+	await startLibrary(page);
+	await page.getByRole('button', { name: 'New folder' }).click();
+	await page.getByRole('textbox', { name: 'Name' }).fill('Attention');
+	await page.keyboard.press('Enter');
+	await page.getByRole('treeitem', { name: 'Attention' }).click({ button: 'right' });
+	await page.getByRole('menuitem', { name: 'New notebook' }).click();
+	await page.getByRole('textbox', { name: 'Name' }).fill('Sparse variants');
+	await page.keyboard.press('Enter');
+
+	const opened = context.waitForEvent('page');
+	await page.getByRole('treeitem', { name: 'Sparse variants' }).click();
+	const tab = await opened;
+	const tabErrs = errors(tab);
+	await expect(tab.getByRole('textbox', { name: 'Notebook title' })).toHaveValue('Sparse variants');
+	await expect(tab.getByText('Attention', { exact: true })).toBeVisible();
+
+	const editor = tab.getByRole('textbox', { name: 'Notes' });
+	await editor.click();
+	await tab.keyboard.type('Sparse attention keeps the top-k keys.');
+	await expect(tab.getByText('Saved')).toBeVisible();
+
+	await tab.getByRole('textbox', { name: 'Notebook title' }).fill('Top-k attention');
+	await tab.keyboard.press('Enter');
+	await writesDone(tab);
+	await tab.reload();
+	await expect(tab.getByRole('textbox', { name: 'Notes' })).toContainText('Sparse attention keeps the top-k keys.');
+	await expect(tab.getByRole('textbox', { name: 'Notebook title' })).toHaveValue('Top-k attention');
+	await expect(tab).toHaveTitle('Top-k attention');
+
+	// The library shows the new title (once it's back in front), and finds the open tab.
+	await page.bringToFront();
+	await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+	await page.getByRole('treeitem', { name: 'Top-k attention' }).click();
+	await expect.poll(() => context.pages().length).toBe(2);
+	expect([...errs, ...tabErrs]).toEqual([]);
+});

@@ -99,3 +99,12 @@ describe('notebooks', () => {
 		expect(await fs.exists('notebooks/a/notebook.json')).toBe(false);
 	});
 });
+
+describe('a reload while something changes', () => {
+	it('never drops what was created meanwhile', async () => {
+		const reload = notebooks.reload();
+		const created = notebooks.create('notebook', 'Fresh');
+		await Promise.all([reload, created]);
+		expect(notebooks.children().map((n) => n.title)).toEqual(['Fresh']);
+	});
+});

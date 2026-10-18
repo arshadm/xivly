@@ -369,13 +369,15 @@ export class Repo {
 	}
 
 	// ── Notes ─────────────────────────────────────────────────────────────
+	// A paper's notes and a notebook's text are the same files in their folder:
+	// notes.json, notes.md and notes-assets/.
 
 	/**
-	 * The paper's notes, or null when it has none yet. Throws when notes.json exists but
+	 * The notes in `dir`, or null when there are none yet. Throws when notes.json exists but
 	 * isn't notes (unreadable, or edited by hand into something else): saving over it would lose it.
 	 */
-	async readNotes(id: string): Promise<NotesFile | null> {
-		const path = `papers/${id}/notes.json`;
+	async #readNotesIn(dir: string): Promise<NotesFile | null> {
+		const path = `${dir}/notes.json`;
 		const raw = await this.#lock(path, () => this.#readJson<Json>(path));
 		if (!raw) return null;
 		const notes = normalizeNotes(raw);
@@ -383,37 +385,67 @@ export class Repo {
 		return notes;
 	}
 
-	/**
-	 * Write the notes (merged: fields added by agents are kept), then notes.md, the same notes
-	 * as Markdown for tools that read the folder. Refused once the paper is gone.
-	 */
-	async saveNotes(id: string, doc: NotesDoc) {
-		await this.#patchJson(`papers/${id}/notes.json`, { version: NOTES_VERSION, updated: new Date().toISOString(), doc }, () => this.#present(id));
+	/** Write the notes (merged: fields added by agents are kept), then notes.md, the same notes as Markdown for tools that read the folder. */
+	async #saveNotesIn(dir: string, doc: NotesDoc, present: () => Promise<void>) {
+		await this.#patchJson(`${dir}/notes.json`, { version: NOTES_VERSION, updated: new Date().toISOString(), doc }, present);
 		const md = notesToMarkdown(doc);
-		await this.#lock(`papers/${id}/notes.md`, async () => {
-			await this.#present(id);
-			await this.fs.write(`papers/${id}/notes.md`, enc.encode(`${NOTES_MD_HEADER}\n\n${md}${md ? '\n' : ''}`));
+		await this.#lock(`${dir}/notes.md`, async () => {
+			await present();
+			await this.fs.write(`${dir}/notes.md`, enc.encode(`${NOTES_MD_HEADER}\n\n${md}${md ? '\n' : ''}`));
 		});
 	}
 
-	/**
-	 * An image for the paper's notes, kept as `notes-assets/<hash>.<ext>` (the same image is
-	 * stored once). Returns that path, relative to the paper's folder.
-	 */
-	async saveNoteAsset(id: string, bytes: Uint8Array, ext: string): Promise<string> {
+	/** An image for the notes, kept as `notes-assets/<hash>.<ext>` (the same image is stored once). Returns that path, relative to `dir`. */
+	async #saveAssetIn(dir: string, bytes: Uint8Array, ext: string, present: () => Promise<void>): Promise<string> {
 		if (!/^[a-z0-9]+$/.test(ext)) throw new Error(`Not a file extension: ${ext}`);
 		const name = `notes-assets/${(await sha256(bytes as Uint8Array<ArrayBuffer>)).slice(0, 16)}.${ext}`;
-		await this.#lock(`papers/${id}/${name}`, async () => {
-			await this.#present(id);
-			if (!(await this.fs.exists(`papers/${id}/${name}`))) await this.fs.write(`papers/${id}/${name}`, bytes);
+		await this.#lock(`${dir}/${name}`, async () => {
+			await present();
+			if (!(await this.fs.exists(`${dir}/${name}`))) await this.fs.write(`${dir}/${name}`, bytes);
 		});
 		return name;
 	}
 
-	/** A file in the paper's folder by its relative path (a notes image), or null when missing. */
+	/** A file in `dir` by its relative path (a notes image), or null when missing. */
+	#readFileIn(dir: string, path: string) {
+		if (!isPaperPath(path)) throw new Error(`Not a path in the folder: ${path}`);
+		return this.fs.read(`${dir}/${path}`);
+	}
+
+	/** The paper's notes, or null when it has none yet (see #readNotesIn). */
+	readNotes(id: string): Promise<NotesFile | null> {
+		return this.#readNotesIn(`papers/${id}`);
+	}
+
+	/** Refused once the paper is gone. */
+	saveNotes(id: string, doc: NotesDoc) {
+		return this.#saveNotesIn(`papers/${id}`, doc, () => this.#present(id));
+	}
+
+	saveNoteAsset(id: string, bytes: Uint8Array, ext: string): Promise<string> {
+		return this.#saveAssetIn(`papers/${id}`, bytes, ext, () => this.#present(id));
+	}
+
 	readPaperFile(id: string, path: string) {
-		if (!isPaperPath(path)) throw new Error(`Not a path in the paper’s folder: ${path}`);
-		return this.fs.read(`papers/${id}/${path}`);
+		return this.#readFileIn(`papers/${id}`, path);
+	}
+
+	/** A notebook's text, or null when it has none yet. */
+	readNotebookNotes(id: string): Promise<NotesFile | null> {
+		return this.#readNotesIn(`notebooks/${id}`);
+	}
+
+	/** Refused once the notebook is gone. */
+	saveNotebookNotes(id: string, doc: NotesDoc) {
+		return this.#saveNotesIn(`notebooks/${id}`, doc, () => this.#notebookPresent(id));
+	}
+
+	saveNotebookAsset(id: string, bytes: Uint8Array, ext: string): Promise<string> {
+		return this.#saveAssetIn(`notebooks/${id}`, bytes, ext, () => this.#notebookPresent(id));
+	}
+
+	readNotebookFile(id: string, path: string) {
+		return this.#readFileIn(`notebooks/${id}`, path);
 	}
 
 	/**

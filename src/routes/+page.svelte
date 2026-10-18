@@ -13,8 +13,9 @@
 	import Kbd from '#lib/ui/Kbd.svelte';
 	import Tip from '#lib/ui/Tip.svelte';
 	import { setFallbackMenu, type MenuItem } from '#lib/ui/context-menu.svelte.js';
-	import { LIBRARY_TAB, openPaper, setWindowTitle } from '#lib/windows.js';
-	import { openPapers, rememberView } from '#lib/session.js';
+	import { LIBRARY_TAB, openNotebook, openPaper, setWindowTitle } from '#lib/windows.js';
+	import { notebooks } from '#lib/notebooks/notebooks.svelte.js';
+	import { openNotebooks, openPapers, rememberView } from '#lib/session.js';
 	import { untrack } from 'svelte';
 	import { platform } from '#lib/platform/index.js';
 	import { readOptions, sortMenu, sortOptions } from '#lib/sort-menu.js';
@@ -59,10 +60,15 @@
 		if (reopened) return;
 		reopened = true;
 		const { getAllWebviewWindows } = await import('@tauri-apps/api/webviewWindow');
-		if ((await getAllWebviewWindows()).some((w) => w.label.startsWith('paper-'))) return;
+		if ((await getAllWebviewWindows()).some((w) => w.label.startsWith('paper-') || w.label.startsWith('notebook-'))) return;
 		for (const id of openPapers()) {
 			const paper = library.get(id);
 			if (paper) await openPaper(paper.id, paper.title);
+		}
+		await notebooks.reload();
+		for (const id of openNotebooks()) {
+			const n = notebooks.get(id);
+			if (n?.kind === 'notebook') await openNotebook(n.id, n.title);
 		}
 	}
 	// Web: a reader opened from this tab switches back to it (showLibrary).

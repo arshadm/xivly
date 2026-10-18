@@ -36,6 +36,7 @@
 		anchor,
 		assets,
 		title = 'Topic',
+		placeholder = 'Write your notes about this paper…',
 		editable = true
 	}: {
 		/** The notes as loaded (null: none yet). Read once: the editor owns the document after that. */
@@ -49,6 +50,8 @@
 		assets?: NoteAssets;
 		/** The paper's title (a new mind map's central topic). */
 		title?: string;
+		/** Shown while the document is empty. */
+		placeholder?: string;
 		editable?: boolean;
 	} = $props();
 
@@ -159,7 +162,7 @@
 				// ⌘E belongs to the app (the notes pane): inline code is `backticks` or the bar.
 				StarterKit.configure({ code: false, link: { openOnClick: false, autolink: true, defaultProtocol: 'https' } }),
 				Code.extend({ addKeyboardShortcuts: () => ({}) }),
-				Placeholder.configure({ placeholder: 'Write your notes about this paper…' }),
+				Placeholder.configure({ placeholder }),
 				PaperLink,
 				NotesFind,
 				TaskList,
@@ -310,7 +313,8 @@
 			{ label: 'Strikethrough', icon: 'icon-[lucide--strikethrough]', keys: `${mod}${shift}S`, on: () => run((c) => c.toggleStrike()), isActive: () => active('strike') },
 			{ label: 'Inline code', icon: 'icon-[lucide--code]', on: () => run((c) => c.toggleCode()), isActive: () => active('code') },
 			{ label: 'Link', icon: 'icon-[lucide--link]', on: editLink, isActive: () => active('link') },
-			{ label: 'Link to the page you’re reading', icon: 'icon-[lucide--file-symlink]', on: linkHere, disabled: () => !anchor?.() }
+			// Only where there's a page being read (a paper's notes; fixed for the editor's life).
+			...(untrack(() => anchor) ? [{ label: 'Link to the page you’re reading', icon: 'icon-[lucide--file-symlink]', on: linkHere, disabled: () => !anchor?.() }] : [])
 		],
 		[
 			{ label: 'Heading 1', icon: 'icon-[lucide--heading-1]', keys: `${alt}${mod}1`, on: () => run((c) => c.toggleHeading({ level: 1 })), isActive: () => active('heading', { level: 1 }) },
