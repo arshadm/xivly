@@ -383,3 +383,35 @@ describe('sync conflicts', () => {
 		expect(await r.findConflicts()).toEqual([]);
 	});
 });
+
+describe('notebooks', () => {
+	it('lists only folders with a notebook.json, keeping unknown fields', async () => {
+		const { fs, r } = await repo();
+		const n = await r.createNotebook('notebook', 'Ideas', { rank: 0 });
+		await fs.mkdir('notebooks/half-made');
+		await fs.write('notebooks/mine/notebook.json', enc.encode(JSON.stringify({ kind: 'folder', title: 'Mine', extra: [1] })));
+		const nodes = await r.listNotebooks();
+		expect(nodes.map((x) => x.id).sort()).toEqual(['ideas', 'mine']);
+		expect(nodes.find((x) => x.id === 'mine')).toMatchObject({ kind: 'folder', extra: [1] });
+		expect(n).toMatchObject({ id: 'ideas', kind: 'notebook', title: 'Ideas', rank: 0 });
+	});
+
+	it('keeps what was shown for a notebook.json that can’t be read', async () => {
+		const { fs, r } = await repo();
+		const n = await r.createNotebook('notebook', 'Ideas', { rank: 3 });
+		await fs.write('notebooks/ideas/notebook.json', enc.encode('{ half'));
+		expect(await r.listNotebooks(new Map([[n.id, n]]))).toEqual([n]);
+		expect((await r.listNotebooks())[0]).toMatchObject({ id: 'ideas', title: 'ideas' });
+		await expect(r.updateNotebook(n.id, { title: 'x' })).rejects.toThrow(/not valid JSON/);
+	});
+
+	it('updates without writing its id, and dates the change', async () => {
+		const { fs, r } = await repo();
+		await r.createNotebook('folder', 'F', { rank: 0 });
+		const n = await r.updateNotebook('f', (cur) => ({ title: `${cur.title}!`, parent: null }));
+		expect(n.title).toBe('F!');
+		const raw = await json(fs, 'notebooks/f/notebook.json');
+		expect(raw.id).toBeUndefined();
+		expect(raw.updated >= raw.created).toBe(true);
+	});
+});

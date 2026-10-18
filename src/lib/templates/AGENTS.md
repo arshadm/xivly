@@ -14,6 +14,7 @@ papers/<slug>/notes.md     the same notes as Markdown, rewritten on every save (
                            don't edit it: edit notes.json, or in Xivly)
 papers/<slug>/notes-assets/  images in the notes (notes.json / notes.md refer to them by this path)
 papers/<slug>/*            anything else you add (summary.md, code/, ...) is kept
+notebooks/<slug>/notebook.json  a research notebook or a folder of them (see below)
 .xivly/library.json        categories (id, name, color) and tags
 .xivly/hooks/              scripts run by the desktop app on events
                            (paper-added, paper-saved, paper-updated, paper-removed)
@@ -40,6 +41,25 @@ papers/<slug>/*            anything else you add (summary.md, code/, ...) is kep
 ```
 
 Unknown fields are preserved by Xivly, so you may add your own.
+
+## notebook.json
+
+Notebooks are kept in a tree of folders. Each folder and each notebook has its own
+`notebooks/<slug>/notebook.json`:
+
+```jsonc
+{
+  "kind": "notebook",              // or "folder" (holds notebooks and other folders)
+  "title": "Sparse attention",
+  "parent": "attention",           // the folder it's in; none: the top level
+  "rank": 1.5,                     // order among the items of its folder, lower first
+  "papers": ["2017-attention-is-all-you-need"],   // papers linked to it (ids in papers/)
+  "created": "2026-10-17T12:00:00Z",
+  "updated": "2026-10-17T12:00:00Z"
+}
+```
+
+Unknown fields are preserved here too.
 
 ## Tips for agents
 

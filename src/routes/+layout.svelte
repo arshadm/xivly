@@ -11,9 +11,10 @@
 	import { forgetCover } from '#lib/covers.js';
 	import { mayBeConflictCopy } from '#lib/conflicts.js';
 	import { forgetOpen } from '#lib/session.js';
-	import { onDiskChange, touchesLibrary, touchesPaper, watchLibrary } from '#lib/disk-changes.js';
+	import { onDiskChange, touchesLibrary, touchesNotebooks, touchesPaper, watchLibrary } from '#lib/disk-changes.js';
 	import { flushAll, hasUnsaved } from '#lib/flush.js';
 	import { library } from '#lib/library.svelte.js';
+	import { notebooks } from '#lib/notebooks/notebooks.svelte.js';
 	import { platform } from '#lib/platform/index.js';
 	import { settings } from '#lib/settings.svelte.js';
 	import { keys, matches } from '#lib/shortcuts.js';
@@ -162,6 +163,7 @@
 		if (library.status !== 'ready') return;
 		const id = page.route.id === '/read' ? searchParams(page.url).get('id') : null;
 		void (id ? library.reloadPaper(id) : library.reload());
+		if (!id) void notebooks.reload();
 	}
 
 	// Changes on disk while the app is open (above all, synced from another device): shown
@@ -169,6 +171,7 @@
 	$effect(() => {
 		if (library.status !== 'ready' || !library.repo) return;
 		const stopWatch = watchLibrary();
+		if (page.route.id !== '/read') void notebooks.reload();
 		const stop = onDiskChange((paths) => {
 			const id = page.route.id === '/read' ? searchParams(page.url).get('id') : null;
 			// A PDF saved elsewhere: its cover is drawn again.
@@ -176,6 +179,7 @@
 			// Two devices changed a file at once: the sync client's copy shows up (see conflicts.ts).
 			if (!id && paths.some(mayBeConflictCopy)) void library.scanConflicts();
 			if (id ? paths.some((p) => touchesPaper(id, p)) : paths.some(touchesLibrary)) void (id ? library.reloadPaper(id) : library.reload());
+			if (!id && paths.some(touchesNotebooks)) void notebooks.reload();
 		});
 		return () => {
 			stop();

@@ -4,6 +4,7 @@
 import { parseBookmarks } from './bookmarks';
 import { conflictKind, conflictsIn, mergeJson, mergeNotesDocs, type Conflict } from './conflicts';
 import { sha256 } from './duplicates';
+import { normalizeNode, type NotebookKind, type NotebookNode } from './notebooks/tree';
 import { isPaperPath } from './notes/images';
 import { notesToMarkdown } from './notes/markdown';
 import type { HookEvent, LibraryFs, Platform } from './platform';
@@ -449,6 +450,75 @@ export class Repo {
 			await this.fs.write(`papers/${id}/paper.pdf`, bytes);
 		});
 		this.#hook('paper-saved', id);
+	}
+
+	// ── Notebooks ─────────────────────────────────────────────────────────
+
+	/** A write to a notebook must never bring back a folder trashed meanwhile. */
+	async #notebookPresent(id: string) {
+		if (!(await this.fs.exists(`notebooks/${id}/notebook.json`))) throw new Error(`The notebook “${id}” is gone`);
+	}
+
+	/**
+	 * Every folder and notebook (see notebooks/tree.ts). A folder without notebook.json
+	 * (being created, or not one of ours) is left out; one that can't be read keeps what
+	 * `previous` showed, else shows under its folder name.
+	 */
+	async listNotebooks(previous?: ReadonlyMap<string, NotebookNode>): Promise<NotebookNode[]> {
+		const read = async (id: string): Promise<NotebookNode | null> => {
+			const path = `notebooks/${id}/notebook.json`;
+			try {
+				const raw = await this.#lock(path, () => this.#readJson<Json>(path));
+				return raw ? normalizeNode(id, raw) : null;
+			} catch {
+				return previous?.get(id) ?? normalizeNode(id, {});
+			}
+		};
+		if (!this.fs.readEach) {
+			const dirs = (await this.fs.list('notebooks').catch(() => [])).filter((e) => e.dir && !e.name.startsWith('.'));
+			return (await Promise.all(dirs.map((d) => read(d.name)))).filter((n): n is NotebookNode => !!n);
+		}
+		const files = await this.fs.readEach('notebooks', 'notebook.json').catch(() => []);
+		const nodes = await Promise.all(
+			files.map(async ({ name, text, error }) => {
+				if (text === null && !error) return null;
+				try {
+					if (text !== null && !error) return normalizeNode(name, JSON.parse(text));
+				} catch {
+					// Not valid JSON (mid-write by another program?): read alone.
+				}
+				return read(name);
+			})
+		);
+		return nodes.filter((n): n is NotebookNode => !!n);
+	}
+
+	/** A new folder or notebook, in a folder named after its title (ids reserved under a lock). */
+	async createNotebook(kind: NotebookKind, title: string, place: { parent?: string; rank: number }): Promise<NotebookNode> {
+		const at = new Date().toISOString();
+		const base = slugify(title, kind);
+		const id = await this.#lock('notebooks/', async () => {
+			let id = base;
+			for (let n = 2; await this.fs.exists(`notebooks/${id}`); n++) id = `${base}-${n}`;
+			await this.#writeJson(`notebooks/${id}/notebook.json`, { kind, title, ...(place.parent && { parent: place.parent }), rank: place.rank, created: at, updated: at });
+			return id;
+		});
+		return normalizeNode(id, { kind, title, parent: place.parent, rank: place.rank, created: at, updated: at });
+	}
+
+	/** Merge into notebook.json (a function gets the current content, normalized, under the lock). */
+	async updateNotebook(id: string, patch: Patch<NotebookNode>): Promise<NotebookNode> {
+		const next = await this.#patchJson<NotebookNode>(
+			`notebooks/${id}/notebook.json`,
+			(cur) => ({ ...(typeof patch === 'function' ? patch(normalizeNode(id, cur)) : patch), id: undefined, updated: new Date().toISOString() }),
+			() => this.#notebookPresent(id)
+		);
+		return normalizeNode(id, next);
+	}
+
+	/** To the trash, with its notes and chats (not what's inside a folder: those are items of their own). */
+	removeNotebook(id: string) {
+		return this.#lock(`notebooks/${id}/notebook.json`, () => this.fs.trash(`notebooks/${id}`));
 	}
 
 	// ── Sync conflicts ────────────────────────────────────────────────────

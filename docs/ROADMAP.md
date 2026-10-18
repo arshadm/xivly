@@ -157,6 +157,42 @@ Decided 2026-10-10:
 
 - [x] **7.1 Reading now and Up next.** A *Reading* view at the top of the sidebar, with counts. *Reading now* holds only papers you mark (right-click › *Mark as reading*), most recently opened first, with the page you're on. *Up next* is a queue in your order: right-click › *Add to Up next*, drag a row to reorder, or *Move to the top of Up next*; *Start reading* opens it and moves it to Reading now. Marking a paper read takes it off both. Stored per paper in `paper.json` (`reading`: when marked; `queue`: a rank, lower first), so reordering on one device changes only the paper moved.
 
+## Phase 8: Research notebooks
+
+Decided 2026-10-17:
+- **A tree of folders and notebooks** in a *Notebooks* section of the sidebar, below the views. Folders hold notebooks and other folders; only notebooks have content and a chat.
+- **One folder per item**, `notebooks/<id>/notebook.json` (`kind`, `title`, `parent`, `rank`, `papers`), so moving or renaming one item changes only its own file. Order among siblings is a rank, as in the reading list (7.1).
+- **A notebook opens in its own window**, one window per notebook (like papers).
+- **Linked papers:** a chip typed with `@` in the text, *Link paper…* in the notebook's left panel, or *Add to notebook…* from a paper's menu. Clicking one shows its PDF in the right pane, next to the text.
+- **Chat:** Claude sees the notebook text only. You add a paper's PDF or its notes by `@`-mentioning it in the question box (linked papers first, then the whole library). What's added stays in the conversation until it's cleared or summarized. *Clear* starts a new session; *Summarize* compresses the conversation into a summary that starts a new, smaller one. Old conversations are archived.
+
+**A. Data and tree**
+- [x] **8.1 Data model** (`src/lib/notebooks/`): `tree.ts` (pure: children in order, moves that can't put a folder inside itself, a parent that's missing or a loop edited by hand reads as the top level), `Repo` reads and writes `notebooks/<id>/notebook.json` (unknown fields kept), and the `notebooks` store: create, rename, move, delete (a folder's contents move up a level, or go too). Reloaded with the library (focus, changes on disk).
+  - *Test:* `tree.test.ts`, the notebook tests in `repo.test.ts`, `notebooks.test.ts`.
+- [ ] **8.2 Notebooks in the sidebar:** the tree below the views, expand and collapse (remembered on this device), **+ Folder** and **+ Notebook**, rename in place, delete (asks), right-click menu, an empty state.
+- [ ] **8.3 Moving between levels:** drag onto a folder, between items or to the top level (drop indicators), *Move to…* (a folder picker, for long trees), and keys. *Test:* an e2e test (move, reload, same order).
+
+**B. The notebook window**
+- [ ] **8.4 Its own window:** a `/notebook?id=` route, `openNotebook` (`windows.ts`), one window per notebook (as `ReaderLock`), the title edited in the header, reopened at launch with the papers (session).
+- [ ] **8.5 The editor:** `NotesEditor` and the saver made independent of papers, saving `notebooks/<id>/notes.json` (and `notes.md`); formatting, maths, mind maps and images come with them.
+- [ ] **8.6 Paper chips:** a `paperRef` node (`{paperId, page?, label}`), typed with `@` (linked papers first, then the library), clicked to open the paper in the right pane (at its page). A paper that's gone shows as missing. *Test:* the node and its Markdown, linked papers from the document.
+
+**C. Linked papers**
+- [ ] **8.7 Left panel:** linked papers (chips in the text, plus the notebook's `papers`), each with title, authors and year and how often the text mentions it; *Link paper…* (search), unlink (a paper still mentioned says so). Toggled from the header.
+- [ ] **8.7b Add to notebook… from a paper:** in its right-click menu (library cards and rows) and the reader's menu. A notebook picker (searchable, with each notebook's folder, recently used first, *New notebook…*); notebooks that have it are ticked, and picking one again unlinks it. An open notebook's panel updates at once. *Test:* unit (link, unlink, no duplicates) and e2e (link from the library, see it in the notebook).
+- [ ] **8.8 PDF in the right pane:** the right pane's **Paper** tab shows the linked paper's PDF (the reader's pages, read only), chips with a page jump there, *Open in reader*, the width remembered. Not downloaded yet or missing: as in the reader (6.4).
+
+**D. Chat**
+- [ ] **8.9 Claude for a notebook:** `claude_run` for a notebook or a paper, with the folders Claude may read added (`--add-dir`, a mentioned paper's folder) and `Read` only. The notebook text goes in as Markdown on the first question and again whenever it changed. *Test:* cargo tests for the arguments.
+- [ ] **8.10 Chat tab:** `ChatPane` in the right pane's **Chat** tab, conversations in `notebooks/<id>/chats/`. Desktop only (the `Platform` convention).
+- [ ] **8.11 `@` in the question box:** each paper twice, *· PDF* and *· notes* (its notes and highlights as Markdown); a paper not linked yet offers to link it. What's in the conversation shows as chips above the box (kept in the chat file); each is attached once. *Test:* unit tests for the prompt.
+- [ ] **8.12 Clear and Summarize:** *Clear* archives the conversation (`chats/archive/`) and starts a new session. *Summarize* asks Claude for a short summary, archives, and starts a new session from it (the chips say *summarized*; mention a paper again to add it in full). A meter from the tokens Claude reports shows when it's getting large. Archived conversations can be read.
+
+**E. Sync**
+- [ ] **8.13 Notebooks through the synced folder:** conflict copies of notebook files are found and resolved (6.5), changes from another device show at once (6.2), two devices moving the same item end the same.
+
+**Later:** a reader tab listing the notebooks that link the paper; *Add to notebook* on a chat answer; search across notebooks; drag a paper from the library onto a notebook; export a notebook (Markdown, PDF).
+
 ## Order
 
 1. **0 → 1:** quick wins that set up the anchor type.
@@ -165,3 +201,4 @@ Decided 2026-10-10:
 4. **4:** builds on the notes tab.
 5. **5:** mind maps as blocks in the notes.
 6. **6.1 early, the rest last:** 6.1 is cheap and prevents conflicts later.
+7. **8:** notebooks; A and B first, then C and D in either order, E last.

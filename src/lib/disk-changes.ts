@@ -20,5 +20,8 @@ export function onDiskChange(fn: Listener): () => void {
 /** Whether a change touches what the library shows: a paper's metadata, a paper added or removed, categories, where papers were read. */
 export const touchesLibrary = (path: string) => /^papers\/[^/]+(\/paper\.(json|pdf))?$/.test(path) || path === '.xivly/library.json' || path.startsWith('.xivly/devices/');
 
+/** Whether a change touches the notebooks tree: a notebook.json, or a notebook's folder added or removed. */
+export const touchesNotebooks = (path: string) => /^notebooks\/[^/]+(\/notebook\.json)?$/.test(path);
+
 /** Whether a change touches one paper as its reader shows it (its metadata, categories, where it was read). */
 export const touchesPaper = (id: string, path: string) => path === `papers/${id}/paper.json` || path === '.xivly/library.json' || path.startsWith('.xivly/devices/');
