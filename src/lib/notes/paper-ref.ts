@@ -1,5 +1,5 @@
-// A link from a notebook to a paper of the library: an inline chip ("Vaswani 2017",
-// or "Vaswani 2017, p. 5" for a place in it), typed with @. In notes.json:
+// A link from a notebook to a paper of the library: an inline chip ("Vaswani 2017 · Attention…",
+// or "Vaswani 2017 · Attention…, p. 5" for a place in it), typed with @. In notes.json:
 // { type: 'paperRef', attrs: { paperId, page, label } }; `label` is the chip's text when
 // it was made, shown if the paper is gone. In notes.md: a link to the paper's PDF.
 import { Extension, Node, type Editor, type Range } from '@tiptap/core';
@@ -24,10 +24,18 @@ export function refLabel(p: Pick<Paper, 'title' | 'authors' | 'year'>): string {
 	return p.title.length > 40 ? `${p.title.slice(0, 38).trimEnd()}…` : p.title;
 }
 
+/** A chip's text: refLabel and the start of the title ("Vaswani et al. 2017 · Attention…"), to tell an author's papers apart. */
+export function chipLabel(p: Pick<Paper, 'title' | 'authors' | 'year'>): string {
+	const label = refLabel(p);
+	const title = p.title.trim();
+	if (!p.authors?.[0]?.trim() || !title) return label;
+	return `${label} · ${title.length > 10 ? `${title.slice(0, 10).trimEnd()}…` : title}`;
+}
+
 const withPage = (label: string, page: number | null | undefined) => (page ? `${label}, p. ${Math.floor(page)}` : label);
 
 /** A chip for a paper (at a page), as editor content. */
-export const paperRefNode = (p: Paper, page?: number) => ({ type: 'paperRef', attrs: { paperId: p.id, page: page ?? null, label: refLabel(p) } });
+export const paperRefNode = (p: Paper, page?: number) => ({ type: 'paperRef', attrs: { paperId: p.id, page: page ?? null, label: chipLabel(p) } });
 
 /** Papers for what's typed after @ (words in any order, in the title, authors, year or arXiv id): linked ones first, then the rest, newest first. */
 export function searchPapers(papers: readonly Paper[], query: string, linked: ReadonlySet<string>, limit = 8): Paper[] {
@@ -104,7 +112,7 @@ export const PaperRef = Node.create<{ refs: PaperRefs | null }>({
 			dom.dataset.paperRef = paperId;
 			dom.setAttribute('role', 'link');
 			if (!paper && this.options.refs) dom.dataset.missing = '';
-			dom.textContent = withPage(paper ? refLabel(paper) : label || paperId, page);
+			dom.textContent = withPage(paper ? chipLabel(paper) : label || paperId, page);
 			dom.title = paper ? `${paper.title}${page ? ` (p. ${Math.floor(page)})` : ''}` : 'This paper is no longer in the library';
 			return { dom };
 		};

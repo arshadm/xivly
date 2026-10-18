@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { normalizePaper } from '#lib/repo.js';
 import type { NotesDoc } from '#lib/types.js';
 import { notesToMarkdown } from './markdown';
-import { paperRefMarkdown, paperRefNode, paperRefsIn, refLabel, searchPapers } from './paper-ref';
+import { chipLabel, paperRefMarkdown, paperRefNode, paperRefsIn, refLabel, searchPapers } from './paper-ref';
 
 const paper = (id: string, meta: Record<string, unknown>) => normalizePaper(id, meta);
 const attention = paper('2017-attention', { title: 'Attention Is All You Need', authors: ['Ashish Vaswani', 'Noam Shazeer', 'Niki Parmar'], year: 2017, arxiv: '1706.03762' });
@@ -16,6 +16,14 @@ describe('refLabel', () => {
 		expect(refLabel(bert)).toBe('Devlin & Chang 2018');
 		expect(refLabel(resnet)).toBe('He 2015');
 		expect(refLabel(untitled)).toBe('A very long title that goes on and on…');
+	});
+});
+
+describe('chipLabel', () => {
+	it('adds the start of the title', () => {
+		expect(chipLabel(attention)).toBe('Vaswani et al. 2017 · Attention…');
+		expect(chipLabel(paper('y', { title: 'Short', authors: ['Kaiming He'], year: 2015 }))).toBe('He 2015 · Short');
+		expect(chipLabel(untitled)).toBe('A very long title that goes on and on…');
 	});
 });
 
@@ -46,7 +54,7 @@ describe('chips in a document', () => {
 	});
 
 	it('are links to the papers’ PDFs in notes.md', () => {
-		expect(paperRefMarkdown(paperRefNode(bert, 5.5).attrs)).toBe('[Devlin & Chang 2018, p. 5](../../papers/2018-bert/paper.pdf#page=5)');
-		expect(notesToMarkdown(doc)).toContain('[Vaswani et al. 2017](../../papers/2017-attention/paper.pdf) and [Devlin & Chang 2018, p. 5]');
+		expect(paperRefMarkdown(paperRefNode(bert, 5.5).attrs)).toBe('[Devlin & Chang 2018 · BERT: Pre-…, p. 5](../../papers/2018-bert/paper.pdf#page=5)');
+		expect(notesToMarkdown(doc)).toContain('[Vaswani et al. 2017 · Attention…](../../papers/2017-attention/paper.pdf) and [Devlin & Chang 2018 · BERT: Pre-…, p. 5]');
 	});
 });
