@@ -291,22 +291,37 @@ test('a library of 1500 papers stays fast: only the cards on screen are rendered
 	expect(errs).toEqual([]);
 });
 
-test('a paper reopens as zoomed and scrolled as it was left', async ({ page, context }) => {
-	const reader = await addPaper(page, context);
+test('a paper reopens at its page, as zoomed and scrolled as it was left', async ({ page, context }) => {
+	await startLibrary(page);
+	await page.getByRole('button', { name: 'Add papers' }).click();
+	const chooser = page.waitForEvent('filechooser');
+	await page.getByRole('button', { name: /Drop PDF files/ }).click();
+	await (await chooser).setFiles(`${test.info().project.testDir}/fixtures/pages.pdf`);
+	const reader = await readerTab(context);
 	const errs = errors(reader);
-	const pages = reader.locator('[data-pdf-page]').first();
+	const viewport = reader.locator('[data-pdf-viewport]');
 	await expect(reader.locator('canvas').first()).toBeVisible();
-	const width = async () => (await pages.boundingBox())!.width;
+	const width = async () => (await reader.locator('[data-pdf-page]').first().boundingBox())!.width;
+	const current = () => reader.locator('[data-pdf-page][data-current]').first().getAttribute('data-pdf-page');
 	const before = await width();
 	for (let i = 0; i < 3; i++) await reader.getByRole('button', { name: 'Zoom in' }).click();
 	await expect.poll(width).toBeGreaterThan(before + 20);
 	// Once the zoom has eased in.
 	let zoomed = 0;
 	await expect.poll(async () => zoomed === (zoomed = await width())).toBe(true);
-	await expect.poll(() => devicesFile(reader), { timeout: 5000 }).toMatch(/"view": \{[\s\S]*"mode": "manual"/);
+	// Down to page 4, and across.
+	await viewport.evaluate((el) => el.scrollTo({ top: (el.scrollHeight * 3.4) / 6, left: (el.scrollWidth - el.clientWidth) / 2, behavior: 'instant' }));
+	await expect.poll(current).toBe('4');
+	const left = await viewport.evaluate((el) => el.scrollLeft);
+	await expect.poll(() => devicesFile(reader), { timeout: 5000 }).toMatch(/"position": 4\.[\s\S]*"view": \{[\s\S]*"mode": "manual"/);
 	await reader.reload();
 	await expect(reader.locator('canvas').first()).toBeVisible();
+	await expect.poll(current).toBe('4');
 	await expect.poll(width).toBeCloseTo(zoomed, -1);
+	expect(Math.abs((await viewport.evaluate((el) => el.scrollLeft)) - left)).toBeLessThan(10);
+	// Still there a moment later (nothing carries it back to the first page).
+	await reader.waitForTimeout(800);
+	expect(await current()).toBe('4');
 	expect(errs).toEqual([]);
 });
 
@@ -1572,6 +1587,51 @@ async function openNewNotebook(page: Page, context: BrowserContext, name: string
 	await expect(tab.getByRole('textbox', { name: 'Notebook title' })).toHaveValue(name);
 	return tab;
 }
+
+test('a notebook reopens with its paper at its page, as zoomed and scrolled as it was left', async ({ page, context }) => {
+	const many = 'A Paper of Many Pages';
+	await startLibrary(page);
+	await page.getByRole('button', { name: 'Add papers' }).click();
+	const chooser = page.waitForEvent('filechooser');
+	await page.getByRole('button', { name: /Drop PDF files/ }).click();
+	await (await chooser).setFiles(`${test.info().project.testDir}/fixtures/pages.pdf`);
+	await readerTab(context);
+	await page.bringToFront();
+	await page.getByRole('button', { name: 'New notebook' }).click();
+	await page.getByRole('textbox', { name: 'Name' }).fill('Long reads');
+	await page.keyboard.press('Enter');
+	await page.getByRole('button', { name: new RegExp(many) }).click({ button: 'right' });
+	await page.getByRole('menuitem', { name: 'Add to notebook…' }).click();
+	await page.getByRole('option', { name: /Long reads/ }).click();
+	const opened = context.waitForEvent('page');
+	await page.getByRole('treeitem', { name: 'Long reads' }).click();
+	const tab = await opened;
+	const errs = errors(tab);
+	await tab.getByRole('complementary', { name: 'Linked papers' }).getByRole('button', { name: new RegExp(`^${many}`) }).click();
+	await expect(tab.locator('canvas').first()).toBeVisible();
+
+	const viewport = tab.getByLabel(`Pages of ${many}`);
+	const width = async () => (await tab.locator('[data-pdf-page]').first().boundingBox())!.width;
+	const current = () => tab.locator('[data-pdf-page][data-current]').first().getAttribute('data-pdf-page');
+	const before = await width();
+	for (let i = 0; i < 3; i++) await tab.getByRole('button', { name: 'Zoom in' }).click();
+	await expect.poll(width).toBeGreaterThan(before + 20);
+	let zoomed = 0;
+	await expect.poll(async () => zoomed === (zoomed = await width())).toBe(true);
+	await viewport.evaluate((el) => el.scrollTo({ top: (el.scrollHeight * 4.4) / 6, left: (el.scrollWidth - el.clientWidth) / 3, behavior: 'instant' }));
+	await expect.poll(current).toBe('5');
+	const left = await viewport.evaluate((el) => el.scrollLeft);
+	await expect.poll(() => devicesFile(tab), { timeout: 5000 }).toMatch(/"notebooks"[\s\S]*"position": 5\./);
+
+	await tab.reload();
+	await expect(tab.locator('canvas').first()).toBeVisible();
+	await expect.poll(current).toBe('5');
+	await expect.poll(width).toBeCloseTo(zoomed, -1);
+	expect(Math.abs((await viewport.evaluate((el) => el.scrollLeft)) - left)).toBeLessThan(10);
+	await tab.waitForTimeout(800);
+	expect(await current()).toBe('5');
+	expect(errs).toEqual([]);
+});
 
 test('notebooks link papers: @ opens a menu of papers, ↵ inserts a chip that stays after a reload', async ({ page, context }) => {
 	const errs = errors(page);

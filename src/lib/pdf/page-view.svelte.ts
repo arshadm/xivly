@@ -16,12 +16,25 @@ export function pageViewOf(v: ViewerState): PageView {
 	return { position: Number(v.position.toFixed(3)), mode: v.zoomMode, zoom: Number(v.zoom.toFixed(3)), cross: a && a[1] > 1 ? Number((a[0] / a[1]).toFixed(3)) : undefined };
 }
 
+const frame = () => new Promise(requestAnimationFrame);
+
+/** Once a zoom change is laid out: not easing in, and the same zoom two frames running. */
+async function settled(v: ViewerState) {
+	let last = NaN;
+	for (let i = 0; i < 60; i++) {
+		await frame();
+		if (!v.isZooming && v.zoom === last) return;
+		last = v.zoom;
+	}
+}
+
 /** Show the pages at `position` (none: where they are), zoomed and scrolled across as in `view`. */
 export async function showPageView(v: ViewerState, position?: number, view?: PageView | null) {
 	if (view) {
-		if (view.mode === 'manual') v.zoomTo(view.zoom, { animate: false });
+		// Set outright: zoomTo eases (or previews) in about the viewport's center, and would carry the page shown back there.
+		if (view.mode === 'manual') v.zoom = view.zoom;
 		else v.zoomMode = view.mode;
-		await new Promise(requestAnimationFrame);
+		await settled(v);
 	}
 	if (position) await v.restorePosition(position);
 	const a = across(v);
