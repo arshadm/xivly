@@ -169,8 +169,8 @@ Decided 2026-10-17:
 **A. Data and tree**
 - [x] **8.1 Data model** (`src/lib/notebooks/`): `tree.ts` (pure: children in order, moves that can't put a folder inside itself, a parent that's missing or a loop edited by hand reads as the top level), `Repo` reads and writes `notebooks/<id>/notebook.json` (unknown fields kept), and the `notebooks` store: create, rename, move, delete (a folder's contents move up a level, or go too). Reloaded with the library (focus, changes on disk).
   - *Test:* `tree.test.ts`, the notebook tests in `repo.test.ts`, `notebooks.test.ts`.
-- [ ] **8.2 Notebooks in the sidebar:** the tree below the views, expand and collapse (remembered on this device), **+ Folder** and **+ Notebook**, rename in place, delete (asks), right-click menu, an empty state.
-- [ ] **8.3 Moving between levels:** drag onto a folder, between items or to the top level (drop indicators), *Move to…* (a folder picker, for long trees), and keys. *Test:* an e2e test (move, reload, same order).
+- [x] **8.2 Notebooks in the sidebar** (`NotebookTree.svelte`): the tree below the views, folders open and close on a click (remembered on this device), **+ Folder** and **+ Notebook** (named in place), rename (double-click or F2), delete (asks; a folder with something in it: keep what's inside, moved up where the folder was, or delete everything), right-click menu, ↑ ↓ ← → between rows, an empty state.
+- [x] **8.3 Moving between levels:** drag onto a folder's middle (into it; a closed folder opens when held over), onto a row's edge (beside it) or below the tree (the top level), with drop indicators; *Move to…* (a folder picker that filters as you type, `MoveToDialog.svelte`); ⌥↑ ⌥↓ among neighbors, ⌥← out of its folder, ⌥→ into the folder above. *Test:* an e2e test (new, rename, drag, Move to…, keys, reload, delete a folder).
 
 **B. The notebook window**
 - [ ] **8.4 Its own window:** a `/notebook?id=` route, `openNotebook` (`windows.ts`), one window per notebook (as `ReaderLock`), the title edited in the header, reopened at launch with the papers (session).

@@ -56,7 +56,7 @@ async function addPaper(page: Page, context: BrowserContext) {
 async function writesDone(page: Page) {
 	const writing = async () => {
 		const { held = [], pending = [] } = await navigator.locks.query();
-		return [...held, ...pending].filter((l) => l.name?.startsWith('xivly:papers/')).length;
+		return [...held, ...pending].filter((l) => l.name?.startsWith('xivly:papers/') || l.name?.startsWith('xivly:notebooks/')).length;
 	};
 	await expect.poll(() => page.evaluate(writing)).toBe(0);
 }
@@ -1426,5 +1426,60 @@ test('the reading list: up next in my order (menu, drag, move to top), reading n
 	await expect.poll(order).toEqual(['Beta paper', 'Alpha paper']);
 	await page.getByRole('button', { name: 'Mark “Gamma paper” as read' }).click();
 	await expect(page.getByText('Nothing yet. Right-click a paper')).toBeVisible();
+	expect(errs).toEqual([]);
+});
+
+test('notebooks: folders and notebooks in the sidebar, renamed, moved by drag, Move to… and keys, kept after a reload', async ({ page }) => {
+	const errs = errors(page);
+	await startLibrary(page);
+	const tree = page.getByRole('tree', { name: 'Notebooks' });
+	const item = (name: string) => page.getByRole('treeitem', { name, exact: true });
+
+	// A new item is named in place.
+	await page.getByRole('button', { name: 'New folder' }).click();
+	await page.getByRole('textbox', { name: 'Name' }).fill('Attention');
+	await page.keyboard.press('Enter');
+	for (const name of ['Sparse variants', 'Linear attention']) {
+		await page.getByRole('button', { name: 'New notebook' }).click();
+		await page.getByRole('textbox', { name: 'Name' }).fill(name);
+		await page.keyboard.press('Enter');
+	}
+	await expect(tree.getByRole('treeitem')).toHaveText(['Attention', 'Sparse variants', 'Linear attention']);
+
+	// Dragged onto the folder's middle: inside it (the folder opens).
+	await item('Sparse variants').dragTo(item('Attention'));
+	await expect(item('Attention')).toHaveAttribute('aria-expanded', 'true');
+	await expect(item('Sparse variants')).toHaveAttribute('aria-level', '2');
+
+	// Move to…: back to the top level.
+	await item('Linear attention').click({ button: 'right' });
+	await page.getByRole('menuitem', { name: 'Move to…' }).click();
+	await page.getByRole('button', { name: 'Attention' }).click();
+	await expect(item('Linear attention')).toHaveAttribute('aria-level', '2');
+	await expect(tree.getByRole('treeitem')).toHaveText(['Attention', 'Sparse variants', 'Linear attention']);
+
+	// ⌥↑ moves it up among its neighbors, ⌥← out of the folder.
+	await item('Linear attention').focus();
+	await page.keyboard.press('Alt+ArrowUp');
+	await expect(tree.getByRole('treeitem')).toHaveText(['Attention', 'Linear attention', 'Sparse variants']);
+	await page.keyboard.press('Alt+ArrowLeft');
+	await expect(item('Linear attention')).toHaveAttribute('aria-level', '1');
+
+	// Renamed with F2; then everything is as it was after a reload (the folder still open).
+	await item('Sparse variants').focus();
+	await page.keyboard.press('F2');
+	await page.getByRole('textbox', { name: 'Name' }).fill('Sparse attention');
+	await page.keyboard.press('Enter');
+	await expect(item('Sparse attention')).toBeVisible();
+	await writesDone(page);
+	await page.reload();
+	await expect(tree.getByRole('treeitem')).toHaveText(['Attention', 'Sparse attention', 'Linear attention']);
+	await expect(item('Sparse attention')).toHaveAttribute('aria-level', '2');
+
+	// Deleting a folder with something in it: what's inside can stay.
+	await item('Attention').click({ button: 'right' });
+	await page.getByRole('menuitem', { name: 'Delete…' }).click();
+	await page.getByRole('button', { name: 'Keep what’s inside' }).click();
+	await expect(tree.getByRole('treeitem')).toHaveText(['Sparse attention', 'Linear attention']);
 	expect(errs).toEqual([]);
 });

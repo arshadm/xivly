@@ -8,6 +8,7 @@
 	import { keys } from '#lib/shortcuts.js';
 	import { fileManager } from '#lib/os.js';
 	import type { CategoryColor, ColorName } from '#lib/types.js';
+	import NotebookTree from '#lib/notebooks/NotebookTree.svelte';
 	import Tip from '#lib/ui/Tip.svelte';
 	import { contextMenu, type MenuItem } from '#lib/ui/context-menu.svelte.js';
 	import { prompts } from '#lib/ui/prompt.svelte.js';
@@ -118,6 +119,8 @@
 			<span class="icon-[lucide--rss] size-4 text-stone-500"></span><span class="flex-1">arXiv feed</span>
 			{#if feed.triage}<span class="text-xs text-muted tabular-nums" title="P1–P3 papers not added or dismissed">{feed.triage}</span>{/if}
 		</button>
+
+		<NotebookTree />
 
 		<div class="mt-5 mb-1 flex items-center justify-between px-2 text-[11px] font-medium tracking-wide text-muted uppercase">
 			Categories

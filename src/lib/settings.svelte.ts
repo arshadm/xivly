@@ -104,6 +104,8 @@ const defaults = {
 	readFilter: 'all' as 'all' | 'unread' | 'read',
 	/** What "Recent" covers: papers opened within the last day, week or month. */
 	recentWindow: 'week' as RecentWindow,
+	/** The notebook folders open in the sidebar (on this device). */
+	notebooksExpanded: [] as readonly string[],
 
 	// Desktop
 	hookToasts: 'errors' as 'all' | 'errors' | 'off',
@@ -269,6 +271,7 @@ const validators: Partial<Record<string, (v: unknown) => boolean>> = {
 	paneTab: (v) => v === 'notes' || v === 'chat',
 	recentWindow: (v) => typeof v === 'string' && v in recentWindows,
 	freetextFont: (v) => FREETEXT_FONT_FAMILIES.includes(v as FreeTextFontFamily),
+	notebooksExpanded: (v) => Array.isArray(v) && v.every((id) => typeof id === 'string'),
 	noteEmojis: (v) => Array.isArray(v) && v.length === defaultNoteEmojis.length && v.every((e) => typeof e === 'string' && isSingleEmoji(e))
 };
 
