@@ -82,6 +82,7 @@
 	import Tabs from '#lib/ui/Tabs.svelte';
 	import Tip from '#lib/ui/Tip.svelte';
 	import ZoomSelect from '#lib/ui/ZoomSelect.svelte';
+	import PaperNotebooks from '#lib/notebooks/PaperNotebooks.svelte';
 	import ZoomSlider from '#lib/ui/ZoomSlider.svelte';
 	import { contextMenuState, isEditable, setFallbackMenu, type MenuItem } from '#lib/ui/context-menu.svelte.js';
 
@@ -117,7 +118,7 @@
 	let store = $state<AnnotationStore>();
 	let paperState = $state<PaperState>();
 	let annotations = $state.raw<Annotation[]>([]);
-	type Panel = 'contents' | 'pages' | 'figures' | 'references' | 'notes' | 'bookmarks' | 'search' | 'info';
+	type Panel = 'contents' | 'pages' | 'figures' | 'references' | 'notes' | 'bookmarks' | 'notebooks' | 'search' | 'info';
 	let panel = $state<Panel>('contents');
 	let panelOpen = $state(untrack(() => settings.values.sidePanel));
 	let findInput = $state<HTMLInputElement | null>(null);
@@ -483,6 +484,7 @@
 		[keys.panelReferences, 'references'],
 		[keys.panelNotes, 'notes'],
 		[keys.panelBookmarks, 'bookmarks'],
+		[keys.panelNotebooks, 'notebooks'],
 		[keys.panelInfo, 'info']
 	];
 
@@ -869,6 +871,7 @@
 													{ value: 'references', label: '', tip: 'References', shortcut: keys.panelReferences, icon: 'icon-[lucide--quote]' },
 													{ value: 'notes', label: '', tip: 'Notes', shortcut: keys.panelNotes, badge: annotations.length || undefined, icon: icons.notes },
 													{ value: 'bookmarks', label: '', tip: 'Bookmarks', shortcut: keys.panelBookmarks, badge: bookmarks.length || undefined, icon: 'icon-[lucide--bookmark]' },
+													{ value: 'notebooks', label: '', tip: 'Notebooks', shortcut: keys.panelNotebooks, icon: 'icon-[lucide--notebook-text]' },
 													{ value: 'search', label: '', tip: 'Find', shortcut: keys.find, icon: icons.search },
 													{ value: 'info', label: '', tip: 'Paper info', shortcut: keys.panelInfo, icon: 'icon-[lucide--info]' }
 												]}
@@ -928,6 +931,8 @@
 															</Annotations.List>
 														{:else if tab === 'bookmarks'}
 															<BookmarksPanel {bookmarks} onadd={() => addBookmark()} ongo={goToBookmark} onrename={renameBookmark} onremove={removeBookmark} />
+														{:else if tab === 'notebooks'}
+															{#if paper}<PaperNotebooks {paper} active={panelOpen && panel === 'notebooks'} />{/if}
 														{:else if tab === 'search'}
 															<div class="space-y-2 pt-1 pb-2">
 																<div class="flex items-center gap-1 rounded-md border border-edge bg-white px-2 focus-within:ring-2 focus-within:ring-blue-500 dark:focus-within:ring-blue-400 dark:bg-stone-900">

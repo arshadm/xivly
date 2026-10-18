@@ -4,6 +4,7 @@
 	a moment after you stop typing.
 -->
 <script lang="ts" module>
+	import { broadcast } from '#lib/broadcast.js';
 	import { onFlush } from '#lib/flush.js';
 	import { library } from '#lib/library.svelte.js';
 	import type { NotesDoc, PaperAnchor } from '#lib/types.js';
@@ -19,7 +20,7 @@
 		const repo = library.repo!;
 		return kind === 'paper'
 			? { dir: `papers/${id}`, read: () => repo.readNotes(id), save: (doc: NotesDoc) => repo.saveNotes(id, doc), saveAsset: (b: Uint8Array, ext: string) => repo.saveNoteAsset(id, b, ext), readFile: (p: string) => repo.readPaperFile(id, p) }
-			: { dir: `notebooks/${id}`, read: () => repo.readNotebookNotes(id), save: (doc: NotesDoc) => repo.saveNotebookNotes(id, doc), saveAsset: (b: Uint8Array, ext: string) => repo.saveNotebookAsset(id, b, ext), readFile: (p: string) => repo.readNotebookFile(id, p) };
+			: { dir: `notebooks/${id}`, read: () => repo.readNotebookNotes(id), save: (doc: NotesDoc) => repo.saveNotebookNotes(id, doc).then((r) => (void broadcast('notebook-changed', { id }), r)), saveAsset: (b: Uint8Array, ext: string) => repo.saveNotebookAsset(id, b, ext), readFile: (p: string) => repo.readNotebookFile(id, p) };
 	}
 
 	// One saver per paper (or notebook), outliving the pane: hiding it (⌘E) mid-save loses

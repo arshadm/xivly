@@ -11,10 +11,11 @@
 	import { forgetCover } from '#lib/covers.js';
 	import { mayBeConflictCopy } from '#lib/conflicts.js';
 	import { forgetNotebook, forgetOpen } from '#lib/session.js';
-	import { onDiskChange, touchesLibrary, touchesNotebooks, touchesPaper, watchLibrary } from '#lib/disk-changes.js';
+	import { onDiskChange, touchesLibrary, touchesNotebooks, touchesNotebookText, touchesPaper, watchLibrary } from '#lib/disk-changes.js';
 	import { flushAll, hasUnsaved } from '#lib/flush.js';
 	import { library } from '#lib/library.svelte.js';
 	import { notebooks } from '#lib/notebooks/notebooks.svelte.js';
+	import { onBroadcast } from '#lib/broadcast.js';
 	import { platform } from '#lib/platform/index.js';
 	import { settings } from '#lib/settings.svelte.js';
 	import { keys, matches } from '#lib/shortcuts.js';
@@ -160,6 +161,9 @@
 		}
 	}
 
+	// A notebook's text saved in another window: search and a paper's Notebooks tab read it again.
+	$effect(() => onBroadcast('notebook-changed', () => notebooks.textsChanged()));
+
 	// Pick up changes made outside the app (Finder, iCloud, agents, hooks, other windows).
 	// A reader window only refreshes its own paper.
 	function onfocus() {
@@ -183,6 +187,7 @@
 			if (!id && paths.some(mayBeConflictCopy)) void library.scanConflicts();
 			if (id ? paths.some((p) => touchesPaper(id, p)) : paths.some(touchesLibrary)) void (id ? library.reloadPaper(id) : library.reload());
 			if (!id && paths.some(touchesNotebooks)) void notebooks.reload();
+			if (paths.some(touchesNotebookText)) notebooks.textsChanged();
 		});
 		return () => {
 			stop();

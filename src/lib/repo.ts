@@ -471,6 +471,24 @@ export class Repo {
 		return out;
 	}
 
+	/** Every notebook's text as Markdown (notes.md; folders have none), for search and the papers each one mentions. */
+	async readAllNotebookTexts(): Promise<Map<string, string>> {
+		if (!(await this.fs.exists('notebooks'))) return new Map();
+		const files = this.fs.readEach
+			? await this.fs.readEach('notebooks', 'notes.md')
+			: await Promise.all(
+					(await this.fs.list('notebooks'))
+						.filter((e) => e.dir && !e.name.startsWith('.'))
+						.map(async ({ name }) => {
+							const bytes = await this.fs.read(`notebooks/${name}/notes.md`).catch(() => null);
+							return { name, text: bytes ? dec.decode(bytes) : null, error: false };
+						})
+				);
+		const out = new Map<string, string>();
+		for (const { name, text } of files) if (text) out.set(name, text);
+		return out;
+	}
+
 	readPdf(id: string) {
 		return this.fs.read(`papers/${id}/paper.pdf`);
 	}

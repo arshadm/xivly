@@ -4,6 +4,7 @@
 import { broadcast } from '#lib/broadcast.js';
 import { library } from '#lib/library.svelte.js';
 import type { Repo } from '#lib/repo.js';
+import { mentionedPapers, searchNotebooks } from './search';
 import { canMove, childrenOf, loopCuts, parents, rankIn, ranksBetween, subtree, type NotebookKind, type NotebookNode } from './tree';
 
 class Notebooks {
@@ -16,6 +17,11 @@ class Notebooks {
 	#repo: Repo | null = null;
 	/** Bumped by every change made here: a reload that read the folder before it reads again. */
 	#changes = 0;
+	/** Each notebook's text (notes.md), for search and the papers it mentions: read once asked for (`loadTexts`). */
+	texts = $state.raw<ReadonlyMap<string, string>>(new Map());
+	#textsAt = 0;
+	#textsWanted = false;
+	#textsTimer: ReturnType<typeof setTimeout> | undefined;
 
 	#need(): Repo {
 		const repo = library.repo;
@@ -28,7 +34,9 @@ class Notebooks {
 		const repo = library.repo;
 		if (!repo) return;
 		// Another library: nothing of the old one is kept.
-		if (repo !== this.#repo) [this.#repo, this.nodes, this.loaded] = [repo, [], false];
+		if (repo !== this.#repo) [this.#repo, this.nodes, this.loaded, this.texts, this.#textsAt] = [repo, [], false, new Map(), 0];
+		// Their texts too, once something reads them (a search, a paper's Notebooks tab).
+		if (this.#textsWanted) void this.loadTexts(1000);
 		try {
 			let nodes: NotebookNode[];
 			let before: number;
@@ -49,6 +57,41 @@ class Notebooks {
 
 	get(id: string) {
 		return this.nodes.find((n) => n.id === id);
+	}
+
+	/** Read every notebook's text, unless done within `maxAge` ms (a search runs it as you type). */
+	async loadTexts(maxAge = 10_000) {
+		const repo = library.repo;
+		this.#textsWanted = true;
+		if (!repo || Date.now() - this.#textsAt < maxAge) return;
+		this.#textsAt = Date.now();
+		try {
+			const texts = await repo.readAllNotebookTexts();
+			if (repo === library.repo) this.texts = texts;
+		} catch (e) {
+			console.warn('notebooks not searchable', e);
+		}
+	}
+
+	/** A notebook's text changed on disk: read again a moment later (saves come every few seconds while typing), if anything here reads them. */
+	textsChanged() {
+		if (!this.#textsWanted) return;
+		clearTimeout(this.#textsTimer);
+		this.#textsTimer = setTimeout(() => void this.loadTexts(0), 400);
+	}
+
+	/** Notebooks with the phrase in their title or text (see `loadTexts`). */
+	search(query: string) {
+		return searchNotebooks(this.nodes, this.texts, query);
+	}
+
+	/** The notebooks that link a paper (by hand, or chips in the text: how many), by title. */
+	linking(paperId: string): { node: NotebookNode; byHand: boolean; mentions: number }[] {
+		return this.nodes
+			.filter((n) => n.kind === 'notebook')
+			.map((node) => ({ node, byHand: node.papers.includes(paperId), mentions: mentionedPapers(this.texts.get(node.id) ?? '').get(paperId) ?? 0 }))
+			.filter((l) => l.byHand || l.mentions)
+			.sort((a, b) => a.node.title.localeCompare(b.node.title));
 	}
 
 	/** The items in a folder (none: the top level), in order. */

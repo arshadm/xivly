@@ -87,8 +87,8 @@
 	let typing = $state(false);
 	let typingTimer: ReturnType<typeof setTimeout> | undefined;
 	function onSearchInput() {
-		// Notes are searched too: read once a search starts.
-		if (library.query.trim()) void library.loadNotesText();
+		// Notes and notebooks are searched too: read once a search starts.
+		if (library.query.trim()) void Promise.all([library.loadNotesText(), notebooks.loadTexts()]);
 		typing = true;
 		clearTimeout(typingTimer);
 		typingTimer = setTimeout(() => (typing = false), 400);
@@ -166,6 +166,15 @@
 	);
 	const archivedHidden = $derived(library.tagFilter[ARCHIVED] === 'out' && inView.some((p) => p.tags?.includes(ARCHIVED)));
 	const filtering = $derived(activeFilters.length > 0 || archivedHidden);
+	// Notebooks with the phrase searched for (title or text), above the papers.
+	const NOTEBOOKS_SHOWN = 6;
+	const foundNotebooks = $derived(notebooks.search(library.query));
+	let allNotebooksShown = $state(false);
+	$effect(() => {
+		void library.query;
+		allNotebooksShown = false;
+	});
+
 	const emptyMessage = $derived.by(() => {
 		if (!library.papers.length) return 'Your library is empty.';
 		if (!inView.length) return `Nothing in ${title} yet.`;
@@ -248,7 +257,7 @@
 					oninput={onSearchInput}
 					onfocus={() => (searchFocused = true)}
 					onblur={() => (searchFocused = false)}
-					placeholder="Search papers"
+					placeholder="Search papers & notebooks"
 					aria-label="Search papers"
 					class="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-muted focus:placeholder:text-transparent"
 				/>
@@ -276,7 +285,33 @@
 		{/if}
 
 		<div bind:this={scroller} class="min-h-0 flex-1 overflow-y-auto px-6 pt-4 pb-10">
-			{#if library.filtered.length}
+			{#if foundNotebooks.length}
+				<section class="mb-3" aria-label="Notebooks found">
+					<h2 class="mb-2 text-[11px] font-medium tracking-wide text-muted uppercase">Notebooks <span class="font-normal">· {foundNotebooks.length}</span></h2>
+					<ul class="grid gap-2" style:grid-template-columns="repeat(auto-fill, minmax(280px, 1fr))">
+						{#each allNotebooksShown ? foundNotebooks : foundNotebooks.slice(0, NOTEBOOKS_SHOWN) as m (m.node.id)}
+							{@const folders = notebooks.path(m.node.id).map((f) => f.title).join(' › ')}
+							<li>
+								<button class="block h-full w-full rounded-lg border border-stone-200 bg-white/60 px-3 py-2 text-left hover:border-stone-300 hover:bg-white dark:border-stone-800 dark:bg-stone-900/60 dark:hover:border-stone-700 dark:hover:bg-stone-900" onclick={() => void openNotebook(m.node.id, m.node.title)}>
+									<span class="flex items-center gap-2">
+										<span class="icon-[lucide--notebook-text] size-4 shrink-0 text-stone-500"></span>
+										<span class="min-w-0 flex-1 truncate text-[13px] font-medium">{m.node.title}</span>
+									</span>
+									{#if folders}<span class="mt-0.5 block truncate pl-6 text-xs text-muted">{folders}</span>{/if}
+									{#if m.snippet}<span class="mt-1 line-clamp-2 block pl-6 text-xs text-stone-600 dark:text-stone-400">{m.snippet.before}<mark class="rounded-sm bg-amber-200/80 px-0.5 text-inherit dark:bg-amber-700/50">{m.snippet.match}</mark>{m.snippet.after}</span>{/if}
+								</button>
+							</li>
+						{/each}
+					</ul>
+					{#if foundNotebooks.length > NOTEBOOKS_SHOWN}
+						<button class="mt-2 text-xs text-muted hover:underline" onclick={() => (allNotebooksShown = !allNotebooksShown)}>{allNotebooksShown ? 'Show fewer' : `Show all ${foundNotebooks.length}`}</button>
+					{/if}
+					{#if library.filtered.length}<h2 class="mt-6 text-[11px] font-medium tracking-wide text-muted uppercase">Papers <span class="font-normal">· {library.filtered.length}</span></h2>{/if}
+				</section>
+			{/if}
+			{#if !library.filtered.length && foundNotebooks.length}
+				<p class="text-sm text-muted">{emptyMessage}</p>
+			{:else if library.filtered.length}
 				<!-- Cards move (flip) between views that share papers, and as searching and
 				     tag filters re-flow; a view with none in common swaps the grid (a fade). -->
 				{#key gridKey}

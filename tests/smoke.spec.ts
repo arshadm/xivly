@@ -1633,6 +1633,65 @@ test('a notebook reopens with its paper at its page, as zoomed and scrolled as i
 	expect(errs).toEqual([]);
 });
 
+test('notebooks found: the library search finds them by their text, and a paper’s Notebooks tab lists the ones that mention it', async ({ page, context }) => {
+	const errs = errors(page);
+	const reader = await addPaper(page, context);
+	const readerErrs = errors(reader);
+	// A notebook that mentions the paper (a chip), and one linked by hand that doesn't.
+	const tab = await openNewNotebook(page, context, 'Calm reading');
+	const editor = tab.getByRole('textbox', { name: 'Notes' });
+	await editor.click();
+	await tab.keyboard.type('Wide quiet margins help, says @tiny');
+	await tab.keyboard.press('Enter');
+	await tab.keyboard.type('and again @tiny');
+	await tab.keyboard.press('Enter');
+	await expect(editor.locator('[data-paper-ref]')).toHaveCount(2);
+	await expect(tab.getByText('Saved')).toBeVisible();
+	await writesDone(tab);
+	await openNewNotebook(page, context, 'Elsewhere');
+	await page.getByRole('button', { name: new RegExp(title) }).click({ button: 'right' });
+	await page.getByRole('menuitem', { name: 'Add to notebook…' }).click();
+	await page.getByRole('option', { name: /Elsewhere/ }).click();
+	await expect(page.getByText(`Linked “${title}” to “Elsewhere”`)).toBeVisible();
+
+	// The library's search: the notebook, with the words around the match.
+	await page.bringToFront();
+	await page.getByRole('textbox', { name: 'Search papers' }).fill('quiet margins');
+	const found = page.getByRole('region', { name: 'Notebooks found' });
+	await expect(found.getByRole('button', { name: /Calm reading/ })).toBeVisible();
+	await expect(found.locator('mark')).toHaveText('quiet margins');
+	await expect(found.getByRole('button')).toHaveCount(1);
+	await expect(page.getByText(/^No papers here: matching/)).toBeVisible();
+	await page.getByRole('textbox', { name: 'Search papers' }).fill('elsewhere');
+	await expect(found.getByRole('button', { name: /Elsewhere/ })).toBeVisible();
+	await page.getByRole('textbox', { name: 'Search papers' }).fill('');
+	await expect(found).toBeHidden();
+
+	// The paper's Notebooks tab: both, by title; a click opens one.
+	await reader.bringToFront();
+	await reader.keyboard.press('ControlOrMeta+Alt+7');
+	const list = reader.getByRole('list', { name: 'Notebooks with this paper' });
+	await expect(list.getByRole('button')).toHaveCount(2);
+	await expect(list.getByRole('button').first()).toContainText('Calm reading');
+	await expect(list.getByRole('button').first()).toContainText('mentioned 2×');
+	await expect(list.getByRole('button').nth(1)).toContainText('Elsewhere');
+	await expect(list.getByRole('button').nth(1)).toContainText('linked');
+	await list.getByRole('button', { name: /Calm reading/ }).click();
+	await expect.poll(() => context.pages().filter((p) => /notebook\?id=/.test(p.url())).length).toBe(2);
+
+	// The text changed elsewhere: the tab follows.
+	await tab.bringToFront();
+	await editor.click();
+	await tab.keyboard.press('ControlOrMeta+a');
+	await tab.keyboard.press('Backspace');
+	await expect(tab.getByText('Saved')).toBeVisible();
+	await writesDone(tab);
+	await reader.bringToFront();
+	await expect(list.getByRole('button')).toHaveCount(1);
+	await expect(list.getByRole('button')).toContainText('Elsewhere');
+	expect([...errs, ...readerErrs]).toEqual([]);
+});
+
 test('notebooks link papers: @ opens a menu of papers, ↵ inserts a chip that stays after a reload', async ({ page, context }) => {
 	const errs = errors(page);
 	await addPaper(page, context);
