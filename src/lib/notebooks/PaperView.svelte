@@ -2,13 +2,14 @@
 	A linked paper beside a notebook's text: its pages to read (no annotating here: that's
 	the reader's, in its own window), at a page when asked; zoomed and scrolled as in the
 	reader (pinch or ⌘-wheel, the zoom buttons, Continuous / Paged / Horizontal). Shift-drag
-	pans the pages. A PDF still downloading (a
+	pans the pages. Opens as `view` says (zoom, how far across); `onview` gets the view as it changes. A PDF still downloading (a
 	synced folder) or missing says so, as the reader does.
 -->
 <script lang="ts">
 	import { untrack } from 'svelte';
 	import { comboLabel, Document, PageNav, pageThemes, paperHex, Viewer, Zoom, type KeymapAction, type ScrollMode, type ViewerState } from 'svelte-pdf-mini';
 	import { anchorAt, jumpTo } from '#lib/anchor.js';
+	import type { PageView } from '#lib/devices.js';
 	import { library } from '#lib/library.svelte.js';
 	import { onDiskChange } from '#lib/disk-changes.js';
 	import { platform } from '#lib/platform/index.js';
@@ -16,13 +17,14 @@
 	import { theme } from '#lib/theme.svelte.js';
 	import type { PaperAnchor } from '#lib/types.js';
 	import { icons } from '#lib/pdf/icons.js';
+	import { showPageView, watchPageView } from '#lib/pdf/page-view.svelte.js';
 	import { button, iconButton } from '#lib/ui/button.js';
 	import CycleButton, { type CycleOption } from '#lib/ui/CycleButton.svelte';
 	import Separator from '#lib/ui/Separator.svelte';
 	import Tip from '#lib/ui/Tip.svelte';
 	import ZoomSelect from '#lib/ui/ZoomSelect.svelte';
 
-	let { paperId, page }: { paperId: string; page?: number } = $props();
+	let { paperId, page, view, onview }: { paperId: string; page?: number; view?: PageView; onview?: (view: PageView) => void } = $props();
 
 	const paper = $derived(library.get(paperId));
 	const s = $derived(settings.values);
@@ -128,9 +130,24 @@
 		};
 	});
 
-	function opened() {
-		if (page && viewer) void viewer.restorePosition(page);
+	let restoring = $state(true);
+	async function opened() {
+		try {
+			if (viewer && (page || view)) {
+				await new Promise(requestAnimationFrame);
+				await showPageView(viewer, page, view);
+			}
+		} catch {
+			// Opens at the top instead.
+		} finally {
+			restoring = false;
+		}
 	}
+	watchPageView(
+		() => viewer,
+		(v) => onview?.(v),
+		() => restoring
+	);
 </script>
 
 {#if load.status === 'ready' && source}

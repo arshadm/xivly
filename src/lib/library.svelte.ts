@@ -6,7 +6,7 @@ import { forgetCover, warmCovers } from './covers';
 import { onFlush } from './flush';
 import { parseArxiv } from './arxiv';
 import type { Conflict } from './conflicts';
-import { DeviceStore, deviceId, type Visit } from './devices';
+import { DeviceStore, deviceId, type PageView, type Visit } from './devices';
 import { sha256 } from './duplicates';
 import { rankAt, upNext } from './reading';
 import { lastView } from './session';
@@ -426,6 +426,11 @@ class Library {
 		const { opened, position, ...rest } = patch;
 		if (opened != null || position != null) this.devices?.note(id, { ...(opened != null && { opened }), ...(position != null && { position }) });
 		return Object.keys(rest).length ? this.#writing(this.repo!.touch(id, rest)) : Promise.resolve();
+	}
+
+	/** How a paper was zoomed when last read, on any device (`.xivly/devices/`). */
+	async pageView(id: string): Promise<PageView | undefined> {
+		return (await this.devices?.readAll().catch(() => null))?.get(id)?.view;
 	}
 
 	async remove(id: string) {

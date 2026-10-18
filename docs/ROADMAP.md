@@ -190,6 +190,7 @@ Decided 2026-10-17:
 
 **E. Sync**
 - [x] **8.13 Notebooks through the synced folder:** conflict copies in notebook folders, their chats and archive are found (with the notebook they belong to) and resolved (6.5): `notebook.json` merged (links from both kept), the text merged like a paper's notes. Changes from another device show at once (6.2): the tree, the text, the conversation (unless a question is running). Two devices each putting a folder inside the other: every device cuts the loop at the same item and writes it to the top level, so the tree ends the same and nothing is lost. *Test:* the notebook conflict tests in `repo.test.ts`, `loopCuts` in `tree.test.ts`, and *two devices moving at once* in `notebooks.test.ts`.
+- [x] **8.14 Reopen as left:** a notebook window reopens with the paper that was beside its text, where it was, as zoomed and scrolled across (each paper read there remembered); a reader window reopens a paper as zoomed and scrolled across as well as at its position (*Settings › Reopen where you left off*). Kept in the library, in each device's `.xivly/devices/<device>.json` (`papers.<id>.view`, `notebooks.<id>`): the newest on any device wins, and two devices never write the same file. *Test:* `devices.test.ts`, and e2e tests (a notebook reloaded, a paper reloaded).
 
 **Later:** a reader tab listing the notebooks that link the paper; *Add to notebook* on a chat answer; search across notebooks; drag a paper from the library onto a notebook; export a notebook (Markdown, PDF).
 

@@ -132,6 +132,7 @@ class Notebooks {
 	#gone(id: string) {
 		this.#changes++;
 		this.nodes = this.nodes.filter((n) => n.id !== id);
+		library.devices?.forgetNotebook(id);
 		void broadcast('notebook-removed', { id });
 	}
 

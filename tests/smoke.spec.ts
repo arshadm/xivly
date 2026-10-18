@@ -52,6 +52,20 @@ async function addPaper(page: Page, context: BrowserContext) {
 	return readerTab(context);
 }
 
+/** Every device's file in the library's `.xivly/devices/` (the web build's library: the origin's private folder), joined. */
+async function devicesFile(page: Page) {
+	return page.evaluate(async () => {
+		try {
+			const dir = await (await (await navigator.storage.getDirectory()).getDirectoryHandle('.xivly')).getDirectoryHandle('devices');
+			let out = '';
+			for await (const handle of (dir as unknown as { values(): AsyncIterable<FileSystemFileHandle> }).values()) out += await (await handle.getFile()).text();
+			return out;
+		} catch {
+			return '';
+		}
+	});
+}
+
 /** Wait until the library's file writes are done (they run under Web Locks named after the file). */
 async function writesDone(page: Page) {
 	const writing = async () => {
@@ -274,6 +288,25 @@ test('a library of 1500 papers stays fast: only the cards on screen are rendered
 	// Tags: the most used first, the rest behind "more".
 	await expect(page.locator('nav .flex-wrap > button').first()).toHaveText('#common');
 	await expect(page.locator('nav').getByRole('button', { name: /\d+ more/ })).toBeVisible();
+	expect(errs).toEqual([]);
+});
+
+test('a paper reopens as zoomed and scrolled as it was left', async ({ page, context }) => {
+	const reader = await addPaper(page, context);
+	const errs = errors(reader);
+	const pages = reader.locator('[data-pdf-page]').first();
+	await expect(reader.locator('canvas').first()).toBeVisible();
+	const width = async () => (await pages.boundingBox())!.width;
+	const before = await width();
+	for (let i = 0; i < 3; i++) await reader.getByRole('button', { name: 'Zoom in' }).click();
+	await expect.poll(width).toBeGreaterThan(before + 20);
+	// Once the zoom has eased in.
+	let zoomed = 0;
+	await expect.poll(async () => zoomed === (zoomed = await width())).toBe(true);
+	await expect.poll(() => devicesFile(reader), { timeout: 5000 }).toMatch(/"view": \{[\s\S]*"mode": "manual"/);
+	await reader.reload();
+	await expect(reader.locator('canvas').first()).toBeVisible();
+	await expect.poll(width).toBeCloseTo(zoomed, -1);
 	expect(errs).toEqual([]);
 });
 
@@ -1625,6 +1658,17 @@ test('linked papers: Add to notebook… from the library, listed in the notebook
 	await expect.poll(async () => (await offset())[1]).toBeGreaterThan(top0 + 40);
 	expect((await offset())[0]).toBeGreaterThan(left0);
 	const zoomed = await pageWidth();
+
+	// Reopened: the same paper, as zoomed and scrolled (kept in the library's .xivly/devices/).
+	const [left1, top1] = await offset();
+	await expect.poll(() => devicesFile(tab), { timeout: 5000 }).toMatch(/"notebooks"[\s\S]*"mode": "manual"/);
+	await tab.reload();
+	await expect(tab.getByLabel(`Pages of ${title}`)).toBeVisible();
+	await expect(tab.locator('canvas').first()).toBeVisible();
+	await expect.poll(pageWidth).toBeCloseTo(zoomed, -1);
+	await expect.poll(async () => (await offset())[1]).toBeCloseTo(top1, -1);
+	expect(Math.abs((await offset())[0] - left1)).toBeLessThan(10);
+
 	await tab.getByRole('button', { name: 'Zoom out' }).click();
 	await expect.poll(pageWidth).toBeLessThan(zoomed - 4);
 	await tab.getByRole('button', { name: 'Scrolling: Continuous' }).click();

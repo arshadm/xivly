@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { DeviceStore, deviceId, mergeVisits } from './devices';
+import { DeviceStore, deviceId, mergeVisits, parsePageView } from './devices';
 import { MemoryFs } from './onboarding/memory-fs';
 
 const enc = new TextEncoder();
@@ -18,6 +18,17 @@ describe('visits from several devices', () => {
 		const a = new Map([['p', { position: 4, at: '1' }]]);
 		const b = new Map([['p', { opened: 'x', at: '2' }]]);
 		expect(mergeVisits([a, b]).get('p')).toMatchObject({ position: 4, opened: 'x' });
+	});
+});
+
+describe('views', () => {
+	it('the zoom recorded last; a bad one reads as none', () => {
+		const a = new Map([['p', { view: { mode: 'manual' as const, zoom: 1.5 }, at: '1' }]]);
+		const b = new Map([['p', { position: 3, at: '2' }]]);
+		expect(mergeVisits([a, b]).get('p')).toMatchObject({ position: 3, view: { mode: 'manual', zoom: 1.5 } });
+		expect(parsePageView({ mode: 'page-width', zoom: 0.8, cross: 4 })).toEqual({ mode: 'page-width', zoom: 0.8, cross: 1 });
+		expect(parsePageView({ mode: 'huge', zoom: 1 })).toBeUndefined();
+		expect(parsePageView({ mode: 'manual', zoom: -1 })).toBeUndefined();
 	});
 });
 
@@ -73,5 +84,25 @@ describe('DeviceStore', () => {
 		s.forget('p');
 		await s.flush();
 		expect((await json(fs, '.xivly/devices/mac.json')).papers.p).toBeUndefined();
+	});
+
+	it('a notebook as it was left: the paper beside it and each paper’s view, the newest on any device', async () => {
+		const fs = new MemoryFs();
+		const view = { position: 2.5, mode: 'manual' as const, zoom: 1.25, cross: 0.5 };
+		await fs.write('.xivly/devices/ipad.json', enc.encode(JSON.stringify({ papers: {}, notebooks: { n: { paperId: 'old', papers: { old: { mode: 'auto', zoom: 1 } }, at: '2000-01-01T00:00:00Z' } } })));
+		const mac = new DeviceStore(fs, 'mac', 1000);
+		expect(await mac.notebook('n')).toMatchObject({ paperId: 'old' });
+		await mac.noteNotebook('n', 'p', view);
+		await mac.noteNotebook('n', 'q');
+		await mac.flush();
+		const mine = await json(fs, '.xivly/devices/mac.json');
+		expect(mine.notebooks.n).toMatchObject({ paperId: 'q', papers: { p: view, old: { mode: 'auto', zoom: 1 } } });
+		expect(mine.notebooks.n.papers.q).toBeUndefined();
+		// Read by another window of this device, then deleted.
+		const other = new DeviceStore(fs, 'mac', 1000);
+		expect((await other.notebook('n'))?.papers.p).toEqual(view);
+		other.forgetNotebook('n');
+		await other.flush();
+		expect((await json(fs, '.xivly/devices/mac.json')).notebooks).toBeUndefined();
 	});
 });

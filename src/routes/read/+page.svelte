@@ -33,6 +33,8 @@
 	import { forgetCover } from '#lib/covers.js';
 	import { onDiskChange } from '#lib/disk-changes.js';
 	import { rememberOpen } from '#lib/session.js';
+	import type { PageView } from '#lib/devices.js';
+	import { pageViewOf, showPageView, watchPageView } from '#lib/pdf/page-view.svelte.js';
 	import { sha256 } from '#lib/duplicates.js';
 	import { exportPdfInWorker } from '#lib/export.js';
 	import { metadataCache } from '#lib/metadata-cache.js';
@@ -231,7 +233,7 @@
 					const hash = b && (await sha256(b as Uint8Array<ArrayBuffer>));
 					if (current !== id) return;
 					pdfHash = hash;
-					restoring = !!resumeAt();
+					restoring = !!resumeAt() || s.resumePosition;
 					bytes = b;
 					load = b ? { status: 'ready' } : { status: 'missing' };
 				})
@@ -355,6 +357,8 @@
 	let pdfVersion = $state(0);
 	/** Where to reopen it then (where the reader was). */
 	let reloadAt: number | undefined;
+	/** The zoom before a reload (the viewer starts again). */
+	let reloadView: PageView | undefined;
 	let checkingPdf = false;
 	$effect(() => {
 		const current = id;
@@ -389,6 +393,7 @@
 			}
 			savedRev = rev;
 			reloadAt = viewer?.position;
+			reloadView = viewer ? pageViewOf(viewer) : undefined;
 			restoring = true;
 			bytes = b;
 			pdfVersion++;
@@ -412,17 +417,18 @@
 		return () => clearTimeout(posTimer);
 	});
 
-	// Reopen where you left off: the pages stay hidden until they're there (no jump from page 1).
+	// Reopen where you left off (zoomed as it was, on whichever device): the pages stay hidden until they're there (no jump from page 1).
 	const resumeAt = () => reloadAt ?? (s.resumePosition && paper?.position && paper.position >= 1.01 ? paper.position : undefined);
 	let restoring = $state(false);
 	async function restorePosition() {
 		const position = resumeAt();
+		const view = reloadView ?? (s.resumePosition ? await library.pageView(id) : undefined);
 		// Shown anyway if the restore hangs (a page that never loads).
 		const reveal = setTimeout(() => (restoring = false), 2000);
 		try {
-			if (position) {
+			if (viewer && (position || view)) {
 				await new Promise(requestAnimationFrame);
-				await viewer?.restorePosition(position);
+				await showPageView(viewer, position, view);
 			}
 		} catch {
 			// Opens at the top instead.
@@ -430,8 +436,14 @@
 			clearTimeout(reveal);
 			restoring = false;
 			reloadAt = undefined;
+			reloadView = undefined;
 		}
 	}
+	watchPageView(
+		() => viewer,
+		({ position: _, ...view }) => library.get(id) && library.devices?.note(id, { view }),
+		() => restoring
+	);
 
 	// ── Panels, find, menus ──────────────────────────────────────────────
 	/** Where ⌘F came from: Esc in the search field goes back there (or closes the panel). */

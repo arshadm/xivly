@@ -2,7 +2,8 @@
 	A notebook in its own window: its linked papers on the left, its title (edited in
 	place) under the folders it's in, its text (notebooks/<id>/notes.json, saved a moment
 	after you stop typing), and on the right a linked paper to read beside it, or the
-	chat with Claude about it.
+	chat with Claude about it. Reopens with the paper it was left at, where and as zoomed
+	as it was (`.xivly/devices/`, on whichever device).
 	One window per notebook (a lock, as for papers): another one offers to take it over.
 -->
 <script lang="ts">
@@ -22,6 +23,7 @@
 	import { ReaderLock } from '#lib/reader-lock.svelte.js';
 	import { rememberNotebook, usedNotebook } from '#lib/session.js';
 	import { settings } from '#lib/settings.svelte.js';
+	import type { PageView } from '#lib/devices.js';
 	import type { NotesDoc, Paper } from '#lib/types.js';
 	import { button, iconButton, mutedIcon } from '#lib/ui/button.js';
 	import Tip from '#lib/ui/Tip.svelte';
@@ -97,11 +99,13 @@
 	const linked = $derived(new Set([...mentions.keys(), ...(notebook?.papers ?? [])]));
 
 	// ── The paper beside the text ────────────────────────────────────────
-	let shown = $state<{ paperId: string; page?: number } | null>(null);
+	let shown = $state<{ paperId: string; page?: number; view?: PageView } | null>(null);
 	let paperView = $state<PaperView>();
 	const shownPaper = $derived(shown ? library.get(shown.paperId) : undefined);
+	/** How each paper was shown here, as it was left. */
+	let views: Record<string, PageView> = {};
 
-	/** Show a paper on the right (at a page); the same paper again only jumps. */
+	/** Show a paper on the right (at a page; none: where it was left); the same paper again only jumps. */
 	function show(paperId: string, page?: number) {
 		if (!library.get(paperId)) return;
 		settings.set('notebookPane', true);
@@ -110,8 +114,28 @@
 			if (page) paperView.jump(page);
 			return;
 		}
-		shown = { paperId, page };
+		shown = { paperId, page: page ?? views[paperId]?.position, view: views[paperId] };
+		void library.devices?.noteNotebook(id, paperId);
 	}
+
+	function onview(view: PageView) {
+		if (!shown) return;
+		views[shown.paperId] = view;
+		void library.devices?.noteNotebook(id, shown.paperId, view);
+	}
+
+	// Reopened: the paper it was left at, as it was shown.
+	let resumed = false;
+	$effect(() => {
+		if (resumed || access !== 'mine' || library.status !== 'ready') return;
+		resumed = true;
+		void library.devices?.notebook(id).then((visit) => {
+			if (!visit) return;
+			views = { ...visit.papers, ...views };
+			const paperId = visit.paperId;
+			if (!shown && paperId && library.get(paperId)) shown = { paperId, page: views[paperId]?.position, view: views[paperId] };
+		});
+	});
 
 	const openReader = (p: Paper) => void openPaper(p.id, p.title);
 
@@ -224,7 +248,7 @@
 				</div>
 				<div class="flex min-h-0 flex-1 flex-col border-t border-stone-200 dark:border-stone-800" class:hidden={s.notebookPaneTab !== 'paper'}>
 					{#if shown && shownPaper}
-						{#key shown.paperId}<PaperView bind:this={paperView} paperId={shown.paperId} page={shown.page} />{/key}
+						{#key shown.paperId}<PaperView bind:this={paperView} paperId={shown.paperId} page={shown.page} view={shown.view} {onview} />{/key}
 					{:else}
 						<p class="m-auto max-w-56 px-4 text-center text-xs text-muted">Click a linked paper, or a link in the text, to read it here.</p>
 					{/if}
