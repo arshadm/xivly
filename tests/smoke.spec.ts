@@ -1474,6 +1474,23 @@ test('the reading list: up next in my order (menu, drag, move to top), reading n
 	await page.reload();
 	await expect(page.getByRole('heading', { name: 'Reading', level: 1 })).toBeVisible();
 	await expect.poll(order).toEqual(['Beta paper', 'Alpha paper']);
+
+	// Searched as in the library (⌘K): both lists filtered, Up next keeps its numbers; Esc clears it.
+	await page.keyboard.press('ControlOrMeta+k');
+	const search = page.getByRole('textbox', { name: 'Search papers' });
+	await expect(search).toBeFocused();
+	await search.fill('alpha');
+	await expect.poll(order).toEqual(['Alpha paper']);
+	await expect(next).toContainText('2');
+	await expect(next).toHaveAttribute('draggable', 'false');
+	await expect(page.getByRole('list', { name: 'Reading now' })).toBeHidden();
+	await expect(page.getByText('No papers here match.')).toBeVisible();
+	await search.fill('gamma');
+	await expect(now).toHaveText(/Gamma paper/);
+	await expect(page.getByText('No papers here match.')).toBeVisible();
+	await search.press('Escape');
+	await expect(search).toHaveValue('');
+	await expect.poll(order).toEqual(['Beta paper', 'Alpha paper']);
 	await page.getByRole('button', { name: 'Mark “Gamma paper” as read' }).click();
 	await expect(page.getByText('Nothing yet. Right-click a paper')).toBeVisible();
 	expect(errs).toEqual([]);

@@ -11,6 +11,7 @@
 	import { settingsDialog } from '#lib/components/SettingsDialog.svelte';
 	import Sidebar from '#lib/components/Sidebar.svelte';
 	import Kbd from '#lib/ui/Kbd.svelte';
+	import SearchBox from '#lib/components/SearchBox.svelte';
 	import Tip from '#lib/ui/Tip.svelte';
 	import { setFallbackMenu, type MenuItem } from '#lib/ui/context-menu.svelte.js';
 	import { LIBRARY_TAB, openNotebook, openPaper, setWindowTitle } from '#lib/windows.js';
@@ -36,9 +37,7 @@
 	import { ARCHIVED } from '#lib/library.svelte.js';
 	import { prefersReducedMotion } from 'svelte/motion';
 
-	let search = $state<HTMLInputElement>();
 	let scroller = $state<HTMLElement>();
-	let searchFocused = $state(false);
 
 	const title = $derived.by(() => {
 		const v = library.view;
@@ -87,8 +86,6 @@
 	let typing = $state(false);
 	let typingTimer: ReturnType<typeof setTimeout> | undefined;
 	function onSearchInput() {
-		// Notes and notebooks are searched too: read once a search starts.
-		if (library.query.trim()) void Promise.all([library.loadNotesText(), notebooks.loadTexts()]);
 		typing = true;
 		clearTimeout(typingTimer);
 		typingTimer = setTimeout(() => (typing = false), 400);
@@ -125,19 +122,12 @@
 	$effect(() => setFallbackMenu(backgroundMenu));
 
 	function onkeydown(e: KeyboardEvent) {
-		if (matches(e, keys.search)) {
-			e.preventDefault();
-			search?.focus();
-			search?.select();
-		} else if (matches(e, keys.addPapers)) {
+		if (matches(e, keys.addPapers)) {
 			e.preventDefault();
 			void pickFiles();
 		} else if (matches(e, keys.addArxiv)) {
 			e.preventDefault();
 			addPapers.open = true;
-		} else if (e.key === 'Escape' && e.target === search) {
-			library.query = '';
-			search?.blur();
 		}
 	}
 
@@ -249,24 +239,7 @@
 				]}
 			/>
 			<ToggleGroup class="@max-2xl:hidden" label="Show papers" value={settings.values.readFilter} onValueChange={(v) => settings.set('readFilter', v)} items={readOptions.map((o) => ({ value: o.value, label: o.value === 'all' ? 'All' : o.label }))} />
-			<label class="flex h-8 w-64 min-w-28 shrink-[4] items-center gap-2 rounded-lg bg-stone-200/60 pr-1.5 pl-2.5 ring-blue-500 dark:ring-blue-400 focus-within:bg-white focus-within:ring-2 dark:bg-stone-800/60 dark:focus-within:bg-stone-900">
-				<span class="icon-[lucide--search] size-3.5 shrink-0 text-stone-400"></span>
-				<input
-					bind:this={search}
-					bind:value={library.query}
-					oninput={onSearchInput}
-					onfocus={() => (searchFocused = true)}
-					onblur={() => (searchFocused = false)}
-					placeholder="Search papers & notebooks"
-					aria-label="Search papers"
-					class="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-muted focus:placeholder:text-transparent"
-				/>
-				{#if library.query}
-					<button class={iconButton(6, `${mutedIcon} size-5`)} aria-label="Clear search" onclick={() => ((library.query = ''), search?.focus())}><span class="icon-[lucide--x] size-3.5"></span></button>
-				{:else if !searchFocused}
-					<Kbd>{keys.search}</Kbd>
-				{/if}
-			</label>
+			<SearchBox placeholder="Search papers & notebooks" oninput={onSearchInput} />
 			<AddPapers />
 			<Tip label="Settings" shortcut={keys.settings}>
 				{#snippet child({ props })}<button {...props} class={iconBtn} aria-label="Settings" onclick={() => (settingsDialog.open = true)}><span class="icon-[lucide--settings] size-4"></span></button>{/snippet}

@@ -10,7 +10,7 @@ import { DeviceStore, deviceId, type PageView, type Visit } from './devices';
 import { sha256 } from './duplicates';
 import { rankAt, upNext } from './reading';
 import { lastView } from './session';
-import { filterPapers, type View } from './filter';
+import { filterPapers, matchesQuery, type View } from './filter';
 import { fetchHfPaper } from './huggingface';
 import { platform } from './platform';
 import { isPdf, merge, Repo, slugify, type Patch } from './repo';
@@ -72,6 +72,11 @@ class Library {
 			notesText: (id) => this.notesText.get(id)
 		})
 	);
+
+	/** Whether a paper matches the search box (as in the library: its details and notes). */
+	matches(p: Paper) {
+		return matchesQuery(p, this.query.trim().toLowerCase(), (id) => this.notesText.get(id));
+	}
 
 	/** Read every paper's notes for search, unless done in the last few seconds (it runs as you type). */
 	async loadNotesText() {

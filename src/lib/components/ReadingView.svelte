@@ -1,7 +1,8 @@
 <!--
 	The reading list: what you're reading now (papers you marked), and Up next, in
 	the order you put them (drag a row, or right-click › Move to the top). Click
-	opens; right-click for everything else.
+	opens; right-click for everything else. The search box filters both as in the library
+	(Up next can't be reordered while some of it is hidden).
 -->
 <script lang="ts">
 	import { library } from '#lib/library.svelte.js';
@@ -14,10 +15,14 @@
 	import Tip from '#lib/ui/Tip.svelte';
 	import { openPaper } from '#lib/windows.js';
 	import { paperInk } from 'svelte-pdf-mini';
+	import SearchBox from './SearchBox.svelte';
 	import { toast } from './Toasts.svelte';
 
-	const now = $derived(readingNow(library.papers));
-	const next = $derived(upNext(library.papers));
+	const queue = $derived(upNext(library.papers));
+	const searching = $derived(!!library.query.trim());
+	const reading = $derived(readingNow(library.papers));
+	const now = $derived(reading.filter((p) => library.matches(p)));
+	const next = $derived(queue.filter((p) => library.matches(p)));
 
 	const fail = (e: unknown) => toast(String(e), 'error');
 	const byline = (p: Paper) => [p.authors?.length ? (p.authors.length > 2 ? `${p.authors[0]} et al.` : p.authors.join(', ')) : '', p.year].filter(Boolean).join(' · ');
@@ -34,7 +39,7 @@
 	/** Where it would go: before the row at this index (next.length: at the end). */
 	let over = $state<number | null>(null);
 	function ondragover(e: DragEvent, i: number) {
-		if (!dragging) return;
+		if (!dragging || searching) return;
 		e.preventDefault();
 		const row = (e.currentTarget as HTMLElement).getBoundingClientRect();
 		over = e.clientY > row.top + row.height / 2 ? i + 1 : i;
@@ -65,6 +70,8 @@
 <main class="flex min-w-0 flex-1 flex-col">
 	<header class="flex h-12 shrink-0 items-center gap-3 px-6" data-tauri-drag-region>
 		<h1 class="font-serif text-xl" data-tauri-drag-region>Reading</h1>
+		<div class="flex-1" data-tauri-drag-region></div>
+		<SearchBox />
 	</header>
 	<div class="min-h-0 flex-1 overflow-y-auto px-6 pt-2 pb-10">
 		<section aria-labelledby="reading-now">
@@ -88,7 +95,7 @@
 					{/each}
 				</ul>
 			{:else}
-				<p class="py-3 text-sm text-muted">Nothing yet. Right-click a paper and choose <em>Mark as reading</em>.</p>
+				<p class="py-3 text-sm text-muted">{#if searching && reading.length}No papers here match.{:else}Nothing yet. Right-click a paper and choose <em>Mark as reading</em>.{/if}</p>
 			{/if}
 		</section>
 
@@ -100,7 +107,7 @@
 						<li
 							class="group relative flex items-center gap-3 border-b border-stone-200/80 px-2 py-2 hover:bg-stone-100 dark:border-stone-800 dark:hover:bg-stone-900"
 							class:opacity-40={dragging === p.id}
-							draggable="true"
+							draggable={!searching}
 							data-queue-item
 							ondragstart={(e) => {
 								dragging = p.id;
@@ -113,8 +120,8 @@
 						>
 							{#if dragging && over === i}<span class="absolute inset-x-0 -top-px h-0.5 bg-stone-500" aria-hidden="true"></span>{/if}
 							{#if dragging && over === next.length && i === next.length - 1}<span class="absolute inset-x-0 -bottom-px h-0.5 bg-stone-500" aria-hidden="true"></span>{/if}
-							<span class="icon-[lucide--grip-vertical] size-4 shrink-0 cursor-grab text-stone-400" aria-hidden="true"></span>
-							<span class="w-5 shrink-0 text-right text-xs text-muted tabular-nums">{i + 1}</span>
+							<span class="icon-[lucide--grip-vertical] size-4 shrink-0 cursor-grab text-stone-400" class:invisible={searching} aria-hidden="true"></span>
+							<span class="w-5 shrink-0 text-right text-xs text-muted tabular-nums">{queue.indexOf(p) + 1}</span>
 							{#snippet actions()}
 								<Tip label="Start reading">
 									{#snippet child({ props })}<button {...props} class={iconBtn} aria-label="Start reading “{p.title}”" onclick={() => start(p)}><span class="icon-[lucide--book-open] size-4"></span></button>{/snippet}
@@ -128,7 +135,7 @@
 					{/each}
 				</ol>
 			{:else}
-				<p class="py-3 text-sm text-muted">Nothing queued. Right-click a paper and choose <em>Add to Up next</em>.</p>
+				<p class="py-3 text-sm text-muted">{#if searching && queue.length}No papers here match.{:else}Nothing queued. Right-click a paper and choose <em>Add to Up next</em>.{/if}</p>
 			{/if}
 		</section>
 	</div>

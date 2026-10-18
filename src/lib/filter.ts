@@ -45,6 +45,9 @@ function haystack(p: Paper) {
 	return h;
 }
 
+/** Whether a paper has the phrase searched for (lower-cased) in its details or notes. */
+export const matchesQuery = (p: Paper, q: string, notesText?: (id: string) => string | undefined) => !q || haystack(p).includes(q) || !!notesText?.(p.id)?.includes(q);
+
 // The same orders as `localeCompare` (with and without options), many times faster.
 const byValue = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' }).compare;
 const byTitle = new Intl.Collator().compare;
@@ -59,7 +62,7 @@ export function filterPapers(papers: Paper[], o: FilterOptions): Paper[] {
 		if (v.kind === 'reading' && !p.reading && p.queue === undefined) return false;
 		for (const [t, mode] of Object.entries(o.tagFilter)) if (!!p.tags?.includes(t) !== (mode === 'in')) return false;
 		if (o.readFilter !== 'all' && !!p.read !== (o.readFilter === 'read')) return false;
-		return !q || haystack(p).includes(q) || !!o.notesText?.(p.id)?.includes(q);
+		return matchesQuery(p, q, o.notesText);
 	});
 	// Recent is always most recently opened first.
 	const recent = v.kind === 'recent';
