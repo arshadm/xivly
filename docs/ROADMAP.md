@@ -98,7 +98,7 @@ Catchup pages don't allow cross-origin reads, so fetching (and running `claude`)
 - [x] **3.4 Add to library, dismiss and restore:** "Add" imports the paper through the existing arXiv import, keeps its topics as tags, and links the card to the library paper ("Open"). Dismiss with undo; a Dismissed view to restore.
 - ~~3.5–3.8 Checking arXiv and scoring in Xivly~~: **dropped (2026-10-09).** `arxiv_fetch.py` keeps fetching and scoring, run by hand; Xivly imports what it found (3.2, re-run any time: papers merge, and decisions made in Xivly are kept). The Claude bridge moves back to Phase 4.
 - [x] **3.9 Refresh from the tool:** a "Refresh from arxiv_fetch" button in the feed that remembers the tool's folder, so bringing in a new run takes one click.
-- [ ] **3.10 Nice-to-haves:** "new since the last refresh" highlighting, keyword filters saved as views.
+- [-] **3.10 Nice-to-haves** (not planned, closed 2026-10-18): "new since the last refresh" highlighting, keyword filters saved as views.
 
 ## Phase 4: Chat with Claude about a paper (desktop)
 
@@ -150,8 +150,8 @@ Decided 2026-10-10:
 - [x] **6.3 An open PDF changed on disk.** A change is told from the reader's own saves by its SHA-256. With nothing unsaved, the new version is shown at once, where the reader was. With unsaved annotations, the reader asks: *Load the new version* (yours are lost) or *Keep mine* (saved over it now). Library covers are drawn again.
 - [x] **6.4 Files not downloaded yet.** In Drive's "Stream files" mode, a file downloads the first time it's read. After 3 s the reader says so. A missing or unreadable PDF gets *Try again*, a hint (online? available offline?), and opens by itself once the watcher sees it arrive. Recommended: make the library folder *Available offline* (covers read every PDF once). *Test:* remove `paper.pdf`, open the paper, put it back.
 - [x] **6.5 Conflict copies.** A copy is found by its name next to the file it copies (`paper (1).json`, `notes 2.json`, `… (conflicted copy …)`, `[Conflict]`) in paper folders, chats, `.xivly` and the feed. Scanned when the library opens and when the watcher sees such a name. The library shows a banner, and a badge on the paper. The dialog offers *Merge* (notes: ours, then what only theirs has, under a heading; JSON: everything either kept), *Use the other copy*, or *Keep this one*. The copy goes to the trash.
-- [ ] **6.6 Test with two Macs** (or two user accounts) signed in to the same Google Drive folder.
-- [ ] **6.7 Mobile later:** Tauri 2 iOS. iOS has no Drive folder like the Mac's, so it would read the library through the Google Drive API or the Files app. It also needs a touch-friendly layout. This is its own project.
+- [-] **6.6 Test with two Macs** (not planned, closed 2026-10-18) (or two user accounts) signed in to the same Google Drive folder.
+- [-] **6.7 Mobile later** (not planned, closed 2026-10-18): Tauri 2 iOS. iOS has no Drive folder like the Mac's, so it would read the library through the Google Drive API or the Files app. It also needs a touch-friendly layout. This is its own project.
 
 ## Phase 7: Reading list
 
