@@ -22,13 +22,17 @@ export interface LibraryFs {
 
 import type { ArxivFetchExport } from '#lib/feed/import.js';
 
-/** A question to Claude about a paper (`claude -p` in its folder). */
+/** A question to Claude about a paper or a notebook (`claude -p` in its folder). */
 export interface ClaudeRequest {
 	/** This run's id (to cancel it). */
 	id: string;
 	/** The claude to run (from `locate`). */
 	claude: string;
-	paperId: string;
+	/** Where it runs: a paper's folder, or a notebook's (`notebookId`, with no `paperId`). */
+	paperId?: string;
+	notebookId?: string;
+	/** Other folders of the library Claude may read, e.g. `papers/<id>` (a paper mentioned in a notebook's chat). */
+	addDirs?: string[];
 	prompt: string;
 	/** The conversation: started with this id, or continued (`resume`). */
 	sessionId: string;

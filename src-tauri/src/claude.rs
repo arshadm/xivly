@@ -1,7 +1,8 @@
-//! The `claude` CLI (Claude Code) as Xivly's way to ask Claude about a paper,
-//! with the user's own login (their subscription; no API key). Found once
-//! through the login shell (GUI apps on macOS get a bare PATH), then run by
-//! its full path in the paper's folder: `-p` with the prompt on stdin, and
+//! The `claude` CLI (Claude Code) as Xivly's way to ask Claude about a paper or
+//! a notebook, with the user's own login (their subscription; no API key). Found
+//! once through the login shell (GUI apps on macOS get a bare PATH), then run by
+//! its full path in the paper's (or notebook's) folder, with other folders of the
+//! library it may read added (`--add-dir`): `-p` with the prompt on stdin, and
 //! `--output-format stream-json`, each event forwarded to the window as it
 //! comes. No MCP servers, no user settings, and only the tools Xivly allows.
 
@@ -91,7 +92,14 @@ pub struct RunRequest {
     /// `claude` (from `claude_locate`).
     claude: String,
     root_dir: PathBuf,
+    /// Where it runs: a paper's folder, or a notebook's (exactly one of them).
+    #[serde(default)]
     paper_id: String,
+    #[serde(default)]
+    notebook_id: Option<String>,
+    /// Other folders of the library Claude may read (relative, e.g. `papers/<id>`).
+    #[serde(default)]
+    add_dirs: Vec<String>,
     prompt: String,
     /// The conversation: new (`--session-id`) or continued (`--resume`).
     session_id: String,
@@ -103,8 +111,29 @@ pub struct RunRequest {
     tools: Vec<String>,
 }
 
-/// The arguments of a run (the prompt goes on stdin).
-fn args(r: &RunRequest) -> Vec<String> {
+/// A folder name in `papers/` or `notebooks/` (never a path).
+fn is_id(id: &str) -> bool {
+    !id.is_empty() && !id.contains(['/', '\\']) && !id.starts_with('.')
+}
+
+/// The folder a run starts in: the paper's or the notebook's.
+fn run_dir(r: &RunRequest) -> Result<String> {
+    match (r.notebook_id.as_deref(), r.paper_id.as_str()) {
+        (Some(n), "") if is_id(n) => Ok(format!("notebooks/{n}")),
+        (None, p) if is_id(p) => Ok(format!("papers/{p}")),
+        (Some(n), "") => Err(format!("Not a notebook: {n:?}").into()),
+        (None, p) => Err(format!("Not a paper: {p:?}").into()),
+        _ => Err("A run is for a paper or a notebook, not both".into()),
+    }
+}
+
+/// An added folder: a paper's or a notebook's, by its path in the library.
+fn is_added_dir(rel: &str) -> bool {
+    matches!(rel.split_once('/'), Some(("papers" | "notebooks", id)) if is_id(id))
+}
+
+/// The arguments of a run (the prompt goes on stdin); `added`: the folders it may read too.
+fn args(r: &RunRequest, added: &[PathBuf]) -> Vec<String> {
     let tools = r.tools.join(",");
     let mut a: Vec<String> = ["-p", "--output-format", "stream-json", "--verbose", "--include-partial-messages", "--strict-mcp-config", "--setting-sources", ""].map(String::from).to_vec();
     a.extend(["--tools".into(), tools.clone()]);
@@ -118,21 +147,33 @@ fn args(r: &RunRequest) -> Vec<String> {
     if let Some(s) = r.system.as_deref().filter(|s| !s.is_empty()) {
         a.extend(["--append-system-prompt".into(), s.into()]);
     }
+    for d in added {
+        a.extend(["--add-dir".into(), d.display().to_string()]);
+    }
     a
 }
 
 #[tauri::command]
 pub async fn claude_run(state: State<'_, AppState>, claude: State<'_, ClaudeState>, request: RunRequest, on_event: Channel<Value>) -> Result<()> {
-    if request.paper_id.is_empty() || request.paper_id.contains(['/', '\\']) || request.paper_id.starts_with('.') {
-        return Err(format!("Not a paper: {:?}", request.paper_id).into());
-    }
+    let rel = run_dir(&request)?;
     let root = library::root(&state, &request.root_dir)?;
-    let dir = library::resolve(&root, &format!("papers/{}", request.paper_id))?;
+    let dir = library::resolve(&root, &rel)?;
     if !dir.is_dir() {
-        return Err(format!("No paper folder for {}", request.paper_id).into());
+        return Err(format!("No folder {rel} in the library").into());
+    }
+    // Only folders of papers and notebooks, inside the library, that are there.
+    let mut added = Vec::new();
+    for d in &request.add_dirs {
+        if !is_added_dir(d) {
+            return Err(format!("Not a folder Claude may read: {d:?}").into());
+        }
+        let path = library::resolve(&root, d)?;
+        if path.is_dir() {
+            added.push(path);
+        }
     }
     let program = PathBuf::from(&request.claude);
-    let child = spawn(&program, &args(&request), &dir, login_shell().0.as_deref(), &request.prompt)?;
+    let child = spawn(&program, &args(&request, &added), &dir, login_shell().0.as_deref(), &request.prompt)?;
     let child = Arc::new(Mutex::new(child));
     claude.runs.lock().unwrap().insert(request.id.clone(), child.clone());
     let runs = claude.runs.clone();
@@ -212,6 +253,8 @@ mod tests {
             claude: "claude".into(),
             root_dir: PathBuf::new(),
             paper_id: "p".into(),
+            notebook_id: None,
+            add_dirs: vec![],
             prompt: "?".into(),
             session_id: "s-1".into(),
             resume,
@@ -223,14 +266,15 @@ mod tests {
 
     #[test]
     fn arguments() {
-        let a = args(&request(false, &["Read"]));
+        let a = args(&request(false, &["Read"]), &[]);
         assert_eq!(&a[..8], &["-p", "--output-format", "stream-json", "--verbose", "--include-partial-messages", "--strict-mcp-config", "--setting-sources", ""]);
         let joined = a.join(" ");
         assert!(joined.contains("--tools Read --allowedTools Read"));
         assert!(joined.contains("--session-id s-1"));
         assert!(joined.contains("--model sonnet"));
         assert!(joined.contains("--append-system-prompt Cite pages"));
-        let b = args(&request(true, &[]));
+        let b = args(&request(true, &[]), &[PathBuf::from("/lib/papers/a")]);
+        assert!(b.join(" ").ends_with("--add-dir /lib/papers/a"));
         assert!(b.join(" ").contains("--resume s-1"));
         assert!(!b.contains(&"--allowedTools".to_string()));
         let i = b.iter().position(|x| x == "--tools").unwrap();
@@ -277,7 +321,7 @@ mod tests {
         r.session_id = uuid_like();
         r.model = Some("haiku".into());
         r.system = None;
-        let child = spawn(&claude, &args(&r), &dir, login_shell().0.as_deref(), "Read note.txt and reply with only its first word.").unwrap();
+        let child = spawn(&claude, &args(&r, &[]), &dir, login_shell().0.as_deref(), "Read note.txt and reply with only its first word.").unwrap();
         let mut events = Vec::new();
         stream(&Arc::new(Mutex::new(child)), |v| events.push(v));
         let kinds: Vec<String> = events.iter().map(|e| format!("{}/{}", e["type"].as_str().unwrap_or(""), e["subtype"].as_str().unwrap_or(""))).collect();
@@ -294,6 +338,26 @@ mod tests {
         let n = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos();
         let h = format!("{:032x}", n ^ 0x5bd1e995_5bd1e995_5bd1e995_5bd1e995u128);
         format!("{}-{}-4{}-a{}-{}", &h[0..8], &h[8..12], &h[13..16], &h[17..20], &h[20..32])
+    }
+
+    #[test]
+    fn where_a_run_starts_and_what_it_may_read() {
+        let mut r = request(false, &[]);
+        assert_eq!(run_dir(&r).unwrap(), "papers/p");
+        r.notebook_id = Some("idea".into());
+        assert!(run_dir(&r).is_err());
+        r.paper_id = String::new();
+        assert_eq!(run_dir(&r).unwrap(), "notebooks/idea");
+        r.notebook_id = Some("../x".into());
+        assert!(run_dir(&r).is_err());
+        r.notebook_id = None;
+        assert!(run_dir(&r).is_err());
+        assert!(is_added_dir("papers/2017-attention"));
+        assert!(is_added_dir("notebooks/idea"));
+        assert!(!is_added_dir("papers/../secret"));
+        assert!(!is_added_dir("papers/a/b"));
+        assert!(!is_added_dir(".xivly/x"));
+        assert!(!is_added_dir("papers/.hidden"));
     }
 
     #[test]

@@ -77,10 +77,12 @@ async function standInClaude(context: BrowserContext) {
 				sessionStorage.setItem('claudeRequests', JSON.stringify(w.__claudeRequests));
 				const answer = r.prompt.includes('mind map')
 					? '- Calm reading\n  - Annotations in the PDF [p. 1]\n  - One page'
-					: r.prompt.includes('again')
+					: r.prompt.includes('Summarize our conversation')
+						? 'We talked about **calm reading**.'
+						: r.prompt.includes('again')
 						? 'Still about **calm** reading.'
 						: 'It is about **calm reading** [p. 1].';
-				const events: unknown[] = [{ type: 'system', subtype: 'init', session_id: r.sessionId }, { type: 'assistant', message: { content: [{ type: 'tool_use', name: 'Read', input: { file_path: 'paper.pdf' } }] } }];
+				const events: unknown[] = [{ type: 'system', subtype: 'init', session_id: r.sessionId }, { type: 'stream_event', event: { type: 'message_start', message: { usage: { input_tokens: 1200, cache_read_input_tokens: 40000 } } } }, { type: 'assistant', message: { content: [{ type: 'tool_use', name: 'Read', input: { file_path: 'paper.pdf' } }] } }];
 				for (const word of answer.split(/(?<= )/)) events.push({ type: 'stream_event', event: { type: 'content_block_delta', delta: { type: 'text_delta', text: word } } });
 				events.push({ type: 'result', is_error: false, result: answer, session_id: r.sessionId, total_cost_usd: 0.004 }, { type: 'xivly_exit', code: 0, stderr: '' });
 				for (const e of events) {
@@ -94,7 +96,7 @@ async function standInClaude(context: BrowserContext) {
 }
 
 /** The prompts Claude was asked so far (with the stand-in). */
-const claudeRequests = (page: Page) => page.evaluate(() => (window as unknown as { __claudeRequests: { prompt: string; sessionId: string; resume: boolean; tools: string[] }[] }).__claudeRequests);
+const claudeRequests = (page: Page) => page.evaluate(() => (window as unknown as { __claudeRequests: { prompt: string; sessionId: string; resume: boolean; tools: string[]; notebookId?: string; paperId?: string; addDirs?: string[] }[] }).__claudeRequests);
 
 test('the library loads without console errors', async ({ page }) => {
 	const errs = errors(page);
@@ -1619,5 +1621,72 @@ test('linked papers: Add to notebook… from the library, listed in the notebook
 	await panel.getByRole('button', { name: new RegExp(`^${title}`) }).hover();
 	await panel.getByRole('button', { name: `Unlink ${title}` }).click();
 	await expect(panel.getByText('No papers yet.')).toBeVisible();
+	expect([...errs, ...tabErrs]).toEqual([]);
+});
+
+test('a notebook’s chat: Claude reads the text, @ adds a paper’s PDF, then summarize and clear (a stand-in claude)', async ({ page, context }) => {
+	await standInClaude(context);
+	const errs = errors(page);
+	await addPaper(page, context);
+	const tab = await openNewNotebook(page, context, 'Calm reading');
+	const tabErrs = errors(tab);
+	await tab.getByRole('textbox', { name: 'Notes' }).click();
+	await tab.keyboard.type('Reading without distraction.');
+
+	await tab.getByRole('button', { name: 'Right pane' }).click();
+	await tab.getByRole('tab', { name: 'Chat' }).click();
+	const box = tab.getByRole('textbox', { name: 'Ask Claude about this notebook' });
+	await box.click();
+	await tab.keyboard.type('What does @tiny');
+	const menu = tab.getByRole('listbox', { name: 'Add a paper' });
+	await expect(menu.getByRole('option')).toHaveText([new RegExp(`${title}.*PDF`), new RegExp(`${title}.*notes`)]);
+	await tab.keyboard.press('Enter');
+	// Not linked yet: offered.
+	await tab.getByRole('button', { name: 'Link it' }).click();
+	await expect(tab.getByRole('complementary', { name: 'Linked papers' }).getByRole('button', { name: new RegExp(`^${title}`) })).toBeVisible();
+	await expect(box).toHaveValue('What does ');
+	await box.press('End');
+	await tab.keyboard.type('say?');
+	await tab.keyboard.press('Enter');
+
+	await expect(tab.locator('[data-chat-answers]')).toContainText('It is about calm reading');
+	const [r] = await claudeRequests(tab);
+	expect(r.notebookId).toBeTruthy();
+	expect(r.paperId).toBeUndefined();
+	expect(r.addDirs).toEqual([expect.stringMatching(/^papers\//)]);
+	expect(r.prompt).toContain('Reading without distraction.');
+	expect(r.prompt).toContain(`Paper added: “${title}”`);
+	expect(r.prompt.endsWith('What does say?')).toBe(true);
+	await expect(tab.getByRole('list', { name: 'In the conversation' })).toContainText('PDF');
+	await expect(tab.getByLabel(/Conversation size/)).toContainText('41k');
+
+	// Summarize: a new conversation from the summary, the paper still known (summarized).
+	await tab.getByRole('button', { name: 'Summarize the conversation' }).click();
+	await expect(tab.getByText('Goes on from a summary of the conversation before')).toBeVisible();
+	await expect(tab.getByRole('list', { name: 'In the conversation' })).toContainText('(summarized)');
+	await box.fill('Go on');
+	await box.press('Enter');
+	await expect(tab.locator('[data-chat-answers]')).toContainText('It is about calm reading');
+	const requests = await claudeRequests(tab);
+	expect(requests[2].prompt).toContain('## Summary of our conversation so far');
+	expect(requests[2].resume).toBe(false);
+
+	// Clear: nothing in the new conversation; both earlier ones kept.
+	await tab.getByRole('button', { name: 'Clear the conversation' }).click();
+	await tab.getByRole('button', { name: 'Clear', exact: true }).click();
+	await expect(tab.getByRole('list', { name: 'In the conversation' })).toHaveCount(0);
+	await tab.getByRole('button', { name: 'Earlier conversations' }).click();
+	await expect(tab.getByRole('menuitem')).toHaveCount(2);
+	await tab.getByRole('menuitem').first().click();
+	await expect(tab.getByText('An earlier conversation')).toBeVisible();
+	// The menu's button keeps its tooltip while focused: out of the way first.
+	await tab.mouse.move(5, 300);
+	await tab.keyboard.press('Escape');
+	await tab.getByRole('button', { name: 'Back to the current one' }).click();
+
+	// The conversation is kept: after a reload it's the new, empty one.
+	await tab.reload();
+	await tab.getByRole('tab', { name: 'Chat' }).click();
+	await expect(tab.getByText('Ask Claude about this idea.')).toBeVisible();
 	expect([...errs, ...tabErrs]).toEqual([]);
 });

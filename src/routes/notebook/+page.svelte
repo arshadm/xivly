@@ -1,7 +1,8 @@
 <!--
 	A notebook in its own window: its linked papers on the left, its title (edited in
 	place) under the folders it's in, its text (notebooks/<id>/notes.json, saved a moment
-	after you stop typing), and on the right a linked paper to read beside it.
+	after you stop typing), and on the right a linked paper to read beside it, or the
+	chat with Claude about it.
 	One window per notebook (a lock, as for papers): another one offers to take it over.
 -->
 <script lang="ts">
@@ -11,7 +12,9 @@
 	import { library } from '#lib/library.svelte.js';
 	import LinkedPapers from '#lib/notebooks/LinkedPapers.svelte';
 	import { notebooks } from '#lib/notebooks/notebooks.svelte.js';
+	import NotebookChat from '#lib/notebooks/NotebookChat.svelte';
 	import PaperView from '#lib/notebooks/PaperView.svelte';
+	import { notesToMarkdown } from '#lib/notes/markdown.js';
 	import NotesPane, { flushNotes } from '#lib/notes/NotesPane.svelte';
 	import { paperRefNode, paperRefsIn, searchPapers, type PaperRefs } from '#lib/notes/paper-ref.js';
 	import SplitPane from '#lib/pdf/SplitPane.svelte';
@@ -118,6 +121,9 @@
 		if (shownPaper && a) void notesPane?.insert([paperRefNode(shownPaper, Math.floor(a.page)), { type: 'text', text: ' ' }]);
 	}
 
+	/** The notebook's text as Markdown (what Claude reads). */
+	const notebookText = () => (doc ? notesToMarkdown(doc) : '');
+
 	const papers: PaperRefs = {
 		search: (query) => searchPapers(library.papers, query, linked),
 		get: (paperId) => library.get(paperId) ?? null,
@@ -199,6 +205,9 @@
 						<button role="tab" aria-selected={s.notebookPaneTab === 'paper'} class="flex h-7 items-center gap-1.5 rounded-md px-2 text-xs text-muted hover:text-stone-900 aria-selected:bg-stone-200/80 aria-selected:text-stone-900 dark:hover:text-stone-100 dark:aria-selected:bg-stone-800 dark:aria-selected:text-stone-100" onclick={() => settings.set('notebookPaneTab', 'paper')}>
 							<span class="icon-[lucide--file-text] size-3.5"></span>Paper
 						</button>
+						<button role="tab" aria-selected={s.notebookPaneTab === 'chat'} class="flex h-7 items-center gap-1.5 rounded-md px-2 text-xs text-muted hover:text-stone-900 aria-selected:bg-stone-200/80 aria-selected:text-stone-900 dark:hover:text-stone-100 dark:aria-selected:bg-stone-800 dark:aria-selected:text-stone-100" onclick={() => settings.set('notebookPaneTab', 'chat')}>
+							<span class="icon-[lucide--sparkles] size-3.5"></span>Chat
+						</button>
 					</div>
 					<span class="min-w-0 flex-1 truncate px-1 font-serif text-xs" title={shownPaper?.title} data-tauri-drag-region>{s.notebookPaneTab === 'paper' ? (shownPaper?.title ?? '') : ''}</span>
 					{#if s.notebookPaneTab === 'paper' && shownPaper}
@@ -219,6 +228,10 @@
 					{:else}
 						<p class="m-auto max-w-56 px-4 text-center text-xs text-muted">Click a linked paper, or a link in the text, to read it here.</p>
 					{/if}
+				</div>
+				<!-- Both stay alive: an answer keeps streaming while the paper shows, and back. -->
+				<div class="flex min-h-0 flex-1 flex-col border-t border-stone-200 dark:border-stone-800" class:hidden={s.notebookPaneTab !== 'chat'}>
+					{#key id}<NotebookChat notebookId={id} title={notebook.title} text={notebookText} {linked} onshow={show} onlink={(paperId) => void notebooks.link(id, paperId).catch((e) => toast(String(e), 'error'))} />{/key}
 				</div>
 			</SplitPane>
 		{/if}

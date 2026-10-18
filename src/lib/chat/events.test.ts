@@ -42,3 +42,14 @@ describe('a streamed answer', () => {
 		expect(run({ type: 'rate_limit_event' }, 'nonsense', null, { type: 'xivly_text', text: 'log line' })).toEqual(emptyAnswer());
 	});
 });
+
+describe('the size of the conversation', () => {
+	it('is what the last call to the model read', () => {
+		const start = (usage: Record<string, number>) => ({ type: 'stream_event', event: { type: 'message_start', message: { usage } } });
+		let a = onEvent(emptyAnswer(), start({ input_tokens: 10, cache_read_input_tokens: 1000, cache_creation_input_tokens: 200 }));
+		expect(a.contextTokens).toBe(1210);
+		a = onEvent(a, start({ input_tokens: 5, cache_read_input_tokens: 3000 }));
+		expect(a.contextTokens).toBe(3005);
+		expect(onEvent(a, start({})).contextTokens).toBe(3005);
+	});
+});

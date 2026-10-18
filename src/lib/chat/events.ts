@@ -14,12 +14,18 @@ export interface Answer {
 	error?: string;
 	/** API-price equivalent of the tokens used (drawn from the subscription, not charged). */
 	cost?: number;
+	/** How large the conversation is, in tokens: what the last call to the model read (its whole context). */
+	contextTokens?: number;
 }
 
 export const emptyAnswer = (): Answer => ({ text: '', activity: null, tools: [], done: false });
 
 type Json = Record<string, unknown>;
 const isObject = (v: unknown): v is Json => !!v && typeof v === 'object' && !Array.isArray(v);
+const tokens = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
+/** The context a model call read: its input, cached or not. */
+const contextOf = (usage: unknown) => (isObject(usage) ? tokens(usage.input_tokens) + tokens(usage.cache_read_input_tokens) + tokens(usage.cache_creation_input_tokens) : 0);
+
 const base = (p: unknown) => (typeof p === 'string' ? p.split(/[\\/]/).pop() || p : '');
 
 /** What a tool call is doing, in a few words. */
@@ -49,6 +55,11 @@ export function onEvent(a: Answer, e: unknown): Answer {
 			const ev = isObject(e.event) ? e.event : {};
 			const delta = isObject(ev.delta) ? ev.delta : {};
 			if (ev.type === 'content_block_delta' && delta.type === 'text_delta' && typeof delta.text === 'string') return { ...a, text: a.text + delta.text, activity: null };
+			// Each call to the model (one per tool round) reads the whole conversation so far.
+			if (ev.type === 'message_start' && isObject(ev.message)) {
+				const n = contextOf(ev.message.usage);
+				return n ? { ...a, contextTokens: n } : a;
+			}
 			// A text block after a tool call starts a new paragraph.
 			if (ev.type === 'content_block_start' && isObject(ev.content_block) && ev.content_block.type === 'text' && a.text && !a.text.endsWith('\n')) return { ...a, text: `${a.text}\n\n` };
 			return a;

@@ -3,25 +3,11 @@
 	text, then rendered: Markdown and maths); [p. N] citations jump to the page.
 	Conversations are kept next to the paper and continue where they stopped.
 -->
-<script lang="ts" module>
-	import { platform } from '#lib/platform/index.js';
-	import { settings } from '#lib/settings.svelte.js';
-
-	// Where claude is: found once per window (again after a failure, or when the path setting changes).
-	let found: { setting: string; path: Promise<string> } | null = null;
-	function locateClaude(): Promise<string> {
-		const setting = settings.values.claudePath;
-		if (!found || found.setting !== setting) {
-			const path = platform.claude!.locate(setting).then((r) => r.path);
-			found = { setting, path };
-			path.catch(() => (found = null));
-		}
-		return found.path;
-	}
-</script>
-
 <script lang="ts">
 	import { tick } from 'svelte';
+	import { platform } from '#lib/platform/index.js';
+	import { settings } from '#lib/settings.svelte.js';
+	import { locateClaude } from './locate';
 	import { Annotations } from 'svelte-pdf-mini';
 	import { settingsDialog } from '#lib/components/SettingsDialog.svelte';
 	import { library } from '#lib/library.svelte.js';
@@ -196,7 +182,7 @@
 		</div>
 
 		<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-		<div bind:this={scroller} {onscroll} {onclick} class="chat min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 text-[13.5px] leading-relaxed" aria-live="polite">
+		<div bind:this={scroller} {onscroll} {onclick} data-chat-answers class="chat min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 text-[13.5px] leading-relaxed" aria-live="polite">
 			{#if !session.chat.messages.length && !session.running}
 				<div class="space-y-2 pt-4">
 					<p class="text-xs text-muted">Ask Claude about this paper. It reads the PDF (and your notes) and cites pages you can click.</p>
@@ -250,59 +236,3 @@
 		</div>
 	</div>
 {/if}
-
-<style>
-	/* Rendered answers: compact Markdown. */
-	.chat :global([data-pdf-markdown] > * + *) {
-		margin-top: 0.55em;
-	}
-	.chat :global([data-pdf-markdown] ul) {
-		list-style: disc;
-		padding-left: 1.3em;
-	}
-	.chat :global([data-pdf-markdown] ol) {
-		list-style: decimal;
-		padding-left: 1.3em;
-	}
-	.chat :global([data-pdf-markdown] h1),
-	.chat :global([data-pdf-markdown] h2),
-	.chat :global([data-pdf-markdown] h3) {
-		font-family: var(--font-serif);
-		font-size: 1.05em;
-		font-weight: 600;
-	}
-	.chat :global([data-pdf-markdown] code) {
-		font-family: var(--font-mono);
-		font-size: 0.88em;
-		background: rgb(0 0 0 / 0.06);
-		border-radius: 4px;
-		padding: 0.1em 0.3em;
-	}
-	.chat :global([data-pdf-markdown] pre) {
-		background: rgb(0 0 0 / 0.05);
-		border-radius: 6px;
-		padding: 0.6em 0.8em;
-		overflow-x: auto;
-	}
-	.chat :global([data-pdf-markdown] a) {
-		color: var(--color-sky-700, #0369a1);
-		text-decoration: underline;
-		text-underline-offset: 2px;
-	}
-	/* Page citations: a chip, like the notes'. */
-	.chat :global([data-pdf-markdown] a[href^='#xivly-page-']) {
-		text-decoration: none;
-		border-radius: 999px;
-		padding: 0 0.45em;
-		font-size: 0.85em;
-		background: rgb(14 165 233 / 0.12);
-		white-space: nowrap;
-	}
-	:global(.dark) .chat :global([data-pdf-markdown] a) {
-		color: var(--color-sky-300, #7dd3fc);
-	}
-	:global(.dark) .chat :global([data-pdf-markdown] code),
-	:global(.dark) .chat :global([data-pdf-markdown] pre) {
-		background: rgb(255 255 255 / 0.08);
-	}
-</style>
