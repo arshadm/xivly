@@ -194,7 +194,7 @@ Decided 2026-10-17:
 - [x] **8.15 A paper's notebooks in its reader:** a **Notebooks** tab in the side panel (⌥⌘7) lists the notebooks that link the paper, by hand or with chips in their text (*mentioned 2×*, *linked*), with their folders; a click opens one, *Add to notebook…* links another. Read when the tab is shown, and again when a notebook changes (in another window, or on disk). *Test:* an e2e test.
 - [x] **8.16 Search across notebooks:** the library's search box finds notebooks too, by the phrase in their title or text (`notes.md`, read once a search starts, then as notebooks change): shown above the papers with their folders and the words around the match (the first six, then *Show all*). *Test:* `search.test.ts` and an e2e test.
 
-**Later:** *Add to notebook* on a chat answer; drag a paper from the library onto a notebook; export a notebook (Markdown, PDF).
+**Closed 2026-10-18.** Not planned: *Add to notebook* on a chat answer; drag a paper from the library onto a notebook; export a notebook (Markdown, PDF).
 
 ## Order
 
