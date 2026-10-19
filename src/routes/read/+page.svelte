@@ -53,6 +53,7 @@
 	import { settingsDialog } from '#lib/components/SettingsDialog.svelte';
 	import { shortcutsHelp } from '#lib/components/ShortcutsHelp.svelte';
 	import { toast } from '#lib/components/Toasts.svelte';
+	import { referenceAt, referenceUrl } from '#lib/pdf/reference-url.js';
 	import { paperCache, warmPdf } from '#lib/pdf.js';
 	import AnnotationToolbar from '#lib/pdf/AnnotationToolbar.svelte';
 	import NoteHoverCard from '#lib/pdf/NoteHoverCard.svelte';
@@ -515,6 +516,35 @@
 		}
 	}
 
+	// Shift-click a citation in the text, or an entry of the reference list: the cited paper
+	// in the browser (its arXiv page, DOI or URL, else a search for its title and authors).
+	$effect(() => {
+		const el = viewer?.scrollEl;
+		if (!el) return;
+		const onclick = (e: MouseEvent) => {
+			if (!e.shiftKey || e.button !== 0 || !viewer) return;
+			// A link (a citation's, usually) mustn't go where it points as well.
+			const link = !!(e.target as Element | null)?.closest?.('[data-pdf-link]');
+			if (link) (e.preventDefault(), e.stopPropagation());
+			const v = viewer;
+			void (async () => {
+				const ctx = await v.contextAt({ clientX: e.clientX, clientY: e.clientY, target: e.target });
+				const at = !ctx.references?.length && ctx.page && ctx.point && paperState ? referenceAt(paperState.references, ctx.page, ctx.point) : undefined;
+				const refs = ctx.references?.length ? ctx.references : at ? [at] : [];
+				if (!refs.length) {
+					// A plain web link: opened as a click would.
+					if (link && ctx.link?.url) void platform.openUrl(ctx.link.url);
+					return;
+				}
+				// The shift-click extended the text selection over it: not wanted.
+				if (!link) getSelection()?.removeAllRanges();
+				for (const r of refs.slice(0, 3)) void platform.openUrl(referenceUrl(r));
+			})();
+		};
+		el.addEventListener('click', onclick, true);
+		return () => el.removeEventListener('click', onclick, true);
+	});
+
 	// ── Bookmarks ────────────────────────────────────────────────────────
 	const bookmarks = $derived(paper?.bookmarks ?? []);
 	let bookmarkPicker = $state(false);
@@ -919,7 +949,7 @@
 															<Paper.References class="space-y-0.5 pt-1">
 																{#snippet item({ reference, citedCount, go, nextCitation })}
 																	<div class="group rounded-md px-2 py-1.5 hover:bg-stone-200/70 dark:hover:bg-stone-800">
-																		<button class="block w-full text-left" onclick={go}>
+																		<button class="block w-full text-left" title="Go to it (⇧-click: open it in the browser)" onclick={(e) => (e.shiftKey ? void platform.openUrl(referenceUrl(reference)) : go())}>
 																			<span class="mr-1 font-mono text-[11px] text-muted">{reference.label}</span>
 																			<span class="font-medium">{reference.parsed.title ?? reference.raw.slice(0, 120)}</span>
 																			<span class="block text-xs text-muted">{reference.parsed.authors.slice(0, 3).join(', ')}{reference.parsed.year ? ` · ${reference.parsed.year}` : ''}</span>

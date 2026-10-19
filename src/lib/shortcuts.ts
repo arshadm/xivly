@@ -83,6 +83,7 @@ export const shortcuts: Group[] = [
 			{ label: 'Bookmark this spot', keys: [keys.addBookmark] },
 			{ label: 'Go to bookmark', keys: [keys.goToBookmark] },
 			{ label: 'Paper info', keys: [keys.panelInfo] },
+			{ label: 'Open a cited paper in the browser (a citation or a reference)', keys: [`${shift}click`] },
 			{ label: 'Notes pane', keys: [keys.notesPane] },
 			{ label: 'Chat with Claude', keys: [keys.chat] },
 			{ label: 'Close', keys: [keys.closeWindow] }

@@ -1,0 +1,44 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>
+endobj
+4 0 obj
+<< /Length 661 >>
+stream
+BT /F1 18 Tf 72 720 Td (A Paper That Cites Others) Tj ET
+BT /F1 11 Tf 72 696 Td (Grace Hopper) Tj ET
+BT /F1 13 Tf 72 660 Td (1 Introduction) Tj ET
+BT /F1 11 Tf 72 640 Td (Transformers [1] replaced recurrence; graph methods [2] came later.) Tj ET
+BT /F1 13 Tf 72 600 Td (References) Tj ET
+BT /F1 10 Tf 72 580 Td ([1] A. Vaswani, N. Shazeer, and N. Parmar. Attention is all you need.) Tj ET
+BT /F1 10 Tf 90 566 Td (arXiv preprint arXiv:1706.03762, 2017.) Tj ET
+BT /F1 10 Tf 72 546 Td ([2] W. Hamilton and R. Ying. Inductive representation learning on large graphs.) Tj ET
+BT /F1 10 Tf 90 532 Td (In Advances in Neural Information Processing Systems, 2017.) Tj ET
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+6 0 obj
+<< /Title (A Paper That Cites Others) /Author (Grace Hopper) >>
+endobj
+xref
+0 7
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000241 00000 n 
+0000000952 00000 n 
+0000001049 00000 n 
+trailer
+<< /Size 7 /Root 1 0 R /Info 6 0 R >>
+startxref
+1128
+%%EOF

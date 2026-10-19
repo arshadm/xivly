@@ -325,6 +325,61 @@ test('a paper reopens at its page, as zoomed and scrolled as it was left', async
 	expect(errs).toEqual([]);
 });
 
+test('shift-click a citation or a reference: the cited paper in the browser (arXiv, else a search for it)', async ({ page, context }) => {
+	// Pages of the web opened in the browser: recorded instead (the app's own tabs still open).
+	await context.addInitScript(() => {
+		const w = window as unknown as { opened: string[] };
+		const open = window.open.bind(window);
+		w.opened = [];
+		window.open = (url?: string | URL, target?: string, features?: string) => {
+			const u = new URL(String(url ?? ''), location.href);
+			if (u.origin === location.origin || !u.protocol.startsWith('http')) return open(url, target, features);
+			w.opened.push(u.href);
+			return null;
+		};
+	});
+	await startLibrary(page);
+	await page.getByRole('button', { name: 'Add papers' }).click();
+	const chooser = page.waitForEvent('filechooser');
+	await page.getByRole('button', { name: /Drop PDF files/ }).click();
+	await (await chooser).setFiles(`${test.info().project.testDir}/fixtures/cites.pdf`);
+	await expect(page.getByRole('button', { name: /A Paper That Cites Others/ })).toBeVisible();
+	const reader = await readerTab(context);
+	const errs = errors(reader);
+	await expect(reader.locator('[data-pdf-page]').first().locator('[data-pdf-canvas]')).toBeVisible();
+	const opened = () => reader.evaluate(() => (window as unknown as { opened: string[] }).opened);
+	// The references are read from the text (the side panel lists them).
+	await reader.keyboard.press(`Alt+ControlOrMeta+4`);
+	await expect(reader.getByRole('button', { name: /Attention is all you need/i })).toBeVisible();
+
+	/** A point of the page, in PDF points from its bottom-left corner (the fixture is 612 × 792, written by hand). */
+	const at = async (x: number, y: number) => {
+		const b = (await reader.locator('[data-pdf-viewport] [data-pdf-page]').first().boundingBox())!;
+		return { x: b.x + (x / 612) * b.width, y: b.y + ((792 - y) / 792) * b.height };
+	};
+
+	// A citation in the text: its arXiv page.
+	// The [1] of "Transformers [1] replaced…" (about x 145, on the line at y 640).
+	let p = await at(145, 643);
+	await reader.keyboard.down('Shift');
+	await reader.mouse.click(p.x, p.y);
+	await reader.keyboard.up('Shift');
+	await expect.poll(opened).toEqual(['https://arxiv.org/abs/1706.03762']);
+	// An entry of the reference list with no link: a search for its title and authors.
+	p = await at(250, 549);
+	await reader.keyboard.down('Shift');
+	await reader.mouse.click(p.x, p.y);
+	await reader.keyboard.up('Shift');
+	await expect.poll(async () => (await opened()).length).toBe(2);
+	const search = new URL((await opened())[1]);
+	expect(search.origin + search.pathname).toBe('https://www.google.com/search');
+	expect(search.searchParams.get('q')).toMatch(/Inductive representation learning on large graphs.*Hamilton/);
+	// The side panel too.
+	await reader.getByRole('button', { name: /Attention is all you need/i }).click({ modifiers: ['Shift'] });
+	await expect.poll(async () => (await opened()).at(-1)).toBe('https://arxiv.org/abs/1706.03762');
+	expect(errs).toEqual([]);
+});
+
 test('bookmarks: add one, see it in the panel after a reload, jump to it from ⌘J', async ({ page, context }) => {
 	const reader = await addPaper(page, context);
 	const errs = errors(reader);
