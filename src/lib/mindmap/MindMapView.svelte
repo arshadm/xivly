@@ -1,7 +1,7 @@
 <!--
 	A mind map block's canvas: topics (inline Markdown and maths) laid out around
 	the central one, curved branches, pan (drag the background), zoom (⌘-scroll,
-	pinch, buttons), fit, and a handle to resize its height. Keyboard: Tab child,
+	pinch, buttons), fit, and a grip to resize its height (BlockGrip). Keyboard: Tab child,
 	Enter sibling, Delete remove, arrows move between topics, ⌥-arrows move a
 	topic, typing or F2 edits, ⌘/ folds a branch, Esc leaves the map.
 -->
@@ -23,6 +23,7 @@
 	import { saveFile } from '#lib/windows.js';
 	import { clipboard } from '#lib/ui/clipboard.js';
 	import { toast } from '#lib/components/Toasts.svelte';
+	import BlockGrip from '#lib/blocks/BlockGrip.svelte';
 
 	let {
 		map,
@@ -171,7 +172,7 @@
 
 	/** Dragging the background pans. */
 	function onpointerdown(e: PointerEvent) {
-		if (e.button !== 0 || (e.target as Element).closest('[data-topic], button, textarea')) return;
+		if (e.button !== 0 || (e.target as Element).closest('[data-topic], [data-block-grip], button, textarea')) return;
 		const start = { x: e.clientX, y: e.clientY, pan: { ...pan } };
 		const el = e.currentTarget as HTMLElement;
 		el.setPointerCapture(e.pointerId);
@@ -181,25 +182,11 @@
 		canvas?.focus({ preventScroll: true });
 	}
 
-	/** Dragging the bottom edge resizes the block. */
-	function resizeStart(e: PointerEvent) {
-		if (e.button !== 0) return;
-		e.preventDefault();
-		const handle = e.currentTarget as HTMLElement;
-		handle.setPointerCapture(e.pointerId);
-		const startY = e.clientY;
-		const start = height;
-		const moveTo = (ev: PointerEvent) => (dragHeight = Math.max(160, start + ev.clientY - startY));
-		handle.addEventListener('pointermove', moveTo);
-		handle.addEventListener(
-			'lostpointercapture',
-			() => {
-				handle.removeEventListener('pointermove', moveTo);
-				if (dragHeight !== null && dragHeight !== height) onresize(dragHeight);
-				dragHeight = null;
-			},
-			{ once: true }
-		);
+	/** The height that shows the whole map at 1:1 (the grip's double-click), then fitted. */
+	async function fitHeight() {
+		onresize(Math.ceil(placed.bounds.h + 64 + 28));
+		await tick();
+		fit();
 	}
 
 	// ── Editing ───────────────────────────────────────────────────────────
@@ -516,8 +503,7 @@
 		<button class="grid size-6 place-items-center rounded hover:bg-stone-100 dark:hover:bg-stone-800" aria-label="Fit the map" onclick={() => fit()}><span class="icon-[lucide--maximize] size-3.5"></span></button>
 	</div>
 	{#if editable}
-		<!-- svelte-ignore a11y_no_static_element_interactions -->
-		<div class="absolute inset-x-0 bottom-0 h-2 cursor-ns-resize hover:bg-sky-500/30" title="Drag to resize" onpointerdown={resizeStart}></div>
+		<BlockGrip {height} min={160} bind:dragging={dragHeight} {onresize} onfit={() => void fitHeight()} />
 	{/if}
 </div>
 

@@ -45,6 +45,7 @@
     "clsx": "^2.1.1",
     "katex": "0.18.9",
     "marked": "18.0.14",
+    "roughjs": "4.6.6",
     "svelte-pdf-mini": "^0.9.0",
     "tailwind-merge": "^3.7.0"
   },

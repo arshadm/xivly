@@ -3,6 +3,11 @@
 	viewer.lastContext (what was right-clicked) + contextActions() (what to offer),
 	rendered with bits-ui's ContextMenu. Shortcuts come from the active keymap.
 -->
+<script lang="ts" module>
+	/** The menu groups the app adds to. */
+	export type MoreKind = 'selection' | 'page' | 'annotation' | 'figure';
+</script>
+
 <script lang="ts">
 	import { ContextMenu } from 'bits-ui';
 	import type { Snippet } from 'svelte';
@@ -18,8 +23,8 @@
 		trigger: Snippet<[{ props: Record<string, unknown> }]>;
 		onOpenReference?: (r: Reference) => void;
 		saveFile?: (file: Blob, name: string) => unknown;
-		/** The app's own actions, under "Selection" (quote it…) or "Page" (bookmark it…). */
-		moreActions?: (ctx: PdfContext) => Partial<Record<'selection' | 'page', PdfAction[]>>;
+		/** The app's own actions, under "Selection" (quote it…), "Page" (bookmark it…), an annotation or a figure (add it to a drawing). */
+		moreActions?: (ctx: PdfContext) => Partial<Record<MoreKind, PdfAction[]>>;
 	} = $props();
 	const viewer = ViewerContext.get();
 	const store = AnnotationsContext.getOr(null);
@@ -29,11 +34,11 @@
 		const ctx = viewer.lastContext;
 		if (!ctx) return [];
 		let out: PdfActionGroup[] = contextActions(ctx, { viewer, annotations: store, paper, extractor, onOpenReference, saveFile });
-		for (const [kind, extra] of Object.entries(moreActions?.(ctx) ?? {}) as ['selection' | 'page', PdfAction[]][]) {
+		for (const [kind, extra] of Object.entries(moreActions?.(ctx) ?? {}) as [MoreKind, PdfAction[]][]) {
 			if (!extra.length) continue;
 			const group = out.find((g) => g.kind === kind);
-			// A new Selection group goes first (it's what was right-clicked), a new Page group last.
-			out = group ? out.map((g) => (g === group ? { ...g, actions: [...g.actions, ...extra] } : g)) : kind === 'selection' ? [{ kind, actions: extra }, ...out] : [...out, { kind, actions: extra }];
+			// A new group goes first (it's what was right-clicked), but a new Page group last.
+			out = group ? out.map((g) => (g === group ? { ...g, actions: [...g.actions, ...extra] } : g)) : kind !== 'page' ? [{ kind, actions: extra }, ...out] : [...out, { kind, actions: extra }];
 		}
 		return out;
 	});

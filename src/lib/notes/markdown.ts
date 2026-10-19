@@ -5,6 +5,8 @@ import type { NotesDoc } from '#lib/types.js';
 import { toAnchor } from './paper-link';
 import { paperRefMarkdown } from './paper-ref';
 import { normalizeMap, toOutline } from '#lib/mindmap/tree.js';
+import { drawingMarkdown } from '#lib/drawing/notes.js';
+import { normalizeScene } from '#lib/drawing/scene.js';
 
 interface Node {
 	type: string;
@@ -66,6 +68,8 @@ function block(n: Node, opts: MarkdownOptions): string | null {
 			return table(n);
 		case 'mindMap':
 			return toOutline(normalizeMap(n.attrs?.map));
+		case 'drawing':
+			return drawingMarkdown(normalizeScene(n.attrs?.scene));
 		default:
 			// Unknown blocks (a future node type): their text, rather than nothing.
 			return n.content ? blocks(n.content, opts) : null;

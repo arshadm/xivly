@@ -406,6 +406,29 @@ export class Repo {
 		return name;
 	}
 
+	/**
+	 * The notes' drawings as images, `notes-assets/drawing-<id>.svg` (linked from notes.md), and
+	 * the files of drawings no longer in the notes to the trash. Unchanged files aren't written again.
+	 */
+	async #saveDrawingsIn(dir: string, drawings: ReadonlyMap<string, string>, present: () => Promise<void>) {
+		for (const [id, svg] of drawings) {
+			if (!/^[a-z0-9-]+$/i.test(id)) throw new Error(`Not a drawing id: ${id}`);
+			const path = `${dir}/notes-assets/drawing-${id}.svg`;
+			const bytes = enc.encode(svg);
+			await this.#lock(path, async () => {
+				const was = await this.fs.read(path).catch(() => null);
+				if (was && was.length === bytes.length && was.every((b, i) => b === bytes[i])) return;
+				await present();
+				await this.fs.write(path, bytes);
+			});
+		}
+		const files = await this.fs.list(`${dir}/notes-assets`).catch(() => []);
+		for (const f of files) {
+			const m = /^drawing-([a-z0-9-]+)\.svg$/i.exec(f.name);
+			if (m && !f.dir && !drawings.has(m[1])) await this.fs.trash(`${dir}/notes-assets/${f.name}`).catch(() => {});
+		}
+	}
+
 	/** A file in `dir` by its relative path (a notes image), or null when missing. */
 	#readFileIn(dir: string, path: string) {
 		if (!isPaperPath(path)) throw new Error(`Not a path in the folder: ${path}`);
@@ -426,6 +449,11 @@ export class Repo {
 		return this.#saveAssetIn(`papers/${id}`, bytes, ext, () => this.#present(id));
 	}
 
+	/** The paper's notes' drawings as images (see #saveDrawingsIn): their SVG by drawing id. */
+	saveNoteDrawings(id: string, drawings: ReadonlyMap<string, string>) {
+		return this.#saveDrawingsIn(`papers/${id}`, drawings, () => this.#present(id));
+	}
+
 	readPaperFile(id: string, path: string) {
 		return this.#readFileIn(`papers/${id}`, path);
 	}
@@ -442,6 +470,10 @@ export class Repo {
 
 	saveNotebookAsset(id: string, bytes: Uint8Array, ext: string): Promise<string> {
 		return this.#saveAssetIn(`notebooks/${id}`, bytes, ext, () => this.#notebookPresent(id));
+	}
+
+	saveNotebookDrawings(id: string, drawings: ReadonlyMap<string, string>) {
+		return this.#saveDrawingsIn(`notebooks/${id}`, drawings, () => this.#notebookPresent(id));
 	}
 
 	readNotebookFile(id: string, path: string) {

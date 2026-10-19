@@ -196,6 +196,27 @@ Decided 2026-10-17:
 
 **Closed 2026-10-18.** Not planned: *Add to notebook* on a chat answer; drag a paper from the library onto a notebook; export a notebook (Markdown, PDF).
 
+## Phase 9: Drawings in the notes
+
+Decided 2026-10-19:
+- **A whiteboard block in the notes**, like a mind map (Phase 5): a `drawing` node in `notes.json` with its scene and height, in a paper's notes and a notebook's text. Every change is an editor transaction (one undo step per gesture), copied and pasted between notes as JSON.
+- **Hand-drawn look** (rough.js, each shape with its own seed so it never wobbles between redraws); a drawing can be switched to clean lines.
+- **Shapes:** rectangle, ellipse, diamond, line, arrow, pen, text, image. Shapes carry a text label. Arrows and lines stick to the shapes they start or end on and follow them.
+- **Images:** pasted or dropped onto the drawing (kept in `notes-assets/`), or a box drawn on the PDF (right-click › *Add to drawing*), which keeps its page.
+- **In `notes.md`:** each drawing is written as `notes-assets/drawing-<id>.svg`, linked as an image, followed by its text (labels, and arrows as *A → B*), for search and Claude.
+- **Blocks resize from a visible grip** at the bottom edge (mind maps too); double-click fits the height to the content.
+
+- [x] **9.1 Shared block grip** (`src/lib/blocks/BlockGrip.svelte`): the resize grip of mind maps and drawings, a visible bar at the bottom edge (drag, ↑ ↓ when focused, double-click fits the height to the content). *Test:* e2e (a mind map and a drawing resized, kept after a reload).
+- [x] **9.2 Model** (`src/lib/drawing/scene.ts`): shapes (`rect`, `ellipse`, `diamond`, `line` with arrowheads, `pen`, `text`, `image`) with a style each, `normalizeScene` (bad values dropped, unknown fields kept), edits (add, change, restyle, remove, duplicate, move, resize, reorder), hit-testing, bounds; a line's ends stick to boxes (drawn where the line meets the outline), come loose when the line is moved alone or the box goes; the scene's words. *Test:* `scene.test.ts`.
+- [x] **9.3 Rendering** (`render.ts`, `svg.ts`): each shape as marks, rough (rough.js, a seed per shape) or clean; labels wrapped inside their shape (a line's on the paper colour at its middle); a palette drawn in light and dark; the whole drawing as an SVG document. *Test:* `scene.test.ts`.
+- [x] **9.4 The block** (`node.svelte.ts`, `DrawingView.svelte`): a TipTap `drawing` node (`{scene, height}`) whose view takes its own keys, pointer and clipboard; each gesture one undo step; inserted from the bar (**Drawing**); pasted between notes as a drawing of its own.
+- [x] **9.5 Tools:** a palette in the block: select V (click, ⇧-click, box; drag moves, ⌥-drag copies; handles resize, ⇧ keeps proportions), pan H (or space-drag, the middle button), rectangle R, ellipse O, diamond D (drag, ⇧ square; a click: the usual size), arrow A and line L (⇧: 15° steps; their ends stick to the box under them, highlighted), pen P, text T (or double-click the background), eraser E. Double-click or ↵ labels a shape; empty new text leaves nothing. Delete, arrows nudge (⇧ 10), ⌘D, ⌘A, ⌘C ⌘X ⌘V (pasted text becomes a text shape), ⌘⇧] ⌘⇧[, ⇧1 fit, ⌘-scroll or pinch zooms. *Test:* e2e (rectangle and ellipse labelled, an arrow between them that follows the ellipse, undo, redo, pen, text, delete, reload).
+- [x] **9.6 Bar that follows** (`DrawingBar.svelte`): while a drawing has focus, line colour and style (width, dash), fill (none, a colour; hatched, cross-hatched, solid), text (font: hand-drawn, sans, serif, mono; size), arrowheads, to front / to back, duplicate, delete, hand-drawn or clean, fit, PNG, SVG, undo, redo, Done. Its buttons never take the focus from the drawing. What's picked also goes to the next shapes. *Test:* e2e (red, then clean lines).
+- [x] **9.7 Images:** pasted or dropped onto a drawing (kept in `notes-assets/`, scaled to the view, resized in proportion); in the reader, right-click a box drawn on the page (or a shape) › *Add to drawing*, or a figure › *Add figure to drawing*: that part of the page as an image with a **p. N** badge that goes there, into the drawing edited last, else a new drawing at the end of the notes. *Test:* e2e (pasted; a box on the PDF).
+- [x] **9.8 Out:** *Save as PNG / SVG* (images embedded). Each save of the notes writes every drawing as `notes-assets/drawing-<id>.svg` (only when it changed; a drawing removed: its file to the trash), and notes.md has `![Drawing](notes-assets/drawing-<id>.svg)` followed by its words (texts and labels top to bottom, then *A → B* for each line between boxes, and *Image from p. N*). *Test:* `markdown.test.ts`, and the e2e tests (notes.md, the SVG file, the SVG saved).
+
+**Closed 2026-10-19.**
+
 ## Order
 
 1. **0 → 1:** quick wins that set up the anchor type.
@@ -205,3 +226,4 @@ Decided 2026-10-17:
 5. **5:** mind maps as blocks in the notes.
 6. **6.1 early, the rest last:** 6.1 is cheap and prevents conflicts later.
 7. **8:** notebooks; A and B first, then C and D in either order, E last.
+8. **9:** drawings; 9.1–9.4 first, then the rest.

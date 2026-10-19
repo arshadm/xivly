@@ -1,6 +1,6 @@
 // Smoke test of the web app: start a library, add a paper, annotate it, save,
 // reload, and the annotation is still there (saved inside the PDF).
-import { expect, test, type BrowserContext, type ConsoleMessage, type Page } from '@playwright/test';
+import { expect, test, type BrowserContext, type ConsoleMessage, type Locator, type Page } from '@playwright/test';
 
 const title = 'A Tiny Paper for End-to-End Tests';
 
@@ -1287,6 +1287,219 @@ test('mind map folding shows: a “+N” badge on a folded branch unfolds it; a 
 });
 
 /** Announce changed library files to a window, as the desktop's folder watcher does. */
+/** A drawing's canvas: drag on it, in its own pixels (from its top-left corner). */
+function onCanvas(page: Page, canvas: Locator) {
+	const at = async (x: number, y: number) => {
+		const b = (await canvas.boundingBox())!;
+		return [b.x + x, b.y + y] as const;
+	};
+	return {
+		async drag(from: [number, number], to: [number, number]) {
+			await page.mouse.move(...(await at(...from)));
+			await page.mouse.down();
+			await page.mouse.move(...(await at(...to)), { steps: 8 });
+			await page.mouse.up();
+		},
+		async click(x: number, y: number) {
+			await page.mouse.click(...(await at(x, y)));
+		},
+		async dblclick(x: number, y: number) {
+			await page.mouse.dblclick(...(await at(x, y)));
+		}
+	};
+}
+
+/** A file of the browser-storage library as text (null: none). */
+const readLibraryText = (page: Page, path: string) =>
+	page.evaluate(async (path) => {
+		const parts = path.split('/');
+		try {
+			let dir = await navigator.storage.getDirectory();
+			for (const p of parts.slice(0, -1)) dir = await dir.getDirectoryHandle(p);
+			return await (await (await dir.getFileHandle(parts.at(-1)!)).getFile()).text();
+		} catch {
+			return null;
+		}
+	}, path);
+
+test('drawings in the notes: shapes drawn and labelled, an arrow that follows its box, undone, kept, and in notes.md', async ({ page, context }) => {
+	const { reader, notes } = await openNotes(page, context);
+	const errs = errors(reader);
+	await reader.keyboard.type('A sketch:');
+	await reader.getByRole('button', { name: 'Drawing', exact: true }).click();
+	const canvas = notes.locator('[data-drawing-canvas]');
+	await expect(canvas).toBeVisible();
+	const shapes = (kind: string) => canvas.locator(`[data-shape][data-kind="${kind}"]`);
+	const draw = onCanvas(reader, canvas);
+
+	// A rectangle (R, drag), labelled (↵, type, Esc).
+	await draw.click(200, 220);
+	await expect(reader.getByRole('toolbar', { name: 'Drawing', exact: true })).toBeVisible();
+	await reader.keyboard.press('r');
+	await draw.drag([30, 80], [130, 150]);
+	await expect(shapes('rect')).toHaveCount(1);
+	await reader.keyboard.press('Enter');
+	await reader.keyboard.type('Encoder');
+	await reader.keyboard.press('Escape');
+	await expect(shapes('rect').locator('text')).toHaveText('Encoder');
+
+	// An ellipse, labelled with a double-click.
+	await reader.keyboard.press('o');
+	await draw.drag([230, 80], [340, 150]);
+	await draw.dblclick(285, 115);
+	await reader.keyboard.type('Decoder');
+	await reader.keyboard.press('Escape');
+	await expect(shapes('ellipse').locator('text')).toHaveText('Decoder');
+
+	// An arrow from one to the other sticks to both: moving the ellipse down takes its end along.
+	await reader.keyboard.press('a');
+	await draw.drag([80, 115], [285, 115]);
+	await expect(shapes('line')).toHaveCount(1);
+	const arrowHeight = async () => (await shapes('line').boundingBox())!.height;
+	expect(await arrowHeight()).toBeLessThan(30);
+	await reader.keyboard.press('Escape');
+	await draw.drag([300, 135], [300, 285]);
+	await expect.poll(arrowHeight).toBeGreaterThan(60);
+	await reader.keyboard.press('ControlOrMeta+z');
+	await expect.poll(arrowHeight).toBeLessThan(30);
+	await reader.keyboard.press('ControlOrMeta+Shift+z');
+	await expect.poll(arrowHeight).toBeGreaterThan(60);
+
+	// A pen stroke, and some text (T, click, type, Esc); empty text leaves nothing.
+	await reader.keyboard.press('p');
+	await draw.drag([30, 250], [150, 320]);
+	await expect(shapes('pen')).toHaveCount(1);
+	await reader.keyboard.press('t');
+	await draw.click(30, 350);
+	await reader.keyboard.type('a note');
+	await reader.keyboard.press('Escape');
+	await expect(shapes('text').locator('text')).toHaveText('a note');
+	await reader.keyboard.press('t');
+	await draw.click(170, 350);
+	await reader.keyboard.press('Escape');
+	await expect(shapes('text')).toHaveCount(1);
+
+	// Delete removes the selection; ⌘Z brings it back.
+	await draw.click(80, 115);
+	await reader.keyboard.press('Backspace');
+	await expect(shapes('rect')).toHaveCount(0);
+	await reader.keyboard.press('ControlOrMeta+z');
+	await expect(shapes('rect')).toHaveCount(1);
+
+	// Kept, and written for tools: notes.md links the drawing's SVG and says what it says.
+	await expect(reader.getByText('Saved', { exact: true })).toBeVisible();
+	await writesDone(reader);
+	const [id] = await paperIds(reader);
+	const md = (await readLibraryText(reader, `papers/${id}/notes.md`))!;
+	const file = /!\[Drawing\]\((notes-assets\/drawing-[a-z0-9]+\.svg)\)/.exec(md)?.[1];
+	expect(file).toBeTruthy();
+	expect(md).toContain('- Encoder\n- Decoder\n- a note\n- Encoder → Decoder');
+	await expect.poll(() => readLibraryText(reader, `papers/${id}/${file}`)).toContain('Decoder</tspan>');
+	await reader.reload();
+	await expect(notes.locator('[data-drawing-canvas] [data-shape]')).toHaveCount(5);
+	await expect(notes.locator('[data-drawing-canvas] [data-kind="ellipse"] text')).toHaveText('Decoder');
+	expect(errs).toEqual([]);
+});
+
+test('drawings: the grip resizes (mind maps too), the bar styles shapes, an image pasted in, saved as SVG', async ({ page, context }) => {
+	const { reader, notes } = await openNotes(page, context);
+	const errs = errors(reader);
+
+	// A mind map's grip: drag it down, the map grows and stays so.
+	await reader.getByRole('button', { name: 'Mind map', exact: true }).click();
+	const map = notes.locator('[data-mind-map-canvas]');
+	const mapHeight = async () => (await map.boundingBox())!.height;
+	const before = await mapHeight();
+	const grip = map.getByRole('separator', { name: /Resize/ });
+	await grip.scrollIntoViewIfNeeded();
+	let g = (await grip.boundingBox())!;
+	await reader.mouse.move(g.x + g.width / 2, g.y + g.height / 2);
+	await reader.mouse.down();
+	await reader.mouse.move(g.x + g.width / 2, g.y + 100, { steps: 5 });
+	await reader.mouse.up();
+	await expect.poll(mapHeight).toBeGreaterThan(before + 80);
+
+	await reader.keyboard.press('Escape');
+	await reader.getByRole('button', { name: 'Drawing', exact: true }).click();
+	const canvas = notes.locator('[data-drawing-canvas]');
+	const draw = onCanvas(reader, canvas);
+	const height = async () => (await canvas.boundingBox())!.height;
+	const was = await height();
+	await canvas.getByRole('separator', { name: /Resize/ }).scrollIntoViewIfNeeded();
+	g = (await canvas.getByRole('separator', { name: /Resize/ }).boundingBox())!;
+	await reader.mouse.move(g.x + g.width / 2, g.y + g.height / 2);
+	await reader.mouse.down();
+	await reader.mouse.move(g.x + g.width / 2, g.y - 100, { steps: 5 });
+	await reader.mouse.up();
+	await expect.poll(height).toBeLessThan(was - 80);
+
+	// A rectangle styled from the bar: red, then clean lines.
+	await canvas.scrollIntoViewIfNeeded();
+	await draw.click(250, 200);
+	await reader.keyboard.press('r');
+	await draw.drag([40, 60], [160, 140]);
+	const bar = reader.getByRole('toolbar', { name: 'Drawing', exact: true });
+	await bar.getByRole('button', { name: 'Line colour' }).click();
+	await bar.getByRole('button', { name: 'Red', exact: true }).click();
+	const rect = canvas.locator('[data-kind="rect"] path');
+	await expect(rect.first()).toHaveAttribute('stroke', '#e03131');
+	// Rough strokes are curves; a clean rectangle is straight sides with round corners.
+	await expect(rect.first()).toHaveAttribute('d', / C/);
+	await bar.getByRole('button', { name: /Hand-drawn/ }).click();
+	await expect(rect.first()).toHaveAttribute('d', / H.* V/);
+	await expect(rect.first()).not.toHaveAttribute('d', / C/);
+	await expect(canvas).toBeFocused();
+
+	// An image pasted in: kept next to the notes, shown in the drawing.
+	await canvas.evaluate(async (el) => {
+		const c = Object.assign(document.createElement('canvas'), { width: 60, height: 30 });
+		const g = c.getContext('2d')!;
+		g.fillStyle = '#1a1';
+		g.fillRect(0, 0, 60, 30);
+		const blob = await new Promise<Blob>((r) => c.toBlob((b) => r(b!), 'image/png'));
+		const data = new DataTransfer();
+		data.items.add(new File([blob], 'green.png', { type: 'image/png' }));
+		el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }));
+	});
+	await expect(canvas.locator('[data-kind="image"] image')).toHaveAttribute('href', /^blob:/);
+
+	const download = reader.waitForEvent('download');
+	await bar.getByRole('button', { name: 'Save as SVG' }).click();
+	const file = await download;
+	expect(file.suggestedFilename()).toBe('drawing.svg');
+	const chunks: Uint8Array[] = [];
+	for await (const chunk of await file.createReadStream()) chunks.push(chunk as Uint8Array);
+	const svg = new TextDecoder().decode(new Uint8Array(chunks.flatMap((c) => [...c])));
+	expect(svg).toContain('stroke="#e03131"');
+	expect(svg).toContain('href="data:image/png;base64,');
+
+	const reloaded = await reloadNotes(reader);
+	expect((await reloaded.locator('[data-mind-map-canvas]').boundingBox())!.height).toBeGreaterThan(before + 80);
+	await expect(reloaded.locator('[data-drawing-canvas] [data-shape]')).toHaveCount(2);
+	expect(errs).toEqual([]);
+});
+
+test('add to drawing: a box drawn on the PDF goes into a drawing in the notes, with its page', async ({ page, context }) => {
+	const reader = await addPaper(page, context);
+	const errs = errors(reader);
+	const firstPage = reader.locator('[data-pdf-page]').first();
+	await expect(firstPage.locator('[data-pdf-canvas]')).toBeVisible();
+	await reader.getByRole('button', { name: 'Box a region' }).click();
+	const box = (await firstPage.boundingBox())!;
+	await reader.mouse.move(box.x + box.width * 0.1, box.y + box.height * 0.06);
+	await reader.mouse.down();
+	await reader.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.12, { steps: 5 });
+	await reader.mouse.up();
+	await expect(firstPage.locator('[data-pdf-annotation]')).toHaveCount(1);
+	await reader.keyboard.type('The title');
+	await reader.mouse.click(box.x + box.width * 0.3, box.y + box.height * 0.09, { button: 'right' });
+	await reader.getByRole('menuitem', { name: 'Add to drawing' }).click();
+	const canvas = reader.getByRole('textbox', { name: 'Notes' }).locator('[data-drawing-canvas]');
+	await expect(canvas.locator('[data-kind="image"] image')).toHaveAttribute('href', /^blob:/);
+	await expect(canvas.getByRole('button', { name: 'Go to page 1' })).toBeVisible();
+	expect(errs).toEqual([]);
+});
+
 const announceChanges = (page: Page, paths: string[]) => page.evaluate((detail) => window.dispatchEvent(new CustomEvent('xivly:test-library-changed', { detail })), paths);
 
 /** A paper's folder in the browser-storage library: its id. */

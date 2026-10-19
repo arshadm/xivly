@@ -80,6 +80,13 @@ describe('notesToMarkdown', () => {
 		expect(md(m)).toBe('- Paper\n  - Method (p. 3)\n    - **fusion**');
 	});
 
+	it('drawings as their image, then their words (an empty one: nothing)', () => {
+		const shape = (id: string, kind: string, f = {}) => ({ id, kind, x: 0, y: 0, w: 10, h: 10, ...f });
+		const scene = { id: 'd7', shapes: [shape('a', 'rect', { text: 'Q*K' }), shape('b', 'ellipse', { y: 50, text: 'V' }), shape('l', 'line', { points: [[0, 0], [0, 50]], start: 'a', end: 'b', heads: [false, true] })] };
+		expect(md({ type: 'drawing', attrs: { scene } })).toBe('![Drawing](notes-assets/drawing-d7.svg)\n\n- Q\\*K\n- V\n- Q\\*K → V');
+		expect(md({ type: 'drawing', attrs: { scene: { id: 'e', shapes: [] } } })).toBe('');
+	});
+
 	it('an unknown block keeps its text', () => {
 		expect(md({ type: 'callout', content: [p(t('still here'))] })).toBe('still here');
 	});

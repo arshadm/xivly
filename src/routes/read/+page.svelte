@@ -625,6 +625,22 @@
 		await notesPane?.addToMindMap(text.length > 160 ? `${text.slice(0, 157).trimEnd()}…` : text, first.page);
 	}
 
+	/** A part of a page (a box drawn on it, a figure) as an image in a drawing of the notes, with its page; the notes open. */
+	async function addRegionToDrawing(page: number, rect: [number, number, number, number]) {
+		if (!viewer) return;
+		try {
+			const canvas = await viewer.document.renderRegion(page, rect, Math.max(40, Math.abs(rect[2] - rect[0])) * 1.5);
+			const blob = await new Promise<Blob | null>((ok) => canvas.toBlob(ok, 'image/png'));
+			if (!blob) throw new Error('nothing drawn');
+			settings.set('paneTab', 'notes');
+			if (!s.notesPane) settings.set('notesPane', true);
+			for (let i = 0; i < 60 && !notesPane; i++) await new Promise(requestAnimationFrame);
+			await notesPane?.addToDrawing(new File([blob], `page-${page}.png`, { type: 'image/png' }), page);
+		} catch (e) {
+			toast(`Couldn’t add it to a drawing: ${e instanceof Error ? e.message : e}`, 'error');
+		}
+	}
+
 	/** Where you're reading, for "Link to this page" in the notes. */
 	const readingAnchor = () => (viewer?.document.status === 'ready' ? anchorAt(viewer.position) : null);
 
@@ -641,7 +657,13 @@
 						: [])
 				]
 			: [],
-		page: ctx.page ? [{ id: 'page.bookmark', label: 'Add bookmark here…', keys: keys.addBookmark, run: () => bookmarkAt(ctx) }] : []
+		page: ctx.page ? [{ id: 'page.bookmark', label: 'Add bookmark here…', keys: keys.addBookmark, run: () => bookmarkAt(ctx) }] : [],
+		// A box drawn on the page (or a shape): what's under it, as an image.
+		annotation: ctx.annotations
+			.filter((a) => a.kind === 'area' || a.kind === 'rect' || a.kind === 'ellipse')
+			.slice(0, 1)
+			.map((a) => ({ id: 'annotation.drawing', label: 'Add to drawing', run: () => void addRegionToDrawing(a.page, a.rect) })),
+		figure: ctx.figure ? [{ id: 'figure.drawing', label: 'Add figure to drawing', run: () => void addRegionToDrawing(ctx.figure!.page, ctx.figure!.rect) }] : []
 	});
 
 	async function renameBookmark(b: Bookmark) {

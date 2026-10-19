@@ -28,6 +28,10 @@
 	import { MindMapNode } from '#lib/mindmap/node.svelte.js';
 	import { activeMap, type MapTools } from '#lib/mindmap/active.svelte.js';
 	import { addChild, newMap, normalizeMap, setPage, type MindMap } from '#lib/mindmap/tree.js';
+	import { DrawingNode } from '#lib/drawing/node.svelte.js';
+	import { activeDrawing } from '#lib/drawing/active.svelte.js';
+	import DrawingBar from '#lib/drawing/DrawingBar.svelte';
+	import { add, makeShape, newScene } from '#lib/drawing/scene.js';
 	import { toast } from '#lib/components/Toasts.svelte';
 
 	let {
@@ -134,6 +138,27 @@
 		editor.chain().focus('end').insertMindMap(page ? setPage(e.map, e.select, page) : e.map).run();
 	}
 
+	/**
+	 * An image (a box drawn on the PDF, with its page) into the drawing edited last, else
+	 * into a new drawing at the end.
+	 */
+	export async function addToDrawing(file: File, page?: number) {
+		if (!editor || !assets) return;
+		const recent = activeDrawing.recent;
+		if (recent && recent.within(editor.view.dom)) return recent.addImage(file, page);
+		try {
+			const src = await assets.save(file);
+			const bitmap = await createImageBitmap(file).catch(() => null);
+			const [w, h] = bitmap ? [bitmap.width, bitmap.height] : [320, 240];
+			bitmap?.close();
+			const k = Math.min(1, 480 / w, 320 / h);
+			const scene = add(newScene(), makeShape('image', { src, x: 0, y: 0, w: w * k, h: h * k, style: { fill: 'none' }, ...(page ? { page } : {}) }));
+			editor.chain().focus('end').insertDrawing(scene).scrollIntoView().run();
+		} catch (e) {
+			toast(`Couldn’t add the image: ${e instanceof Error ? e.message : e}`, 'error');
+		}
+	}
+
 	/** Add content (nodes, or HTML read into notes nodes) at the end of the notes (a quote from the paper…), and go on writing after it. */
 	export function append(nodes: JSONContent[] | string) {
 		editor?.chain().focus('end').insertContent(nodes).scrollIntoView().run();
@@ -186,7 +211,8 @@
 				NotesInlineMath.configure({ katexOptions: { throwOnError: false }, onClick: (node, pos) => void editMath(node, pos) }),
 				NotesBlockMath.configure({ katexOptions: { throwOnError: false, displayMode: true }, onClick: (node, pos) => void editMath(node, pos) }),
 				NotesImage.configure({ assets: assets ?? null }),
-				MindMapNode.configure({ title: () => title, onjump: (a) => onjump?.(a), anchor: () => anchor?.() ?? null })
+				MindMapNode.configure({ title: () => title, onjump: (a) => onjump?.(a), anchor: () => anchor?.() ?? null }),
+				DrawingNode.configure({ assets: assets ?? null, onjump: (a) => onjump?.(a) })
 			],
 			editorProps: {
 				attributes: { class: 'notes-editor min-h-full px-5 py-4 outline-none', role: 'textbox', 'aria-multiline': 'true', 'aria-label': 'Notes', 'data-notes-editor': '' },
@@ -358,7 +384,8 @@
 			{ label: 'Equation ($…$)', icon: 'icon-[lucide--sigma]', on: inlineMath },
 			{ label: 'Equation block ($$…$$)', icon: 'icon-[lucide--square-sigma]', on: blockMath },
 			{ label: 'Image (or paste / drop one)', icon: 'icon-[lucide--image-plus]', on: () => picker?.click(), disabled: () => !assets },
-			{ label: 'Mind map', icon: 'icon-[lucide--network]', on: () => run((c) => c.insertMindMap()) }
+			{ label: 'Mind map', icon: 'icon-[lucide--network]', on: () => run((c) => c.insertMindMap()) },
+			{ label: 'Drawing', icon: 'icon-[lucide--shapes]', on: () => run((c) => c.insertDrawing()) }
 		],
 		[
 			{ label: 'Undo', icon: 'icon-[lucide--undo-2]', keys: `${mod}Z`, on: () => run((c) => c.undo()), disabled: () => !can((e) => e.can().undo()) },
@@ -415,7 +442,10 @@
 
 <div class="flex h-full min-h-0 flex-col">
 	{#if editable}
-		<div class="flex shrink-0 flex-wrap items-center gap-0.5 border-b border-stone-200 px-3 py-1 dark:border-stone-800 {activeMap.tools ? 'bg-sky-50/70 dark:bg-sky-950/30' : ''}" role="toolbar" aria-label={activeMap.tools ? 'Mind map' : 'Formatting'}>
+		<div class="flex shrink-0 flex-wrap items-center gap-0.5 border-b border-stone-200 px-3 py-1 dark:border-stone-800 {activeMap.tools || activeDrawing.tools ? 'bg-sky-50/70 dark:bg-sky-950/30' : ''}" role="toolbar" aria-label={activeDrawing.tools ? 'Drawing' : activeMap.tools ? 'Mind map' : 'Formatting'}>
+			{#if activeDrawing.tools}
+				<DrawingBar tools={activeDrawing.tools} canUndo={() => can((e) => e.can().undo())} canRedo={() => can((e) => e.can().redo())} />
+			{:else}
 			{#if activeMap.tools}<span class="mr-1 text-[11px] font-medium tracking-wide text-muted uppercase">Map</span>{/if}
 			{#each activeMap.tools ? mapGroups(activeMap.tools) : groups as group, gi (gi)}
 				{#if gi}<Separator class="mx-1" />{/if}
@@ -430,6 +460,7 @@
 					</Tip>
 				{/each}
 			{/each}
+			{/if}
 		</div>
 	{/if}
 	{#if editable && active('table')}
@@ -767,11 +798,13 @@
 		min-width: 8em;
 		background: rgb(0 0 0 / 0.05);
 	}
-	/* Mind maps: a block of their own, with room around it. */
-	:global(.notes-editor .mind-map-block) {
+	/* Mind maps and drawings: a block of their own, with room around it. */
+	:global(.notes-editor .mind-map-block),
+	:global(.notes-editor .drawing-block) {
 		margin: 0.8em 0;
 	}
-	:global(.notes-editor .mind-map-block.ProseMirror-selectednode > [data-mind-map-canvas]) {
+	:global(.notes-editor .mind-map-block.ProseMirror-selectednode > [data-mind-map-canvas]),
+	:global(.notes-editor .drawing-block.ProseMirror-selectednode > [data-drawing-canvas]) {
 		outline: 2px solid rgb(14 165 233 / 0.6);
 	}
 	/* Find in the notes. */

@@ -10,7 +10,7 @@
 	import { saveFile } from '#lib/windows.js';
 	import BackPill from './BackPill.svelte';
 	import CenterControl from './CenterControl.svelte';
-	import PdfContextMenu from './PdfContextMenu.svelte';
+	import PdfContextMenu, { type MoreKind } from './PdfContextMenu.svelte';
 
 	let {
 		swatch,
@@ -27,7 +27,7 @@
 		paperState?: PaperState;
 		centerLocked?: boolean;
 		openReference: (r: Reference) => void;
-		moreActions: (ctx: PdfContext) => Partial<Record<'selection' | 'page', PdfAction[]>>;
+		moreActions: (ctx: PdfContext) => Partial<Record<MoreKind, PdfAction[]>>;
 	} = $props();
 	const s = $derived(settings.values);
 	const store = AnnotationsContext.get();

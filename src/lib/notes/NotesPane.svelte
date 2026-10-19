@@ -11,6 +11,7 @@
 	import type { MindMap } from '#lib/mindmap/tree.js';
 	import { Saver } from './saver.svelte';
 	import { IMAGE_TYPES, imageMime, type NoteAssets } from './images';
+	import { drawingFiles } from '#lib/drawing/notes.js';
 
 	/** Whose notes: a paper's, or a notebook's text. */
 	export type NotesKind = 'paper' | 'notebook';
@@ -19,8 +20,8 @@
 	function storeFor(kind: NotesKind, id: string) {
 		const repo = library.repo!;
 		return kind === 'paper'
-			? { dir: `papers/${id}`, read: () => repo.readNotes(id), save: (doc: NotesDoc) => repo.saveNotes(id, doc), saveAsset: (b: Uint8Array, ext: string) => repo.saveNoteAsset(id, b, ext), readFile: (p: string) => repo.readPaperFile(id, p) }
-			: { dir: `notebooks/${id}`, read: () => repo.readNotebookNotes(id), save: (doc: NotesDoc) => repo.saveNotebookNotes(id, doc).then((r) => (void broadcast('notebook-changed', { id }), r)), saveAsset: (b: Uint8Array, ext: string) => repo.saveNotebookAsset(id, b, ext), readFile: (p: string) => repo.readNotebookFile(id, p) };
+			? { dir: `papers/${id}`, read: () => repo.readNotes(id), save: (doc: NotesDoc) => repo.saveNotes(id, doc), saveAsset: (b: Uint8Array, ext: string) => repo.saveNoteAsset(id, b, ext), saveDrawings: (d: Map<string, string>) => repo.saveNoteDrawings(id, d), readFile: (p: string) => repo.readPaperFile(id, p) }
+			: { dir: `notebooks/${id}`, read: () => repo.readNotebookNotes(id), save: (doc: NotesDoc) => repo.saveNotebookNotes(id, doc).then((r) => (void broadcast('notebook-changed', { id }), r)), saveAsset: (b: Uint8Array, ext: string) => repo.saveNotebookAsset(id, b, ext), saveDrawings: (d: Map<string, string>) => repo.saveNotebookDrawings(id, d), readFile: (p: string) => repo.readNotebookFile(id, p) };
 	}
 
 	// One saver per paper (or notebook), outliving the pane: hiding it (⌘E) mid-save loses
@@ -32,9 +33,16 @@
 		const key = `${kind}/${id}`;
 		let saver = savers.get(key);
 		if (!saver) {
+			// Whether the notes had drawings when last saved (unknown at first: their files are checked once).
+			let drew: boolean | undefined;
 			const s = new Saver<NotesDoc>(async (doc) => {
 				known.set(key, JSON.stringify(doc));
-				await storeFor(kind, id).save(doc);
+				const store = storeFor(kind, id);
+				await store.save(doc);
+				// The drawings' images, for notes.md (a failure there leaves the notes saved).
+				const drawings = drawingFiles(doc);
+				if (drawings.size || drew !== false) await store.saveDrawings(drawings).catch((e) => console.warn('drawings not written', e));
+				drew = drawings.size > 0;
 			});
 			onFlush({ dirty: () => s.dirty, flush: () => s.flush().then(() => true) });
 			savers.set(key, (saver = s));
@@ -123,6 +131,12 @@
 	export async function addToMindMap(text: string, page?: number) {
 		for (let i = 0; i < 120 && !editor && notes.status !== 'error'; i++) await new Promise(requestAnimationFrame);
 		editor?.addToMindMap(text, page);
+	}
+
+	/** An image into a drawing (see NotesEditor), once the notes are loaded. */
+	export async function addToDrawing(file: File, page?: number) {
+		for (let i = 0; i < 120 && !editor && notes.status !== 'error'; i++) await new Promise(requestAnimationFrame);
+		await editor?.addToDrawing(file, page);
 	}
 
 	/** Add content at the end of the notes, once they're loaded (the pane may have just opened). */
