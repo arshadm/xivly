@@ -326,6 +326,8 @@ test('a paper reopens at its page, as zoomed and scrolled as it was left', async
 });
 
 test('shift-click a citation or a reference: the cited paper in the browser (arXiv, else a search for it)', async ({ page, context }) => {
+	// The citation card's details (a hover asks Semantic Scholar): none, offline.
+	await context.route('https://api.semanticscholar.org/**', (r) => r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: '{}' }));
 	// Pages of the web opened in the browser: recorded instead (the app's own tabs still open).
 	await context.addInitScript(() => {
 		const w = window as unknown as { opened: string[] };
@@ -359,12 +361,25 @@ test('shift-click a citation or a reference: the cited paper in the browser (arX
 	};
 
 	// A citation in the text: its arXiv page.
+	// Each jump to a reference (its highlight shows for a moment), counted.
+	await reader.evaluate(() => {
+		const w = window as unknown as { jumps: number };
+		w.jumps = 0;
+		new MutationObserver((records) => {
+			for (const r of records) for (const n of r.addedNodes) if (n instanceof Element && (n.matches('[data-pdf-focus]') || n.querySelector('[data-pdf-focus]'))) w.jumps++;
+		}).observe(document.body, { childList: true, subtree: true });
+	});
+	const jumps = () => reader.evaluate(() => (window as unknown as { jumps: number }).jumps);
 	// The [1] of "Transformers [1] replaced…" (about x 145, on the line at y 640).
 	let p = await at(145, 643);
 	await reader.keyboard.down('Shift');
 	await reader.mouse.click(p.x, p.y);
 	await reader.keyboard.up('Shift');
 	await expect.poll(opened).toEqual(['https://arxiv.org/abs/1706.03762']);
+	// It was the citation's hotspot, and it didn't also go to the reference (a plain click does, below).
+	await expect(reader.locator('[data-pdf-citation]').first()).toBeAttached();
+	await reader.waitForTimeout(500);
+	expect(await jumps()).toBe(0);
 	// An entry of the reference list with no link: a search for its title and authors.
 	p = await at(250, 549);
 	await reader.keyboard.down('Shift');
@@ -375,8 +390,13 @@ test('shift-click a citation or a reference: the cited paper in the browser (arX
 	expect(search.origin + search.pathname).toBe('https://www.google.com/search');
 	expect(search.searchParams.get('q')).toMatch(/Inductive representation learning on large graphs.*Hamilton/);
 	// The side panel too.
-	await reader.getByRole('button', { name: /Attention is all you need/i }).click({ modifiers: ['Shift'] });
+	await reader.getByRole('button', { name: /\[1\]\s*Attention is all you need/i }).click({ modifiers: ['Shift'] });
 	await expect.poll(async () => (await opened()).at(-1)).toBe('https://arxiv.org/abs/1706.03762');
+	const before = (await opened()).length;
+	p = await at(145, 643);
+	await reader.mouse.click(p.x, p.y);
+	await expect.poll(jumps).toBeGreaterThan(0);
+	expect(await opened()).toHaveLength(before);
 	expect(errs).toEqual([]);
 });
 

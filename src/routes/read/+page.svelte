@@ -523,9 +523,10 @@
 		if (!el) return;
 		const onclick = (e: MouseEvent) => {
 			if (!e.shiftKey || e.button !== 0 || !viewer) return;
-			// A link (a citation's, usually) mustn't go where it points as well.
-			const link = !!(e.target as Element | null)?.closest?.('[data-pdf-link]');
-			if (link) (e.preventDefault(), e.stopPropagation());
+			// A link or a citation's hotspot mustn't go where it points as well (to the reference list).
+			const target = (e.target as Element | null)?.closest?.('[data-pdf-link], [data-pdf-citation]');
+			const link = !!target?.matches('[data-pdf-link]');
+			if (target) (e.preventDefault(), e.stopPropagation());
 			const v = viewer;
 			void (async () => {
 				const ctx = await v.contextAt({ clientX: e.clientX, clientY: e.clientY, target: e.target });
