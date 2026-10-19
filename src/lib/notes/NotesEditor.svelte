@@ -573,6 +573,22 @@
 		list-style: decimal;
 		padding-left: 1.4em;
 	}
+	/* Numbered lists inside numbered lists: 1, 2… then a, b… then i, ii…, and round again. */
+	:global(.notes-editor ol ol) {
+		list-style: lower-alpha;
+	}
+	:global(.notes-editor ol ol ol) {
+		list-style: lower-roman;
+	}
+	:global(.notes-editor ol ol ol ol) {
+		list-style: decimal;
+	}
+	:global(.notes-editor ol ol ol ol ol) {
+		list-style: lower-alpha;
+	}
+	:global(.notes-editor ol ol ol ol ol ol) {
+		list-style: lower-roman;
+	}
 	:global(.notes-editor li > p) {
 		margin: 0.15em 0;
 	}

@@ -719,6 +719,21 @@ test('notes: checklists — "[ ] " starts one, a click ticks it, and it stays ti
 	expect(errs).toEqual([]);
 });
 
+test('notes: numbered lists inside numbered lists count 1, 2…, then a, b…, then i, ii…', async ({ page, context }) => {
+	const { reader, notes } = await openNotes(page, context);
+	const errs = errors(reader);
+	await reader.keyboard.type('1. Method\nTiling');
+	await reader.keyboard.press('Tab');
+	await reader.keyboard.type('Square tiles');
+	await reader.keyboard.press('Enter');
+	await reader.keyboard.press('Tab');
+	await reader.keyboard.type('32×32');
+	const style = (depth: number) => notes.locator(`${Array(depth).fill('ol').join(' ')}`).first().evaluate((el) => getComputedStyle(el).listStyleType);
+	await expect(notes.locator('ol ol ol li')).toHaveText('32×32');
+	expect([await style(1), await style(2), await style(3)]).toEqual(['decimal', 'lower-alpha', 'lower-roman']);
+	expect(errs).toEqual([]);
+});
+
 test('notes: tables — insert one, Tab from cell to cell, add a row, and it stays', async ({ page, context }) => {
 	const { reader, notes } = await openNotes(page, context);
 	const errs = errors(reader);
