@@ -4,6 +4,7 @@
 // node's attrs, so the notes' undo covers maps and text alike.
 import { Node } from '@tiptap/core';
 import { closeHistory } from '@tiptap/pm/history';
+import { Selection, TextSelection } from '@tiptap/pm/state';
 import { mount, unmount } from 'svelte';
 import type { PaperAnchor } from '#lib/types.js';
 import MindMapView from './MindMapView.svelte';
@@ -98,6 +99,23 @@ export const MindMapNode = Node.create<MindMapOptions>({
 				exit: () => {
 					const pos = getPos();
 					if (typeof pos === 'number') editor.chain().focus(pos + node.nodeSize).run();
+				},
+				/** The whole block out of the notes (one undo step), the cursor where it was. */
+				removeBlock: () => {
+					const pos = getPos();
+					if (typeof pos !== 'number') return;
+					const tr = editor.state.tr.delete(pos, pos + current.nodeSize);
+					// The cursor in the text nearby (before it if there's any), never on the next block (typing
+					// or inserting would replace it); no text either side: an empty line where it was.
+					const at = Math.min(pos, tr.doc.content.size);
+					let sel = Selection.findFrom(tr.doc.resolve(at), -1, true) ?? Selection.findFrom(tr.doc.resolve(at), 1, true);
+					if (!sel) {
+						tr.insert(at, editor.schema.nodes.paragraph.create());
+						sel = TextSelection.create(tr.doc, at + 1);
+					}
+					tr.setSelection(sel);
+					editor.view.dispatch(closeHistory(tr));
+					editor.view.focus();
 				}
 			});
 			let current = node;

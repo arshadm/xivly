@@ -1476,6 +1476,24 @@ test('drawings: the grip resizes (mind maps too), the bar styles shapes, an imag
 	const reloaded = await reloadNotes(reader);
 	expect((await reloaded.locator('[data-mind-map-canvas]').boundingBox())!.height).toBeGreaterThan(before + 80);
 	await expect(reloaded.locator('[data-drawing-canvas] [data-shape]')).toHaveCount(2);
+
+	// A whole block deleted: the drawing from its bar (⌘Z brings it back), the map with ⌘⌫.
+	const drawing = reloaded.locator('[data-drawing-canvas]');
+	await drawing.scrollIntoViewIfNeeded();
+	await onCanvas(reader, drawing).click(300, 250);
+	await reader.getByRole('toolbar', { name: 'Drawing', exact: true }).getByRole('button', { name: 'Delete the drawing' }).click();
+	await expect(drawing).toHaveCount(0);
+	await reader.keyboard.press('ControlOrMeta+z');
+	await expect(drawing).toHaveCount(1);
+	await reloaded.locator('[data-mind-map-canvas] [data-topic]').first().click();
+	await reader.keyboard.press('ControlOrMeta+Backspace');
+	await expect(reloaded.locator('[data-mind-map-canvas]')).toHaveCount(0);
+	// An empty drawing goes with Backspace.
+	await reader.getByRole('button', { name: 'Drawing', exact: true }).click();
+	await expect(drawing).toHaveCount(2);
+	await drawing.last().click({ position: { x: 300, y: 250 } });
+	await reader.keyboard.press('Backspace');
+	await expect(drawing).toHaveCount(1);
 	expect(errs).toEqual([]);
 });
 

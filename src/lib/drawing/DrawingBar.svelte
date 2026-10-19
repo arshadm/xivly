@@ -103,6 +103,7 @@
 		<Separator class="mx-1" />
 		{@render item('Undo', 'icon-[lucide--undo-2]', () => tools.undo(), { disabled: !canUndo(), keys: `${mod}Z` })}
 		{@render item('Redo', 'icon-[lucide--redo-2]', () => tools.redo(), { disabled: !canRedo(), keys: `${mod}${shift}Z` })}
+		{@render item('Delete the drawing', 'icon-[lucide--square-x]', () => tools.removeBlock(), { keys: `${mod}⌫` })}
 		{@render item('Done: back to the text', 'icon-[lucide--corner-down-left]', () => tools.exit(), { keys: 'Esc' })}
 	</div>
 	{#if open}

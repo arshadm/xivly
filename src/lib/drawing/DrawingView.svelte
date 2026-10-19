@@ -82,7 +82,8 @@
 		undo,
 		redo,
 		onjump,
-		exit
+		exit,
+		removeBlock
 	}: {
 		scene: Scene;
 		height: number;
@@ -96,6 +97,8 @@
 		redo: () => void;
 		onjump: (anchor: PaperAnchor) => void;
 		exit: () => void;
+		/** Delete the whole drawing. */
+		removeBlock: () => void;
 	} = $props();
 
 	let canvas = $state<HTMLElement>();
@@ -588,7 +591,10 @@
 		if (mod(e) && k.toLowerCase() === 'd') return (e.preventDefault(), tools.duplicate());
 		if (mod(e) && e.shiftKey && (k === ']' || k === '}')) return (e.preventDefault(), tools.reorder('front'));
 		if (mod(e) && e.shiftKey && (k === '[' || k === '{')) return (e.preventDefault(), tools.reorder('back'));
+		if (mod(e) && k === 'Backspace') return (e.preventDefault(), removeBlock());
 		if ((k === 'Backspace' || k === 'Delete') && selection.length) return (e.preventDefault(), tools.remove());
+		// An empty drawing: Backspace takes it away, as it would an empty line.
+		if ((k === 'Backspace' || k === 'Delete') && !shown.shapes.length) return (e.preventDefault(), removeBlock());
 		if (k.startsWith('Arrow') && selection.length && !mod(e)) {
 			e.preventDefault();
 			const d = e.shiftKey ? 10 : 1;
@@ -728,6 +734,7 @@
 		undo: () => undo(),
 		redo: () => redo(),
 		exit: () => exit(),
+		removeBlock: () => removeBlock(),
 		within: (el) => !!canvas && el.contains(canvas),
 		addImage,
 		async save(kind) {

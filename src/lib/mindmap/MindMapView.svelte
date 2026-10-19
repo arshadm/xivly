@@ -36,7 +36,8 @@
 		redo,
 		onjump,
 		anchor,
-		exit
+		exit,
+		removeBlock
 	}: {
 		map: MindMap;
 		height: number;
@@ -50,6 +51,8 @@
 		onjump: (anchor: PaperAnchor) => void;
 		anchor: () => PaperAnchor | null;
 		exit: () => void;
+		/** Delete the whole map. */
+		removeBlock: () => void;
 	} = $props();
 
 	let canvas = $state<HTMLElement>();
@@ -304,6 +307,7 @@
 		if (z) return e.preventDefault(), e.shiftKey ? redo() : undo();
 		if (mod(e) && k.toLowerCase() === 'y') return e.preventDefault(), redo();
 		if (k === 'Escape') return e.preventDefault(), exit();
+		if (mod(e) && k === 'Backspace' && editable) return e.preventDefault(), removeBlock();
 		if (k.startsWith('Arrow') && e.altKey && editable) {
 			e.preventDefault();
 			const p = byId.get(current);
@@ -350,6 +354,7 @@
 		undo: () => undo(),
 		redo: () => redo(),
 		exit: () => exit(),
+		removeBlock: () => removeBlock(),
 		state: () => {
 			const t = find(shown.root, current)?.topic;
 			return { root: current === shown.root.id, page: !!t?.page, children: !!t?.children.length, collapsed: !!t?.collapsed };

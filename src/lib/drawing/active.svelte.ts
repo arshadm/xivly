@@ -25,6 +25,8 @@ export interface DrawingTools {
 	redo(): void;
 	/** Back to the text after the drawing. */
 	exit(): void;
+	/** Delete the whole drawing. */
+	removeBlock(): void;
 	/** Is this drawing in that element (one notes editor's)? */
 	within(el: Element): boolean;
 	/** An image into the drawing, in view (a box drawn on the PDF, with its page). */

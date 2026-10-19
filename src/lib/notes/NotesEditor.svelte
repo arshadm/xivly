@@ -423,6 +423,7 @@
 		[
 			{ label: 'Undo', icon: 'icon-[lucide--undo-2]', keys: `${mod}Z`, on: t.undo, disabled: () => !can((e) => e.can().undo()) },
 			{ label: 'Redo', icon: 'icon-[lucide--redo-2]', keys: `${mod}${shift}Z`, on: t.redo, disabled: () => !can((e) => e.can().redo()) },
+			{ label: 'Delete the map', icon: 'icon-[lucide--square-x]', keys: `${mod}⌫`, on: t.removeBlock },
 			{ label: 'Done: back to the text', icon: 'icon-[lucide--corner-down-left]', keys: 'Esc', on: t.exit }
 		]
 	];

@@ -17,6 +17,8 @@ export interface MapTools {
 	redo(): void;
 	/** Back to the text after the map. */
 	exit(): void;
+	/** Delete the whole map. */
+	removeBlock(): void;
 	/** The selected topic: is it the central one, does it link a page, has it children, is it folded? */
 	state(): { root: boolean; page: boolean; children: boolean; collapsed: boolean };
 	/** A new topic under the selected one (a passage from the paper, with its page). */
