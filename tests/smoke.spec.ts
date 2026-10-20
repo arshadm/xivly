@@ -2036,6 +2036,25 @@ test('notebooks found: the library search finds them by their text, and a paperâ
 	expect([...errs, ...readerErrs]).toEqual([]);
 });
 
+test('notebooks: the text fills the page width and wraps, a mind map as wide as the text', async ({ page, context }) => {
+	await addPaper(page, context);
+	const tab = await openNewNotebook(page, context, 'Wide');
+	const errs = errors(tab);
+	await tab.setViewportSize({ width: 1600, height: 900 });
+	const editor = tab.getByRole('textbox', { name: 'Notes' });
+	await editor.click();
+	await tab.keyboard.type('word '.repeat(400));
+	const main = await tab.locator('header').first().boundingBox();
+	const box = (await editor.boundingBox())!;
+	expect(box.width).toBeGreaterThan(main!.width - 60);
+	expect(await editor.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+	await tab.keyboard.press('Enter');
+	await tab.getByRole('button', { name: 'Mind map', exact: true }).click();
+	const map = (await editor.locator('.mind-map-block').boundingBox())!;
+	expect(Math.abs(map.width - (box.width - 40))).toBeLessThan(4);
+	expect(errs).toEqual([]);
+});
+
 test('notebooks link papers: @ opens a menu of papers, â†µ inserts a chip that stays after a reload', async ({ page, context }) => {
 	const errs = errors(page);
 	await addPaper(page, context);

@@ -217,7 +217,7 @@
 					{#snippet child({ props })}<button {...props} class={iconBtn} aria-label="Show the library" onclick={showLibrary}><span class="icon-[lucide--library] size-4"></span></button>{/snippet}
 				</Tip>
 			</header>
-			<div class="mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col">
+			<div class="flex min-h-0 w-full flex-1 flex-col">
 				{#key id}<NotesPane bind:this={notesPane} {id} kind="notebook" bind:status title={notebook.title} placeholder="Write about this idea… Type @ to link a paper." {papers} ondoc={(d) => (doc = d)} />{/key}
 			</div>
 		</div>
