@@ -1818,6 +1818,16 @@ test('the reading list: up next in my order (menu, drag, move to top), reading n
 	await search.press('Escape');
 	await expect(search).toHaveValue('');
 	await expect.poll(order).toEqual(['Beta paper', 'Alpha paper']);
+
+	// Put back in Up next (at the top): by its button, or the menu.
+	await page.getByRole('button', { name: 'Put “Gamma paper” back in Up next' }).click();
+	await expect.poll(order).toEqual(['Gamma paper', 'Beta paper', 'Alpha paper']);
+	await expect(page.getByText('Nothing yet. Right-click a paper')).toBeVisible();
+	await menu(/Alpha paper/, 'Mark as reading');
+	await expect(now).toHaveText(/Alpha paper/);
+	await menu(/Alpha paper/, 'Back to Up next');
+	await expect.poll(order).toEqual(['Alpha paper', 'Gamma paper', 'Beta paper']);
+	await menu(/Gamma paper/, 'Mark as reading');
 	await page.getByRole('button', { name: 'Mark “Gamma paper” as read' }).click();
 	await expect(page.getByText('Nothing yet. Right-click a paper')).toBeVisible();
 	expect(errs).toEqual([]);

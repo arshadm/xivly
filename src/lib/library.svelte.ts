@@ -113,6 +113,11 @@ class Library {
 		return this.update(id, { queue: rankAt(upNext(this.papers), id, index) });
 	}
 
+	/** Stop reading and put it back at the top of Up next. */
+	backToUpNext(id: string) {
+		return this.update(id, { reading: null, queue: rankAt(upNext(this.papers), id, 0) });
+	}
+
 	dequeue(id: string) {
 		return this.update(id, { queue: null });
 	}

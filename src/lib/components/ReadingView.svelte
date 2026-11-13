@@ -86,6 +86,9 @@
 								<Tip label="Done: mark as read">
 									{#snippet child({ props })}<button {...props} class={iconBtn} aria-label="Mark “{p.title}” as read" onclick={() => library.setRead(p.id, true).catch(fail)}><span class="icon-[lucide--circle-check] size-4"></span></button>{/snippet}
 								</Tip>
+								<Tip label="Back to Up next (at the top)">
+									{#snippet child({ props })}<button {...props} class={iconBtn} aria-label="Put “{p.title}” back in Up next" onclick={() => library.backToUpNext(p.id).catch(fail)}><span class="icon-[lucide--list-restart] size-4"></span></button>{/snippet}
+								</Tip>
 								<Tip label="Stop reading (back to the library)">
 									{#snippet child({ props })}<button {...props} class={iconBtn} aria-label="Stop reading “{p.title}”" onclick={() => library.setReading(p.id, false).catch(fail)}><span class="icon-[lucide--x] size-4"></span></button>{/snippet}
 								</Tip>
